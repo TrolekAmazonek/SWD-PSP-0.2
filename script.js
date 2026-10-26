@@ -679,14 +679,14 @@ let currentCPRData = null;
 let cprCounter = 101;
 let currentRadioVehicle = null;
 
-// --- MECHANIZM PRZESUWANIA OKIEN (DRAG AND DROP) Z OCHRONĄ PRZYCISKÓW ---
+// --- NAPRAWIONY MECHANIZM PRZESUWANIA (POSITION: FIXED + OCHRONA PRZYCISKÓW) ---
 function makeDraggable(elmnt, header) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     header.onmousedown = dragMouseDown;
 
     function dragMouseDown(e) {
-        // Ignorujemy przeciąganie, jeśli kliknięto w przyciski zamykania lub minimalizacji
-        if (e.target.classList.contains('modal-close') || e.target.classList.contains('modal-min')) {
+        // Jeśli kliknięto w przycisk zamknięcia lub minimalizacji, ignorujemy przeciąganie i pozwalamy wykonać akcję
+        if (e.target.closest('.modal-close, .modal-min')) {
             return;
         }
 
@@ -694,11 +694,14 @@ function makeDraggable(elmnt, header) {
         pos3 = e.clientX;
         pos4 = e.clientY;
 
+        // Używamy position: fixed, żeby okno trzymało się dokładnej pozycji w oknie przeglądarki bez uciekania
         const rect = elmnt.getBoundingClientRect();
-        elmnt.style.position = 'absolute';
+        elmnt.style.position = 'fixed';
         elmnt.style.left = rect.left + 'px';
         elmnt.style.top = rect.top + 'px';
         elmnt.style.margin = '0';
+        elmnt.style.right = 'auto';
+        elmnt.style.bottom = 'auto';
 
         document.onmouseup = closeDragElement;
         document.onmousemove = elementDrag;
@@ -721,7 +724,7 @@ function makeDraggable(elmnt, header) {
     }
 }
 
-// Inicjalizacja przeciągania dla wszystkich okien modalnych
+// Inicjalizacja przeciągania dla wszystkich okien po załadowaniu DOM
 window.addEventListener('DOMContentLoaded', () => {
     // 1. Okno radia
     const radioModal = document.getElementById('radio-modal');
@@ -730,7 +733,7 @@ window.addEventListener('DOMContentLoaded', () => {
         makeDraggable(radioModal, radioHeader);
     }
 
-    // 2. Okno formatki zdarzenia
+    // 2. Okno formatki / edycji zdarzenia
     const eventModal = document.querySelector('#modal-event .modal-window');
     const eventHeader = document.querySelector('#modal-event .modal-header');
     if (eventModal && eventHeader) {
