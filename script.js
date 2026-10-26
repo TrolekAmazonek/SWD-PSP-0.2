@@ -673,7 +673,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- POPRAWIONA INTEGRACJA Z GEMINI API BEZ BŁĘDU ZMIENNEJ ---
+// --- POPRAWIONA INTEGRACJA Z GEMINI 2.0 FLASH ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -698,31 +698,30 @@ async function sendRadioReply() {
 
     const GEMINI_API_KEY = "AQ.Ab8RN6KojTcCLHkULYu2BmzNUuXKGV2FKO4mHymlURwCwSPh2Q";
 
-    // Prawidłowa nazwa zmiennej promptu
-    const dynamicSystemPrompt = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji. Twój kryptonim to ${currentRadioVehicle || 'dowódca'}.
-Rozmawiasz przez radiostację ze Stanowiskiem Kierowania (Wejherowo 998).
+    // Instrukcja systemowa dla modelu gemini-2.0-flash
+    const systemPrompt = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji (kryptonim radiowy: ${currentRadioVehicle || 'dowódca'}). Rozmawiasz ze Stanowiskiem Kierowania (Wejherowo 998).
 
-DANE ZDARZENIA:
-- Miejsce: ${ev.city}, ${ev.street}
-- Opis zdarzenia: "${ev.desc}"
+INFORMACJE O ZDARZENIU:
+- Lokalizacja: ${ev.city}, ${ev.street}
+- Treść / Opis zgłoszenia: "${ev.desc}"
 - Podrodzaj: ${ev.subtype}
 
 ZASADY:
-1. Wczuj się w rolę strażaka na miejscu zdarzenia. Odpowiadaj logicznie, kreatywnie i dynamicznie na pytania dyspozytora, opierając się wyłącznie na opisie zdarzenia. 
-2. Jeśli dyspozytor pyta co się pali, opisz to na podstawie treści zgłoszenia (np. palące się palety na placu, ogień na balkonie itp.), dodając realistyczne szczegóły akcji (np. duże zadymienie, widoczny ogień).
-3. Mów zwięźle, w radiowym żargonie strażackim (zaczynając od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", zakończ "Bez odbioru"). Nigdy nie używaj gotowych szablonów ani sztucznych formułek.`;
+1. Wczuj się w rolę KDR na miejscu. Odpowiadaj krótko, sensownie i w radiowym żargonie (zaczynając od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", a kończąc "Bez odbioru").
+2. Bazuj wyłącznie na opisie zdarzenia – wymyślaj realistyczny ciąg dalszy akcji (np. stopień zadymienia, działania rot, ewakuacja, stan poszkodowanych), odpowiedni do tego konkretnego zgłoszenia. Nigdy nie powtarzaj sztywnych formułek.`;
 
     let conversationHistory = "";
     ev.radioLogs.forEach(log => {
         if (log.includes("Wejherowo 998")) {
-            conversationHistory += "Wejherowo 998: " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
+            conversationHistory += "Dyspozytor (Wejherowo 998): " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
         } else {
             conversationHistory += "KDR: " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
         }
     });
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        // Zmieniono na model gemini-2.0-flash, który jest w pełni obsługiwany i darmowy
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -731,7 +730,7 @@ ZASADY:
                 contents: [
                     {
                         parts: [
-                            { text: dynamicSystemPrompt + "\n\nHistoria wymiany zdań:\n" + conversationHistory + "\n\nNapisz kolejną, logiczną odpowiedź KDR." }
+                            { text: systemPrompt + "\n\nHistoria radiowa:\n" + conversationHistory + "\n\nOdpowiedz jako KDR na najnowszą wiadomość dyspozytora." }
                         ]
                     }
                 ]
@@ -741,11 +740,11 @@ ZASADY:
         const data = await response.json();
         
         if (data.error) {
-            console.error("API Error Details:", data.error);
-            throw new Error(data.error.message || "Błąd zapytania API");
+            console.error("Gemini API Error:", data.error);
+            throw new Error(data.error.message || "Błąd API Google");
         }
 
-        let aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy. Bez odbioru.`;
+        let aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu. Bez odbioru.`;
         if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
             aiReply = data.candidates[0].content.parts[0].text.trim();
         }
@@ -763,7 +762,7 @@ ZASADY:
         }, 1000);
 
     } catch (err) {
-        console.error("Błąd krytyczny połączenia z Gemini:", err);
+        console.error("Błąd połączenia z Gemini:", err);
         setTimeout(() => {
             audioMotorola.currentTime = 0;
             audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
@@ -1231,134 +1230,4 @@ function saveEvent() {
                     if (played < uniqueOspUnitsCount) {
                         setTimeout(playNextSelekt, 3000);
                     }
-                }).catch(e => console.log("Audio selekt zablokowane"));
-            }
-        }
-        playNextSelekt();
-    }
-
-    if (activeEditingId === null) {
-        const newEv = {
-            id: events.length + 1,
-            time: document.getElementById('inp-ev-time').value,
-            city: city,
-            region: document.getElementById('inp-ev-region').value,
-            street: document.getElementById('inp-ev-street').value,
-            desc: descVal,
-            type: typeVal,
-            subtype: subtypeVal,
-            remainingSeconds: estSec,
-            firstArrived: false,
-            radioReported: false,
-            radioLogs: [],
-            jrg: document.getElementById('inp-ev-jrg').value,
-            services: { ...servicesState },
-            vehicles: [...selectedVehicles],
-            status: 'ACTIVE'
-        };
-        events.push(newEv);
-        selectEvent(newEv.id);
-    } else {
-        const ev = events.find(e => e.id === activeEditingId);
-        ev.city = city;
-        ev.desc = descVal;
-        ev.type = typeVal;
-        ev.subtype = subtypeVal;
-        ev.remainingSeconds = estSec;
-        ev.services = { ...servicesState };
-        ev.vehicles = [...selectedVehicles];
-    }
-
-    selectedVehicles.forEach(sv => {
-        [...unitsPSP, ...unitsOSP].forEach(u => {
-            const v = u.vehicles.find(veh => veh.id === sv.id);
-            if (v && v.status === 'green') v.status = 'orange';
-        });
-    });
-
-    renderUnits();
-    renderEvents();
-    closeModal('modal-event');
-}
-
-function finishCurrentEvent() {
-    if (activeEditingId === null) return;
-    const ev = events.find(e => e.id === activeEditingId);
-
-    if (ev) {
-        ev.status = 'FINISHED';
-        ev.remainingSeconds = 0;
-        ev.vehicles.forEach(sv => {
-            [...unitsPSP, ...unitsOSP].forEach(u => {
-                const v = u.vehicles.find(veh => veh.id === sv.id);
-                if (v) v.status = 'green';
-            });
-        });
-    }
-
-    renderUnits();
-    renderEvents();
-    closeModal('modal-event');
-}
-
-function switchModalTab(tab) {
-    document.getElementById('modal-tab-dane-content').style.display = tab === 'dane' ? 'block' : 'none';
-    document.getElementById('modal-tab-czasy-content').style.display = tab === 'czasy' ? 'block' : 'none';
-    document.getElementById('tab-modal-dane').className = 'tab-btn ' + (tab === 'dane' ? 'active' : '');
-    document.getElementById('tab-modal-czasy').className = 'tab-btn ' + (tab === 'czasy' ? 'active' : '');
-}
-
-function openSiSModal() { document.getElementById('modal-sis').style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-setInterval(() => {
-    let needsRender = false;
-
-    events.forEach(ev => {
-        if (ev.status === 'ACTIVE') {
-            ev.vehicles.forEach(v => {
-                if (v.travelTime > 0) {
-                    v.travelTime--;
-                    needsRender = true;
-                } else {
-                    [...unitsPSP, ...unitsOSP].forEach(u => {
-                        const veh = u.vehicles.find(vObj => vObj.id === v.id);
-                        if (veh && veh.status === 'orange') {
-                            veh.status = 'red';
-                            
-                            if (!ev.firstArrived) {
-                                ev.firstArrived = true;
-                                if (!ev.radioReported) {
-                                    ev.radioReported = true;
-                                    triggerArrivalRadioReport(ev, v);
-                                }
-                            }
-                            needsRender = true;
-                        }
-                    });
-                }
-            });
-
-            if (ev.firstArrived && ev.remainingSeconds > 0) {
-                ev.remainingSeconds--;
-                needsRender = true;
-            } else if (ev.firstArrived && ev.remainingSeconds === 0) {
-                ev.status = 'FINISHED';
-                ev.vehicles.forEach(sv => {
-                    [...unitsPSP, ...unitsOSP].forEach(u => {
-                        const veh = u.vehicles.find(vObj => vObj.id === sv.id);
-                        if (veh) veh.status = 'green';
-                    });
-                });
-                needsRender = true;
-            }
-        }
-    });
-
-    if (needsRender) {
-        renderUnits();
-        renderEvents();
-    }
-}, 1000);
-
-renderUnits();
+                }).catch(e => console.log("Audio selekt z
