@@ -13,6 +13,7 @@ function playSound(type) {
     }
 }
 
+// Odtwarzanie selektu z przerwą 3 sekund między powtórzeniami
 function playOspAlarmRepeated(ospCount) {
     if (ospCount <= 0) return;
     let played = 0;
@@ -23,7 +24,8 @@ function playOspAlarmRepeated(ospCount) {
             audioSelekt.play().then(() => {
                 played++;
                 if (played < ospCount) {
-                    setTimeout(playNext, 1800);
+                    // Dokładnie 3 sekundy przerwy przed kolejnym odtworzeniem
+                    setTimeout(playNext, 3000);
                 }
             }).catch(e => console.log("Audio OSP zablokowane"));
         }
@@ -594,7 +596,6 @@ let currentCPRData = null;
 let cprCounter = 101;
 let currentRadioVehicle = null;
 
-// --- MELDUNEK Z DOJAZDU DOPASOWANY DO OPISU ZDARZENIA ---
 function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
@@ -1212,7 +1213,7 @@ function saveEvent() {
                 audioSelekt.play().then(() => {
                     played++;
                     if (played < uniqueOspUnitsCount) {
-                        setTimeout(playNextSelekt, 1800);
+                        setTimeout(playNextSelekt, 3000);
                     }
                 }).catch(e => console.log("Audio selekt zablokowane"));
             }
