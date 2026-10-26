@@ -679,6 +679,62 @@ let currentCPRData = null;
 let cprCounter = 101;
 let currentRadioVehicle = null;
 
+// --- MECHANIZM PRZESUWANIA OKIEN (DRAG AND DROP) ---
+function makeDraggable(elmnt, header) {
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    header.onmousedown = dragMouseDown;
+
+    function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+
+        // Jeśli element był wyśrodkowany flexboxem, przypisujemy mu pozycję absolutną w miejscu aktualnym
+        const rect = elmnt.getBoundingClientRect();
+        elmnt.style.position = 'absolute';
+        elmnt.style.left = rect.left + 'px';
+        elmnt.style.top = rect.top + 'px';
+        elmnt.style.margin = '0';
+
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+    }
+
+    function elementDrag(e) {
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+
+        elmnt.style.top = (elmnt.offsetTop - pos2) + 'px';
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + 'px';
+    }
+
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
+}
+
+// Inicjalizacja przeciągania po załadowaniu strony dla formatki i radia
+window.addEventListener('DOMContentLoaded', () => {
+    // 1. Okno radia
+    const radioModal = document.getElementById('radio-modal');
+    const radioHeader = radioModal.querySelector('.modal-header');
+    if (radioModal && radioHeader) {
+        makeDraggable(radioModal, radioHeader);
+    }
+
+    // 2. Okno formatki zdarzenia (modal-window wewnątrz modal-event)
+    const eventModal = document.querySelector('#modal-event .modal-window');
+    const eventHeader = document.querySelector('#modal-event .modal-header');
+    if (eventModal && eventHeader) {
+        makeDraggable(eventModal, eventHeader);
+    }
+});
+
+
 // --- MELDUNEK Z DOJAZDU NA MIEJSCE (AI) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
@@ -916,7 +972,6 @@ function acceptCPRToEvent() {
 
     autoSelectJRGByCity(currentCPRData.city);
 
-    // Zostawiamy domyślnie P, ale użytkownik (dyspozytor) musi sam wybrać rodzaj i podrodzaj
     const radioP = document.querySelector('input[name="ev-type"][value="P"]');
     if (radioP) radioP.checked = true;
     updateSubtypes('P');
