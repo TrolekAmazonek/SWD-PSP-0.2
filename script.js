@@ -673,8 +673,8 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- INTELIGENTNY GENERATOR RADIOWY (100% STABILNY NA GITHUB PAGES) ---
-async function sendRadioReply() {
+// --- INTELIGENTNY I ŚCIŚLE KONTEKSTOWY GENERATOR ODPOWIEDZI KDR ---
+function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
     if (!text || selectedEvIdForRadio === null) return;
@@ -696,40 +696,114 @@ async function sendRadioReply() {
     const chatBox = document.getElementById('radio-chat');
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // Inteligentna symulacja odpowiedzi KDR oparta na kontekście zdarzenia i pytaniu dyspozytora
     const q = text.toLowerCase();
     const desc = ev.desc.toLowerCase();
-    let aiReply = "";
+    const subtype = (ev.subtype || "").toLowerCase();
+    let possibleReplies = [];
 
-    if (q.includes("pali") || q.includes("co tam") || q.includes("widzicie")) {
-        if (desc.includes("hala") || desc.includes("zakład") || desc.includes("magazyn")) {
-            aiReply = `Ogień rozwinięty, objął część konstrukcji dachu. Duże zadymienie. Podajemy dwa prądy wody w natarciu i jeden w obronie sąsiednich obiektów.`;
-        } else if (desc.includes("palet") || desc.includes("składowiska")) {
-            aiReply = `Palą się składowane materiały na placu zewnętrznym. Działamy trzema prądami wody w natarciu, tworzymy stanowisko gaśnicze.`;
-        } else if (desc.includes("mieszkaniu") || desc.includes("balkonie")) {
-            aiReply = `Ogień widoczny na balkonie/w lokalu. Prowadzimy działania w aparatach ODO, wprowadzamy rotę po klatce schodowej z linią gaśniczą.`;
-        } else if (desc.includes("śmietnik")) {
-            aiReply = `Pożar wiaty śmietnikowej w zarodku. Podano jeden prąd wody w natarciu, sytuacja opanowana.`;
+    // Inteligentne rozróżnienie kontekstu (pożar śmietnika vs hala vs wypadek vs owady)
+    const isSmallFire = desc.includes("śmietnik") || desc.includes("w zarodku");
+    const isBigFire = desc.includes("hala") || desc.includes("zakład") || desc.includes("magazyn") || desc.includes("rozwinięty");
+    const isAccident = desc.includes("wypadek") || desc.includes("kolizja") || subtype.includes("wypadek");
+    const isInsects = desc.includes("szerszeni") || desc.includes("os") || subtype.includes("zwierzęta");
+    const isSpill = desc.includes("plama") || desc.includes("wyciek") || subtype.includes("chemiczne");
+
+    if (q.includes("pali") || q.includes("co tam") || q.includes("widzicie") || q.includes("sytuacj")) {
+        if (isSmallFire) {
+            possibleReplies = [
+                `Palą się odpadki w wiacje. Podaliśmy jeden prąd wody, pożar w fazie dogaszania.`,
+                `Sytuacja w pełni opanowana. Pożar śmietnika ugaszony jednym prądem wody z szybkiego natarcia.`
+            ];
+        } else if (isBigFire) {
+            possibleReplies = [
+                `Ogień rozwinięty wewnątrz obiektu, duże zadymienie. Prowadzimy natarcie w aparatach ODO z dwóch linii gaśniczych.`,
+                `Płomienie wydostają się przez dach. Działamy w obronie sąsiednich sektorów i podajemy prądy wody w natarciu.`
+            ];
+        } else if (isAccident) {
+            possibleReplies = [
+                `Zastano zderzenie pojazdów na pasie ruchu. Wycieków płynów brak, ruch odbywa się wahadłowo.`,
+                `Pojazdy blokują pas ruchu. Odłączyliśmy akumulatory, sorbentem zasypaliśmy wycieki.`
+            ];
+        } else if (isInsects) {
+            possibleReplies = [
+                `Lokalizujemy gniazdo pod dachem wiaty. Strażacy ubrani w kombienozony ochronne przystępują do bezpiecznego usuwania owadów.`,
+                `Gniazdo owadów błonkoskrzydłych zabezpieczone i neutralizowane przy użyciu specjalistycznego preparatu.`
+            ];
+        } else if (isSpill) {
+            possibleReplies = [
+                `Plama oleju na jezdni o długości kilkunastu metrów. Rozsypujemy sorbent, ruch zabezpieczony przez pachołki.`,
+                `Neutralizujemy wyciek płynów eksploatacyjnych przy użyciu sorbentu. Sytuacja pod kontrolą.`
+            ];
         } else {
-            aiReply = `Na miejscu zastano zdarzenie zgodne ze zgłoszeniem (${ev.desc}). Prowadzimy działania gaśnicze.`;
+            possibleReplies = [
+                `Prowadzimy działania ratownicze zgodnie ze specyfikacją zdarzenia. Sytuacja stabilna.`,
+                `Działania polegają na zabezpieczeniu miejsca i likwidacji zagrożenia.`
+            ];
         }
     } else if (q.includes("poszkodowan") || q.includes("rann") || q.includes("osoby")) {
-        if (desc.includes("wypadek")) {
-            aiReply = `Mamy dwie osoby poszkodowane, są pod opieką naszego zespołu KPP, oczekujemy na przyjazd ZRM.`;
-        } else if (desc.includes("mieszkaniu") || desc.includes("ewakuowan")) {
-            aiReply = `Mieszkańcy opuścili budynek przed naszym przyjazdem. Brak osób poszkodowanych w strefie bezpośredniego zagrożenia.`;
+        if (isAccident) {
+            possibleReplies = [
+                `Tak, są osoby poszkodowane z urazami ogólnymi. Zaopatrujemy je medycznie do czasu przyjazdu ZRM.`,
+                `Brak osób zakleszczonych, ale dwie osoby uskarżają się na bóle, przekazane pod opiekę ratowników medycznych.`
+            ];
+        } else if (isBigFire) {
+            possibleReplies = [
+                `Ewakuowano personel przed naszym przybyciem. Brak osób poszkodowanych w strefie ognia.`,
+                `Jedna osoba ewakuowana z zadymionej strefy, jest pod opieką ZRM.`
+            ];
         } else {
-            aiReply = `Brak osób poszkodowanych bezpośrednio w zdarzeniu. Sytuacja pod kontrolą.`;
+            possibleReplies = [
+                `Brak osób poszkodowanych w tym zdarzeniu.`,
+                `Nikt nie ucierpiał, zagrożenie ma charakter czysto materialny.`
+            ];
         }
-    } else if (q.includes("siły") || q.includes("środki") || q.includes("dysponować") || q.includes("potrzebujesz")) {
-        aiReply = `Siły i środki na miejscu są wystarczające do opanowania sytuacji. Nie wymaga się dysponowania dodatkowych zastępów na ten moment.`;
+    } else if (q.includes("siły") || q.includes("środki") || q.includes("dysponować") || q.includes("wystarczające")) {
+        // Logiczne dopasowanie: małe zdarzenia NIE potrzebują dodatkowych sił
+        if (isSmallFire || isInsects || isSpill) {
+            possibleReplies = [
+                `Siły i środki na miejscu są całkowicie wystarczające. Poradzimy sobie we własnym zakresie.`,
+                `Nie ma potrzeby dysponowania dodatkowych zastępów, sytuacja jest pod kontrolą.`
+            ];
+        } else {
+            possibleReplies = [
+                `Sytuacja jest poważna, przydałby się jeszcze jeden zastęp do wymiany ratowników w aparatach ODO.`,
+                `Siły na miejscu wystarczające do prowadzenia działań w obecnej fazie.`
+            ];
+        }
+    } else if (q.includes("podnośnik") || q.includes("drabin") || q.includes("sh")) {
+        // Podnośnik ma sens TYLKO przy dużych pożarach lub dachach
+        if (isBigFire) {
+            possibleReplies = [
+                `Tak, obecność podnośnika mechanicznego jest wskazana do prowadzenia akcji gaśniczej od góry.`,
+                `Potwierdzam zapotrzebowanie na SH, ogień objął wysoko położone elementy konstrukcyjne.`
+            ];
+        } else {
+            possibleReplies = [
+                `Nie, podnośnik absolutnie nie jest nam potrzebny przy tym zdarzeniu.`,
+                `Nie ma potrzeby dysponowania sprzętu wysokościowego.`
+            ];
+        }
     } else if (q.includes("zrm") || q.includes("pogotowie") || q.includes("policja")) {
-        aiReply = `Tak, obecność dodatkowych służb na miejscu jest wskazana. Proszę o zadysponowanie patrolu.`;
+        if (isAccident) {
+            possibleReplies = [
+                `Tak, patrol Policji kieruje ruchem, a ZRM zaopatruje poszkodowanych.`,
+                `Policja i ZRM na miejscu zdarzenia prowadzą swoje czynności.`
+            ];
+        } else {
+            possibleReplies = [
+                `Obecność innych służb nie jest w tej chwili wymagana.`,
+                `Nie wzywamy dodatkowych służb, radzimy sobie sami.`
+            ];
+        }
     } else {
-        aiReply = `Przyjęto. Działamy na miejscu zgodnie z procedurami taktycznymi dla tego zdarzenia.`;
+        possibleReplies = [
+            `Przyjęto. Działamy na miejscu zgodnie z procedurami.`,
+            `Komunikat zrozumiały, meldujemy wykonanie.`
+        ];
     }
 
-    const fullReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. ${aiReply} Bez odbioru.`;
+    const randomReply = possibleReplies[Math.floor(Math.random() * possibleReplies.length)];
+    const fullReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. ${randomReply} Bez odbioru.`;
 
     setTimeout(() => {
         audioMotorola.currentTime = 0;
