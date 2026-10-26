@@ -673,7 +673,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- INTEGRACJA Z OPENAI API PRZEZ CORS PROXY ---
+// --- INTELIGENTNY GENERATOR RADIOWY (100% STABILNY NA GITHUB PAGES) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -696,80 +696,52 @@ async function sendRadioReply() {
     const chatBox = document.getElementById('radio-chat');
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    const OPENAI_API_KEY = "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";
+    // Inteligentna symulacja odpowiedzi KDR oparta na kontekście zdarzenia i pytaniu dyspozytora
+    const q = text.toLowerCase();
+    const desc = ev.desc.toLowerCase();
+    let aiReply = "";
 
-    let messages = [
-        {
-            role: "system",
-            content: `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji (kryptonim: ${currentRadioVehicle || 'dowódca'}). Rozmawiasz przez radio ze Stanowiskiem Kierowania (Wejherowo 998).
-SZCZEGÓŁY ZDARZENIA: Lokalizacja: ${ev.city}, ${ev.street}. Opis: "${ev.desc}". Podrodzaj: ${ev.subtype}.
-ZASADY: Odpowiadaj krótko, sensownie i logicznie na pytania dyspozytora. Bazuj wyłącznie na opisie zdarzenia – wymyślaj realistyczne rozwinięcia sytuacji adekwatnie do zgłoszenia. Używaj radiowego żargonu (rozpocznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", zakończ "Bez odbioru").`
-        }
-    ];
-
-    ev.radioLogs.forEach(log => {
-        if (log.includes("Wejherowo 998")) {
-            const msgText = log.split('<br>"')[1]?.slice(0, -1) || "";
-            messages.push({ role: "user", content: msgText });
+    if (q.includes("pali") || q.includes("co tam") || q.includes("widzicie")) {
+        if (desc.includes("hala") || desc.includes("zakład") || desc.includes("magazyn")) {
+            aiReply = `Ogień rozwinięty, objął część konstrukcji dachu. Duże zadymienie. Podajemy dwa prądy wody w natarciu i jeden w obronie sąsiednich obiektów.`;
+        } else if (desc.includes("palet") || desc.includes("składowiska")) {
+            aiReply = `Palą się składowane materiały na placu zewnętrznym. Działamy trzema prądami wody w natarciu, tworzymy stanowisko gaśnicze.`;
+        } else if (desc.includes("mieszkaniu") || desc.includes("balkonie")) {
+            aiReply = `Ogień widoczny na balkonie/w lokalu. Prowadzimy działania w aparatach ODO, wprowadzamy rotę po klatce schodowej z linią gaśniczą.`;
+        } else if (desc.includes("śmietnik")) {
+            aiReply = `Pożar wiaty śmietnikowej w zarodku. Podano jeden prąd wody w natarciu, sytuacja opanowana.`;
         } else {
-            const msgText = log.split('<br>"')[1]?.slice(0, -1) || "";
-            messages.push({ role: "assistant", content: msgText });
+            aiReply = `Na miejscu zastano zdarzenie zgodne ze zgłoszeniem (${ev.desc}). Prowadzimy działania gaśnicze.`;
         }
-    });
-
-    try {
-        // Używamy darmowego serwera proxy (corsproxy.io), który omija blokadę CORS na GitHub Pages
-        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://api.openai.com/v1/chat/completions');
-
-        const response = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${OPENAI_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: messages,
-                max_tokens: 150
-            })
-        });
-
-        const data = await response.json();
-        
-        if (data.error) {
-            console.error("OpenAI API Error:", data.error);
-            throw new Error(data.error.message || "Błąd zapytania do OpenAI");
+    } else if (q.includes("poszkodowan") || q.includes("rann") || q.includes("osoby")) {
+        if (desc.includes("wypadek")) {
+            aiReply = `Mamy dwie osoby poszkodowane, są pod opieką naszego zespołu KPP, oczekujemy na przyjazd ZRM.`;
+        } else if (desc.includes("mieszkaniu") || desc.includes("ewakuowan")) {
+            aiReply = `Mieszkańcy opuścili budynek przed naszym przyjazdem. Brak osób poszkodowanych w strefie bezpośredniego zagrożenia.`;
+        } else {
+            aiReply = `Brak osób poszkodowanych bezpośrednio w zdarzeniu. Sytuacja pod kontrolą.`;
         }
-
-        let aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu. Bez odbioru.`;
-        if (data.choices && data.choices[0].message && data.choices[0].message.content) {
-            aiReply = data.choices[0].message.content.trim();
-        }
-
-        setTimeout(() => {
-            audioMotorola.currentTime = 0;
-            audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
-
-            const replyTimeStr = new Date().toLocaleTimeString();
-            const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
-            
-            ev.radioLogs.push(respMsg);
-            document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 1000);
-
-    } catch (err) {
-        console.error("Błąd krytyczny połączenia z OpenAI:", err);
-        setTimeout(() => {
-            audioMotorola.currentTime = 0;
-            audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
-
-            const respMsg = `<div class="chat-msg chat-kdr" style="color: #ff6666;"><b>[${new Date().toLocaleTimeString()}] BŁĄD API:</b><br>"${err.message}"</div>`;
-            ev.radioLogs.push(respMsg);
-            document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 1000);
+    } else if (q.includes("siły") || q.includes("środki") || q.includes("dysponować") || q.includes("potrzebujesz")) {
+        aiReply = `Siły i środki na miejscu są wystarczające do opanowania sytuacji. Nie wymaga się dysponowania dodatkowych zastępów na ten moment.`;
+    } else if (q.includes("zrm") || q.includes("pogotowie") || q.includes("policja")) {
+        aiReply = `Tak, obecność dodatkowych służb na miejscu jest wskazana. Proszę o zadysponowanie patrolu.`;
+    } else {
+        aiReply = `Przyjęto. Działamy na miejscu zgodnie z procedurami taktycznymi dla tego zdarzenia.`;
     }
+
+    const fullReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. ${aiReply} Bez odbioru.`;
+
+    setTimeout(() => {
+        audioMotorola.currentTime = 0;
+        audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+
+        const replyTimeStr = new Date().toLocaleTimeString();
+        const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${fullReply}"</div>`;
+        
+        ev.radioLogs.push(respMsg);
+        document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 1000);
 }
 
 function quickReply(text) {
