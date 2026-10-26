@@ -636,7 +636,7 @@ function triggerArrivalRadioReport(ev, vehicle) {
         reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu. Zastano wyciek płynów eksploatacyjnych / plamę na jezdni. Neutralizujemy przy użyciu sorbentu.`;
     } else if (st.type === 'FIRE') {
         if (st.severe) {
-            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city} - ${ev.street}). Po dojeździe zastano rozwinięty pożar! Podajemy prądy wody w natarciu!`;
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street}). Po dojeździe zastano rozwinięty pożar! Podajemy prądy wody w natarciu!`;
         } else {
             reportText = `Wejherowo 998, tu ${vehicle.id}. Dojechaliśmy na miejsce. Pożar w zarodku / śmietnika, podajemy 1 prąd wody. Sytuacja opanowana.`;
         }
@@ -673,7 +673,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- DYNAMICZNA INTEGRACJA Z GEMINI API BEZ SZABLONÓW ---
+// --- POPRAWIONA INTEGRACJA Z GEMINI API BEZ BŁĘDU ZMIENNEJ ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -698,26 +698,26 @@ async function sendRadioReply() {
 
     const GEMINI_API_KEY = "AQ.Ab8RN6KojTcCLHkULYu2BmzNUuXKGV2FKO4mHymlURwCwSPh2Q";
 
-    // Dynamiczny prompt bez narzucania stałych schematów odpowiedzi
-    const systemPrompt = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji (Twój kryptonim radiowy to ${currentRadioVehicle || 'dowódca'}).
-Rozmawiasz ze Stanowiskiem Kierowania (Wejherowo 998).
+    // Prawidłowa nazwa zmiennej promptu
+    const dynamicSystemPrompt = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji. Twój kryptonim to ${currentRadioVehicle || 'dowódca'}.
+Rozmawiasz przez radiostację ze Stanowiskiem Kierowania (Wejherowo 998).
 
-FAKTYCZNA TREŚĆ I OPIS ZDARZENIA: "${ev.desc}"
-LOKALIZACJA: ${ev.city}, ${ev.street}
-Zadysponowane Siły i Środki: ${ev.vehicles.map(v => v.id + " " + v.name).join(', ')}.
+DANE ZDARZENIA:
+- Miejsce: ${ev.city}, ${ev.street}
+- Opis zdarzenia: "${ev.desc}"
+- Podrodzaj: ${ev.subtype}
 
 ZASADY:
 1. Wczuj się w rolę strażaka na miejscu zdarzenia. Odpowiadaj logicznie, kreatywnie i dynamicznie na pytania dyspozytora, opierając się wyłącznie na opisie zdarzenia. 
 2. Jeśli dyspozytor pyta co się pali, opisz to na podstawie treści zgłoszenia (np. palące się palety na placu, ogień na balkonie itp.), dodając realistyczne szczegóły akcji (np. duże zadymienie, widoczny ogień).
-3. Mów zwięźle, w radiowym żargonie strażackim (zaczynając od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", kończąc "Bez odbioru"). Nigdy nie powtarzaj w kółko tego samego zdania.`;
+3. Mów zwięźle, w radiowym żargonie strażackim (zaczynając od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", zakończ "Bez odbioru"). Nigdy nie używaj gotowych szablonów ani sztucznych formułek.`;
 
-    // Zbierz całą historię rozmowy dla tego zdarzenia jako tekst dla modelu
-    let historyText = "";
+    let conversationHistory = "";
     ev.radioLogs.forEach(log => {
         if (log.includes("Wejherowo 998")) {
-            historyText += "Dyspozytor (Wejherowo 998): " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
+            conversationHistory += "Wejherowo 998: " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
         } else {
-            historyText += "KDR (" + currentRadioVehicle + "): " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
+            conversationHistory += "KDR: " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
         }
     });
 
@@ -731,7 +731,7 @@ ZASADY:
                 contents: [
                     {
                         parts: [
-                            { text: systemInstruction + "\n\nOto dotychczasowa rozmowa przez radio:\n" + historyText + "\n\nWygeneruj kolejną, logiczną i unikalną odpowiedź KDR na najnowszą wiadomość dyspozytora." }
+                            { text: dynamicSystemPrompt + "\n\nHistoria wymiany zdań:\n" + conversationHistory + "\n\nNapisz kolejną, logiczną odpowiedź KDR." }
                         ]
                     }
                 ]
@@ -739,12 +739,15 @@ ZASADY:
         });
 
         const data = await response.json();
-        let aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Prowadzimy działania.`;
+        
+        if (data.error) {
+            console.error("API Error Details:", data.error);
+            throw new Error(data.error.message || "Błąd zapytania API");
+        }
 
+        let aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy. Bez odbioru.`;
         if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
             aiReply = data.candidates[0].content.parts[0].text.trim();
-        } else if (data.error) {
-            console.error("Gemini API Error:", data.error);
         }
 
         setTimeout(() => {
@@ -760,12 +763,12 @@ ZASADY:
         }, 1000);
 
     } catch (err) {
-        console.error("Błąd sieciowy / API Gemini:", err);
+        console.error("Błąd krytyczny połączenia z Gemini:", err);
         setTimeout(() => {
             audioMotorola.currentTime = 0;
             audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
 
-            const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Sytuacja w miejscu (${ev.desc}) jest dynamiczna, działamy."</div>`;
+            const respMsg = `<div class="chat-msg chat-kdr" style="color: #ff6666;"><b>[${new Date().toLocaleTimeString()}] BŁĄD API:</b><br>"${err.message}"</div>`;
             ev.radioLogs.push(respMsg);
             document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
             chatBox.scrollTop = chatBox.scrollHeight;
