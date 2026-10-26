@@ -594,6 +594,7 @@ let currentCPRData = null;
 let cprCounter = 101;
 let currentRadioVehicle = null;
 
+// --- MELDUNEK Z DOJAZDU DOPASOWANY DO OPISU ZDARZENIA ---
 function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
@@ -603,14 +604,19 @@ function triggerArrivalRadioReport(ev, vehicle) {
 
     if (!ev.radioLogs) ev.radioLogs = [];
 
+    const descLower = (ev.desc + " " + ev.subtype).toLowerCase();
+
     if (!ev.tacticalState) {
-        if (ev.type === 'MZ' || ev.desc.toLowerCase().includes("wypadek") || ev.desc.toLowerCase().includes("kolizja")) {
-            const victimsCount = Math.floor(Math.random() * 4);
-            const trapped = victimsCount > 0 ? Math.random() > 0.5 : false;
-            ev.tacticalState = { type: 'ACCIDENT', victims: victimsCount, trapped: trapped, policeNeeded: true };
-        } else if (ev.type === 'P') {
-            const severe = ev.desc.toLowerCase().includes("hala") || ev.desc.toLowerCase().includes("zakład") || ev.desc.toLowerCase().includes("mieszkaniu") || Math.random() > 0.4;
-            ev.tacticalState = { type: 'FIRE', severe: severe, victims: severe ? (Math.random() > 0.5 ? 1 : 0) : 0 };
+        if (descLower.includes("wypadek") || descLower.includes("kolizja")) {
+            const victimsCount = descLower.includes("wypadek") ? Math.floor(Math.random() * 3) + 1 : 0;
+            ev.tacticalState = { type: 'ACCIDENT', victims: victimsCount, trapped: victimsCount > 0 };
+        } else if (descLower.includes("szerszeni") || descLower.includes("os") || descLower.includes("zwierzęta")) {
+            ev.tacticalState = { type: 'INSECTS', victims: 0 };
+        } else if (descLower.includes("plama") || descLower.includes("chemiczne")) {
+            ev.tacticalState = { type: 'SPILL', victims: 0 };
+        } else if (descLower.includes("pożar") || descLower.includes("dym") || descLower.includes("ognia")) {
+            const severe = descLower.includes("hala") || descLower.includes("magazyn") || descLower.includes("mieszkaniu");
+            ev.tacticalState = { type: 'FIRE', severe: severe, victims: 0 };
         } else {
             ev.tacticalState = { type: 'OTHER', victims: 0 };
         }
@@ -621,20 +627,22 @@ function triggerArrivalRadioReport(ev, vehicle) {
 
     if (st.type === 'ACCIDENT') {
         if (st.victims === 0) {
-            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street}). Zastano kolizję. Brak osób poszkodowanych. Zabezpieczamy teren.`;
-        } else if (st.trapped) {
-            reportText = `Wejherowo 998, tu ${vehicle.id}. Dojechaliśmy na miejsce. Groźny wypadek! ${st.victims} osób poszkodowanych, w tym 1 zakleszczona w pojeździe! Rozcinamy karoserię narzędziami hydraulicznymi!`;
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street}). Zastano kolizję drogową. Brak osób poszkodowanych. Zabezpieczamy miejsce zdarzenia.`;
         } else {
-            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu zdarzenia. Mamy ${st.victims} osoby poszkodowane na zewnątrz, udzielamy KPP.`;
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Dojechaliśmy na miejsce wypadku. Mamy ${st.victims} osoby poszkodowane. Udzielamy KPP, wzywamy ZRM.`;
         }
+    } else if (st.type === 'INSECTS') {
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street}). Zastano gniazdo owadów błonkoskrzydłych w obiekcie. Przystępujemy do jego neutralizacji w kombinezonach.`;
+    } else if (st.type === 'SPILL') {
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu. Zastano wyciek płynów eksploatacyjnych / plamę na jezdni. Neutralizujemy przy użyciu sorbentu.`;
     } else if (st.type === 'FIRE') {
         if (st.severe) {
-            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city} - ${ev.street}). Po dojeździe zastano rozwinięty pożar! Gęsty dym, podajemy prądy wody w natarciu!`;
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city} - ${ev.street}). Po dojeździe zastano rozwinięty pożar! Podajemy prądy wody w natarciu!`;
         } else {
-            reportText = `Wejherowo 998, tu ${vehicle.id}. Dojechaliśmy na miejsce. Pożar w zarodku, podajemy 1 prąd wody. Brak osób poszkodowanych.`;
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Dojechaliśmy na miejsce. Pożar w zarodku / śmietnika, podajemy 1 prąd wody. Sytuacja opanowana.`;
         }
     } else {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Dojechaliśmy na miejsce zdarzenia, rozpoczynamy rozpoznanie.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Dojechaliśmy na miejsce zdarzenia, prowadzimy działania rozpoznawcze.`;
     }
 
     const initialMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${vehicle.id} ➔ Wejherowo 998:</b><br>"${reportText}"</div>`;
@@ -666,7 +674,8 @@ function openRadioForSelectedEvent() {
     }
 }
 
-function sendRadioReply() {
+// --- INTEGRACJA Z GEMINI API ---
+async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
     if (!text || selectedEvIdForRadio === null) return;
@@ -688,52 +697,66 @@ function sendRadioReply() {
     const chatBox = document.getElementById('radio-chat');
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    setTimeout(() => {
-        audioMotorola.currentTime = 0;
-        audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+    const GEMINI_API_KEY = "AQ.Ab8RN6KojTcCLHkULYu2BmzNUuXKGV2FKO4mHymlURwCwSPh2Q";
 
-        const lowerText = text.toLowerCase();
-        let kdrReply = "";
-        let st = ev.tacticalState || { type: 'OTHER', victims: 0 };
-        let vehicleCount = ev.vehicles.length;
+    try {
+        const promptContext = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji w powiecie wejherowskim. 
+Rozmawiasz przez radiostację ze Stanowiskiem Kierowania (Wejherowo 998).
+Szczegóły zdarzenia: ${ev.desc}, miejscowość: ${ev.city}, adres: ${ev.street}.
+Zadysponowane siły: ${ev.vehicles.map(v => v.id).join(', ')}.
 
-        if (lowerText.includes("zrm") || lowerText.includes("karetk") || lowerText.includes("pogotowie")) {
-            if (st.victims > 0) {
-                kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Tak, pilnie potrzebujemy ZRM na miejsce! Mamy ${st.victims} poszkodowanych!`;
-            } else {
-                kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Brak osób poszkodowanych, ZRM zbędny.`;
-            }
-        } 
-        else if (lowerText.includes("policj") || lowerText.includes("radiowóz")) {
-            if (st.type === 'ACCIDENT') {
-                kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Tak, prosimy o patrol Policji do kierowania ruchem.`;
-            } else {
-                kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Policja nie jest wymagana.`;
-            }
-        }
-        else if (lowerText.includes("dodatkowe") || lowerText.includes("siły") || lowerText.includes("sis") || lowerText.includes("starczy") || lowerText.includes("wsparcie")) {
-            if (st.type === 'FIRE' && st.severe) {
-                kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Sytuacja jest poważna! Obecne ${vehicleCount} zastępy to za mało! Poproszę pilnie o co najmniej 2-3 dodatkowe zastępy do wsparcia!`;
-            } else if (st.type === 'ACCIDENT' && st.trapped && vehicleCount < 2) {
-                kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przydałby się jeszcze 1 zastęp ze sprzętem hydraulicznym!`;
-            } else {
-                kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Obecne siły (${vehicleCount} zastępy) w zupełności wystarczają.`;
-            }
-        } 
-        else if (lowerText.includes("przyjął") || lowerText.includes("zrozumiał") || lowerText.includes("ok")) {
-            kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Zrozumiano, prowadzimy działania.`;
-        } 
-        else {
-            kdrReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem komunikat. Działamy dalej.`;
+Zasady:
+1. Odpowiadaj krótko, profesjonalnie, zgodnie z procedurami i radiowym żargonem strażackim (używaj zwrotów typu "Wejherowo 998, tu [kryptonim]...", "Przyjąłem", "Bez odbioru").
+2. Bądź logiczny – odnieś się bezpośrednio do aktualnej sytuacji na miejscu zdarzenia i pytania dyspozytora.
+3. Nie pisz długich wypracowań – to jest rozmowa przez radiostację.`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [
+                    {
+                        parts: [
+                            { text: promptContext + "\n\nOstatnia wiadomość od Wejherowo 998: " + text }
+                        ]
+                    }
+                ]
+            })
+        });
+
+        const data = await response.json();
+        let aiReply = "Wejherowo 998, tu KDR. Słabe pasmo, powtórz.";
+
+        if (data.candidates && data.candidates[0].content.parts[0].text) {
+            aiReply = data.candidates[0].content.parts[0].text.trim();
         }
 
-        const replyTimeStr = new Date().toLocaleTimeString();
-        const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${kdrReply}"</div>`;
-        
-        ev.radioLogs.push(respMsg);
-        document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }, 1200);
+        setTimeout(() => {
+            audioMotorola.currentTime = 0;
+            audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+
+            const replyTimeStr = new Date().toLocaleTimeString();
+            const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
+            
+            ev.radioLogs.push(respMsg);
+            document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 1000);
+
+    } catch (err) {
+        console.error("Błąd API Gemini:", err);
+        setTimeout(() => {
+            audioMotorola.currentTime = 0;
+            audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+
+            const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"Wejherowo 998, tu KDR. Zakłócenia na linii, powtórz treść."</div>`;
+            ev.radioLogs.push(respMsg);
+            document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 1000);
+    }
 }
 
 function quickReply(text) {
@@ -922,12 +945,10 @@ function renderEvents() {
         const tr = document.createElement('tr');
         tr.className = (ev.status === 'ACTIVE' ? 'active-ev' : 'finished-ev') + (selectedEvIdForRadio === ev.id ? ' selected-ev' : '');
         
-        // DWUKROTNE KLIKNIĘCIE OTWIERA EDYCJĘ KARTY ZDARZENIA
         tr.ondblclick = () => {
             openEditEventModal(ev.id);
         };
 
-        // POJEDYNACZE KLIKNIĘCIE ZAZNACZA ZDARZENIE
         tr.onclick = () => selectEvent(ev.id);
 
         let timeDisplay = "";
