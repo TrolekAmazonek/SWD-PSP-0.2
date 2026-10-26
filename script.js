@@ -59,8 +59,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.75,
-                max_tokens: 250,
+                temperature: 0.7,
+                max_tokens: 120, // Zmniejszone tokeny dla wymuszenia zwięzłości
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
@@ -90,8 +90,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt }
                     ],
-                    temperature: 0.75,
-                    max_tokens: 250,
+                    temperature: 0.7,
+                    max_tokens: 120,
                     ...(jsonMode ? { response_format: { type: "json_object" } } : {})
                 })
             });
@@ -111,7 +111,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 contents: [{ parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
                 generationConfig: {
-                    temperature: 0.75,
+                    temperature: 0.7,
+                    maxOutputTokens: 120,
                     ...(jsonMode ? { responseMimeType: "application/json" } : {})
                 }
             })
@@ -133,7 +134,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.8,
+                temperature: 0.7,
                 jsonMode: jsonMode
             })
         });
@@ -685,7 +686,6 @@ function makeDraggable(elmnt, header) {
     header.onmousedown = dragMouseDown;
 
     function dragMouseDown(e) {
-        // Jeśli kliknięto w przycisk zamknięcia lub minimalizacji, ignorujemy przeciąganie i pozwalamy wykonać akcję
         if (e.target.closest('.modal-close, .modal-min')) {
             return;
         }
@@ -694,7 +694,6 @@ function makeDraggable(elmnt, header) {
         pos3 = e.clientX;
         pos4 = e.clientY;
 
-        // Używamy position: fixed, żeby okno trzymało się dokładnej pozycji w oknie przeglądarki bez uciekania
         const rect = elmnt.getBoundingClientRect();
         elmnt.style.position = 'fixed';
         elmnt.style.left = rect.left + 'px';
@@ -724,23 +723,20 @@ function makeDraggable(elmnt, header) {
     }
 }
 
-// Inicjalizacja przeciągania dla wszystkich okien po załadowaniu DOM
+// Inicjalizacja przeciągania dla okien
 window.addEventListener('DOMContentLoaded', () => {
-    // 1. Okno radia
     const radioModal = document.getElementById('radio-modal');
     const radioHeader = radioModal.querySelector('.modal-header');
     if (radioModal && radioHeader) {
         makeDraggable(radioModal, radioHeader);
     }
 
-    // 2. Okno formatki / edycji zdarzenia
     const eventModal = document.querySelector('#modal-event .modal-window');
     const eventHeader = document.querySelector('#modal-event .modal-header');
     if (eventModal && eventHeader) {
         makeDraggable(eventModal, eventHeader);
     }
 
-    // 3. Okno nowego zgłoszenia CPR (112)
     const cprModal = document.getElementById('cpr-modal');
     const cprHeader = cprModal.querySelector('.cpr-header');
     if (cprModal && cprHeader) {
@@ -758,16 +754,16 @@ async function triggerArrivalRadioReport(ev, vehicle) {
     openRadioForEvent(ev.id);
 
     const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.name})`).join(', ');
-    const sysPrompt = `Jesteś dowódcą pierwszego zastępu straży pożarnej (${vehicle.id}) na miejscu zdarzenia w powiecie wejherowskim. Rozmawiasz przez radio z dyspozytorem (Wejherowo 998). Pisz naturalnym, ludzkim językiem strażackim, bez sztywnych formułek.`;
-    const usrPrompt = `Dojechaliście właśnie na miejsce: ${ev.city}, ul. ${ev.street}. Zgłoszenie: "${ev.desc}". Zadysponowany sprzęt: ${vehiclesListStr}.
-Napisz krótki, naturalny meldunek z dojazdu (co widzicie, co robicie, np. że rozwijają linię albo sprawdzają sytuację). Zacznij od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ na "Bez odbioru."`;
+    const sysPrompt = `Jesteś dowódcą zastępu (${vehicle.id}) na miejscu zdarzenia w pow. wejherowskim. Rozmawiasz przez radio z Wejherowo 998. Odpowiadaj maksymalnie krótko i konkretnie (maksymalnie 1 zdanie), typowym radiowym żargonem strażackim.`;
+    const usrPrompt = `Dojechaliście do: ${ev.city}, ${ev.street}. Zgłoszenie: "${ev.desc}".
+Napisz krótki meldunek z dojazdu zaczynając od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ na "Bez odbioru."`;
 
     let reportText = "";
     try {
         reportText = await callUniversalAI(sysPrompt, usrPrompt, false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street}). Potwierdzam zgłoszenie, działamy. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu. Działamy. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -802,7 +798,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- ROZMOWA RADIOWA Z KDR (NATURALNE AI) ---
+// --- ROZMOWA RADIOWA Z KDR (KRÓTKO I ZWIŹLE) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -836,18 +832,18 @@ async function sendRadioReply() {
         }
     });
 
-    const systemPrompt = `Jesteś dowódcą akcji (KDR, kryptonim: ${currentRadioVehicle || 'KDR'}) rozmawiającym przez radio z dyspozytorem (Wejherowo 998).
-INFORMACJE O AKCJI: Adres: ${ev.city}, ${ev.street}. Opis: "${ev.desc}". Wozy na miejscu: ${vehiclesListStr}.
-ZASADY: Odpowiadaj naturalnie, normalnym językiem strażackim (bez sztucznego patosu, zwięźle w 1-3 zdaniach). Dostosuj się do skali zdarzenia (np. przy drobnym pożarze śmietnika nie panikuj ani nie proś o podnośnik). Zaczynaj od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ "Bez odbioru."`;
+    const systemPrompt = `Jesteś dowódcą akcji (KDR, kryptonim: ${currentRadioVehicle || 'KDR'}) w kontakcie radiowym z Wejherowo 998.
+ZASADA BEZWZGLĘDNA: Odpowiadaj ultra-krótko, zwięźle i rzeczowo (maksymalnie 1 krótkie zdanie, zero zbędnego gadania, czysty profesjonalny meldunek strażacki).
+Zaczynaj od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ "Bez odbioru."`;
 
-    const userPrompt = `Historia:\n${conversationHistory}\nOdpowiedz na ostatnie pytanie dyspozytora.`;
+    const userPrompt = `Historia:\n${conversationHistory}\nOdpowiedz bardzo krótko na ostatni komunikat dyspozytora.`;
 
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, userPrompt, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu, sytuacja pod kontrolą. Bez odbioru.`;
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, działamy. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
