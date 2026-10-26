@@ -673,7 +673,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- STABILNA INTEGRACJA Z GEMINI API (MODEL 2.5 FLASH Z PONAWIANIEM PRÓB) ---
+// --- INTEGRACJA Z OPENAI API (SKRYPT Z TWOIM KLUCZEM) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -696,92 +696,78 @@ async function sendRadioReply() {
     const chatBox = document.getElementById('radio-chat');
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    const GEMINI_API_KEY = "AQ.Ab8RN6KojTcCLHkULYu2BmzNUuXKGV2FKO4mHymlURwCwSPh2Q";
+    // Twój klucz OpenAI API został wklejony poniżej
+    const OPENAI_API_KEY = "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";
 
-    const systemPrompt = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji (kryptonim: ${currentRadioVehicle || 'dowódca'}). Rozmawiasz przez radio ze Stanowiskiem Kierowania (Wejherowo 998).
+    let messages = [
+        {
+            role: "system",
+            content: `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji (kryptonim: ${currentRadioVehicle || 'dowódca'}). Rozmawiasz przez radio ze Stanowiskiem Kierowania (Wejherowo 998).
+SZCZEGÓŁY ZDARZENIA: Lokalizacja: ${ev.city}, ${ev.street}. Opis: "${ev.desc}". Podrodzaj: ${ev.subtype}.
+ZASADY: Odpowiadaj krótko, sensownie i logicznie na pytania dyspozytora. Bazuj wyłącznie na opisie zdarzenia – wymyślaj realistyczne rozwinięcia sytuacji adekwatnie do zgłoszenia. Używaj radiowego żargonu (rozpocznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", zakończ "Bez odbioru").`
+        }
+    ];
 
-SZCZEGÓŁY ZDARZENIA:
-- Lokalizacja: ${ev.city}, ${ev.street}
-- Treść zgłoszenia: "${ev.desc}"
-- Podrodzaj: ${ev.subtype}
-
-INSTRUKCJE:
-1. Wczuj się w rolę strażaka. Odpowiadaj krótko, sensownie i logicznie na pytania dyspozytora.
-2. Bazuj wyłącznie na opisie zdarzenia – wymyślaj realistyczne rozwinięcia sytuacji adekwatnie do tego konkretnego zgłoszenia.
-3. Używaj radiowego żargonu (rozpocznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", zakończ "Bez odbioru"). Nigdy nie powtarzaj sztywnych formułek.`;
-
-    let conversationHistory = "";
     ev.radioLogs.forEach(log => {
         if (log.includes("Wejherowo 998")) {
-            conversationHistory += "Wejherowo 998: " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
+            const msgText = log.split('<br>"')[1]?.slice(0, -1) || "";
+            messages.push({ role: "user", content: msgText });
         } else {
-            conversationHistory += "KDR: " + log.split('<br>"')[1]?.slice(0, -1) + "\n";
+            const msgText = log.split('<br>"')[1]?.slice(0, -1) || "";
+            messages.push({ role: "assistant", content: msgText });
         }
     });
 
-    let data = null;
-    let success = false;
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: messages,
+                max_tokens: 150
+            })
+        });
 
-    // Próbujemy maksymalnie 3 razy na wypadek chwilowego przeciążenia serwera (błąd 503)
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-            // Używamy stabilnego i powszechnie dostępnego modelu gemini-2.5-flash
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            parts: [
-                                { text: systemPrompt + "\n\nHistoria rozmowy przez radio:\n" + conversationHistory + "\n\nOdpowiedz jako KDR." }
-                            ]
-                        }
-                    ]
-                })
-            });
-
-            data = await response.json();
-            
-            if (data.error) {
-                console.warn(`Próba ${attempt} nie powiodła się:`, data.error);
-                if (attempt < 3) {
-                    await new Promise(r => setTimeout(r, 1000)); // Odczekaj sekundę przed ponowną próbą
-                    continue;
-                }
-            } else {
-                success = true;
-                break;
-            }
-        } catch (netErr) {
-            console.warn(`Błąd sieciowy w próbie ${attempt}:`, netErr);
-            if (attempt < 3) {
-                await new Promise(r => setTimeout(r, 1000));
-                continue;
-            }
+        const data = await response.json();
+        
+        if (data.error) {
+            console.error("OpenAI API Error:", data.error);
+            throw new Error(data.error.message || "Błąd zapytania do OpenAI");
         }
-    }
-
-    setTimeout(() => {
-        audioMotorola.currentTime = 0;
-        audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
 
         let aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu. Bez odbioru.`;
-        
-        if (success && data && data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
-            aiReply = data.candidates[0].content.parts[0].text.trim();
-        } else if (data && data.error) {
-            aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Komunikat przyjęty, prowadzimy działania (${ev.desc}).`;
+        if (data.choices && data.choices[0].message && data.choices[0].message.content) {
+            aiReply = data.choices[0].message.content.trim();
         }
 
-        const replyTimeStr = new Date().toLocaleTimeString();
-        const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
-        
-        ev.radioLogs.push(respMsg);
-        document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }, 1000);
+        setTimeout(() => {
+            audioMotorola.currentTime = 0;
+            audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+
+            const replyTimeStr = new Date().toLocaleTimeString();
+            const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
+            
+            ev.radioLogs.push(respMsg);
+            document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 1000);
+
+    } catch (err) {
+        console.error("Błąd krytyczny połączenia z OpenAI:", err);
+        setTimeout(() => {
+            audioMotorola.currentTime = 0;
+            audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+
+            const respMsg = `<div class="chat-msg chat-kdr" style="color: #ff6666;"><b>[${new Date().toLocaleTimeString()}] BŁĄD API:</b><br>"${err.message}"</div>`;
+            ev.radioLogs.push(respMsg);
+            document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 1000);
+    }
 }
 
 function quickReply(text) {
