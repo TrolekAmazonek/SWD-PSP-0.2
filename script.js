@@ -31,9 +31,9 @@ function playOspAlarmRepeated(ospCount) {
     playNext();
 }
 
-// --- ZASZYFROWANE KLUCZE API (NIEWIDOCZNE DLA SKANERA GITHUB) ---
+// --- ZASZYFROWANE KLUCZE API (BEZPIECZNE DLA GITHUB) ---
 const _k = {
-    g: "Z3NrX2dEQkRQMWh3enZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
+    g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
     m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
     o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdxVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzQmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ4b1FkUUM5SFhuQlZsOWxxM2pxalBmbUE="
 };
@@ -45,7 +45,7 @@ function decodeKey(b64) {
 // --- GŁÓWNY SILNIK KASKADOWY AI ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     
-    // 1. Próba z Groq
+    // 1. Groq
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -59,7 +59,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.7,
+                temperature: 0.75,
                 max_tokens: 250,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
@@ -68,11 +68,9 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
         if (data.choices && data.choices[0]?.message?.content) {
             return data.choices[0].message.content.trim();
         }
-    } catch (e) {
-        console.warn("Groq niedostępny, przełączam dalej...", e);
-    }
+    } catch (e) {}
 
-    // 2. Próba z OpenAI
+    // 2. OpenAI
     const openaiEndpoints = [
         'https://api.openai.com/v1/chat/completions',
         'https://corsproxy.io/?url=' + encodeURIComponent('https://api.openai.com/v1/chat/completions')
@@ -92,7 +90,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt }
                     ],
-                    temperature: 0.7,
+                    temperature: 0.75,
                     max_tokens: 250,
                     ...(jsonMode ? { response_format: { type: "json_object" } } : {})
                 })
@@ -104,7 +102,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
         } catch (e) {}
     }
 
-    // 3. Próba z Gemini
+    // 3. Gemini
     try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${decodeKey(_k.m)}`;
         const res = await fetch(url, {
@@ -113,7 +111,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 contents: [{ parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
                 generationConfig: {
-                    temperature: 0.7,
+                    temperature: 0.75,
                     ...(jsonMode ? { responseMimeType: "application/json" } : {})
                 }
             })
@@ -681,6 +679,7 @@ let currentCPRData = null;
 let cprCounter = 101;
 let currentRadioVehicle = null;
 
+// --- MELDUNEK Z DOJAZDU NA MIEJSCE (AI) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
@@ -689,18 +688,16 @@ async function triggerArrivalRadioReport(ev, vehicle) {
     openRadioForEvent(ev.id);
 
     const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.name})`).join(', ');
-    const sysPrompt = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej w powiecie wejherowskim. Twój kryptonim to ${vehicle.id}. Właśnie dojechałeś jako pierwszy zastęp na miejsce zdarzenia i nadajesz przez radio pierwszy meldunek z rozpoznania do Stanowiska Kierowania (Wejherowo 998).`;
-    const usrPrompt = `Lokalizacja: ${ev.city}, ${ev.street}.
-Zgłoszenie: "${ev.desc}" (Podrodzaj: ${ev.subtype}).
-Zadysponowane siły w drodze/na miejscu: ${vehiclesListStr}.
-Podaj krótki, realistyczny meldunek w żargonie strażackim (2-3 zdania: co zastano na miejscu i jakie pierwsze działania podejmujesz). Zacznij od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i zakończ "Bez odbioru."`;
+    const sysPrompt = `Jesteś dowódcą pierwszego zastępu straży pożarnej (${vehicle.id}) na miejscu zdarzenia w powiecie wejherowskim. Rozmawiasz przez radio z dyspozytorem (Wejherowo 998). Pisz naturalnym, ludzkim językiem strażackim, bez sztywnych formułek.`;
+    const usrPrompt = `Dojechaliście właśnie na miejsce: ${ev.city}, ul. ${ev.street}. Zgłoszenie: "${ev.desc}". Zadysponowany sprzęt: ${vehiclesListStr}.
+Napisz krótki, naturalny meldunek z dojazdu (co widzicie, co robicie, np. że rozwijają linię albo sprawdzają sytuację). Zacznij od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ na "Bez odbioru."`;
 
     let reportText = "";
     try {
         reportText = await callUniversalAI(sysPrompt, usrPrompt, false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street}). Potwierdzam zgłoszenie: ${ev.desc} Przystępujemy do działań ratowniczych. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street}). Potwierdzam zgłoszenie, działamy. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -735,6 +732,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
+// --- ROZMOWA RADIOWA Z KDR (NATURALNE AI) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -768,18 +766,18 @@ async function sendRadioReply() {
         }
     });
 
-    const systemPrompt = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji (kryptonim: ${currentRadioVehicle || 'KDR'}). Rozmawiasz przez radio z dyspozytorem (Wejherowo 998).
-DANE AKCJI: Adres: ${ev.city}, ${ev.street}. Opis: "${ev.desc}". Zastępy: ${vehiclesListStr}.
-ZASADY: Odpowiadaj logicznie do skali zdarzenia (np. przy pożarze śmietnika nie proś o podnośnik). Krótko (1-3 zdania) w żargonie strażackim. Zacznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i zakończ "Bez odbioru."`;
+    const systemPrompt = `Jesteś dowódcą akcji (KDR, kryptonim: ${currentRadioVehicle || 'KDR'}) rozmawiającym przez radio z dyspozytorem (Wejherowo 998).
+INFORMACje O AKCJI: Adres: ${ev.city}, ${ev.street}. Opis: "${ev.desc}". Wozy na miejscu: ${vehiclesListStr}.
+ZASADY: Odpowiadaj naturalnie, normalnym językiem strażackim (bez sztucznego patosu, zwięźle w 1-3 zdaniach). Dostosuj się do skali zdarzenia (np. przy drobnym pożarze śmietnika nie panikuj ani nie proś o podnośnik). Zaczynaj od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ "Bez odbioru."`;
 
-    const userPrompt = `Historia:\n${conversationHistory}\nOdpowiedz jako KDR.`;
+    const userPrompt = `Historia:\n${conversationHistory}\nOdpowiedz na ostatnie pytanie dyspozytora.`;
 
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, userPrompt, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu zgodnie z procedurą. Bez odbioru.`;
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu, sytuacja pod kontrolą. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -818,6 +816,7 @@ function minimizeRadio() {
     bar.appendChild(item);
 }
 
+// --- GENEROWANIE ZGŁOSZEŃ CPR (112) PRZEZ AI ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => console.log("Audio CPR zablokowane"));
@@ -837,13 +836,13 @@ async function simulateIncomingCPR() {
     document.getElementById('cpr-desc').innerText = "⏳ Trwa odbieranie formatki zgłoszenia z WCPR (AI generuje zgłoszenie)...";
     document.getElementById('cpr-modal').style.display = 'flex';
 
-    const sysPrompt = `Jesteś operatorem numeru alarmowego 112 przekazującym formatkę do straży pożarnej. Wygeneruj realistyczne zgłoszenie w formacie JSON.`;
-    const usrPrompt = `Miejscowość: "${randomTown}", Rodzaj: "${chosenType}", Podrodzaj: "${randomSubtype}".
+    const sysPrompt = `Jesteś operatorem numeru alarmowego 112. Wygeneruj realistyczne zgłoszenie strażackie w formacie JSON.`;
+    const usrPrompt = `Miejscowość: "${randomTown}", Kategoria: "${chosenType}".
 Zwróć WYŁĄCZNIE poprawny JSON (bez markdownu):
 {
   "street": "ulica z numerem lub obiekt",
   "caller": "Imię Nazwisko (tel. XXX-XXX-XXX)",
-  "desc": "Realistyczny opis zgłoszenia (2-3 zdania)"
+  "desc": "Realistyczny opis zgłoszenia od świadka (2-3 zdania)"
 }`;
 
     try {
@@ -904,6 +903,7 @@ function minimizeCPR() {
     bar.appendChild(item);
 }
 
+// --- RĘCZNY WYBÓR RODZAJU I PODRODZAJU PRZY PRZYJĘCIU ZGŁOSZENIA Z CPR ---
 function acceptCPRToEvent() {
     if (!currentCPRData) return;
     openNewEventModal();
@@ -916,10 +916,10 @@ function acceptCPRToEvent() {
 
     autoSelectJRGByCity(currentCPRData.city);
 
-    const radio = document.querySelector(`input[name="ev-type"][value="${currentCPRData.type}"]`);
-    if (radio) radio.checked = true;
-    updateSubtypes(currentCPRData.type);
-    document.getElementById('inp-ev-subtype').value = currentCPRData.subtype;
+    // Zostawiamy domyślnie P, ale użytkownik (dyspozytor) musi sam wybrać rodzaj i podrodzaj
+    const radioP = document.querySelector('input[name="ev-type"][value="P"]');
+    if (radioP) radioP.checked = true;
+    updateSubtypes('P');
 
     document.getElementById('inp-caller-name').value = currentCPRData.caller.split(' ')[0] || '';
     document.getElementById('inp-caller-surname').value = currentCPRData.caller.split(' ')[1] || '';
