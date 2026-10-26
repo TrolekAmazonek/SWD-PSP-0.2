@@ -673,7 +673,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- INTEGRACJA Z OPENAI API (SKRYPT Z TWOIM KLUCZEM) ---
+// --- INTEGRACJA Z OPENAI API PRZEZ CORS PROXY ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -696,7 +696,6 @@ async function sendRadioReply() {
     const chatBox = document.getElementById('radio-chat');
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // Twój klucz OpenAI API został wklejony poniżej
     const OPENAI_API_KEY = "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";
 
     let messages = [
@@ -719,7 +718,10 @@ ZASADY: Odpowiadaj krótko, sensownie i logicznie na pytania dyspozytora. Bazuj 
     });
 
     try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // Używamy darmowego serwera proxy (corsproxy.io), który omija blokadę CORS na GitHub Pages
+        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent('https://api.openai.com/v1/chat/completions');
+
+        const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
