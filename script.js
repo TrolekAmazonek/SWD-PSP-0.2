@@ -673,7 +673,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- POPRAWIONA INTEGRACJA Z GEMINI API ---
+// --- W PEŁNI LOGICZNA INTEGRACJA Z GEMINI API ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -698,45 +698,45 @@ async function sendRadioReply() {
 
     const GEMINI_API_KEY = "AQ.Ab8RN6KojTcCLHkULYu2BmzNUuXKGV2FKO4mHymlURwCwSPh2Q";
 
+    // Budujemy pełną historię dialogu, aby model pamiętał o co pytano wcześniej
+    let fullConversation = ev.radioLogs.map(log => {
+        return log.includes("Wejherowo 998") ? "Dyspozytor (Wejherowo 998): " + log.split('<br>"')[1]?.slice(0, -1) : "KDR (" + currentRadioVehicle + "): " + log.split('<br>"')[1]?.slice(0, -1);
+    }).join("\n");
+
+    const systemPrompt = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji (kryptonim pierwszego wozu: ${currentRadioVehicle || 'dowódca'}).
+Lokalizacja zdarzenia: miejscowość ${ev.city}, adres/obiekt: ${ev.street}.
+Rodzaj i treść zgłoszenia: ${ev.desc} (podrodzaj: ${ev.subtype}).
+Zadysponowane Siły i Środki: ${ev.vehicles.map(v => v.id + " " + v.name).join(', ')}.
+
+INSTRUKCJE DLA CIEBIE:
+1. Odpowiadaj naturalnie, logicznie i sensownie jako strażak na miejscu akcji, biorąc pod uwagę charakterystykę tego konkretnego zdarzenia (${ev.desc}).
+2. Jeśli dyspozytor pyta co się pali, opisz dokładnie stan faktyczny wynikający z opisu zgłoszenia. Jeśli pyta o poszkodowanych lub siły, odpowiedz logicznie adekwatnie do sytuacji.
+3. Pisz krótko i zwięźle, w radiowym stylu (rozpocznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", zakończ "Bez odbioru").`;
+
     try {
-        const systemInstruction = `Jesteś Dowódcą Działania Ratowniczego (KDR) straży pożarnej na miejscu akcji w powiecie wejherowskim. 
-Rozmawiasz przez radiostację ze Stanowiskiem Kierowania (Wejherowo 998).
-SZCZEGÓŁY ZDARZENIA: ${ev.desc}
-MIEJSCOWOŚĆ: ${ev.city}, Adres: ${ev.street}
-Zadysponowane siły i środki: ${ev.vehicles.map(v => v.id + " (" + v.name + ")").join(', ')}.
-
-ZASADY:
-1. Odpowiadaj krótko, profesjonalnie, zgodnie z procedurami i radiowym żargonem strażackim (zaczynając np. od "Wejherowo 998, tu [kryptonim]...", kończąc "Bez odbioru").
-2. Bądź w 100% logiczny i opieraj się na opisie zdarzenia (jeśli palą się palety, mów o paletach; jeśli to gniazdo os, mów o owadach itd.).
-3. Nie zmyślaj o "słabym pasmie" – odpowiadaj merytorycznie na pytania dyspozytora.`;
-
-        // Budujemy zawartość historii wiadomości w formacie poprawnym dla Gemini v1beta
-        let contentsArray = [];
-        
-        // Dodajemy kontekst na start jako instrukcję dla roli user lub system
-        contentsArray.push({
-            role: "user",
-            parts: [{ text: systemInstruction + "\n\nRozpocznijmy korespondencję. Dyspozytor właśnie powiedział: " + text }]
-        });
-
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                contents: contentsArray
+                contents: [
+                    {
+                        parts: [
+                            { text: systemInstruction + "\n\nOto dotychczasowa korespondencja radiowa:\n" + fullConversation + "\n\nOdpowiedz sensownie na najnowszą wiadomość dyspozytora." }
+                        ]
+                    }
+                ]
             })
         });
 
         const data = await response.json();
-        let aiReply = "Wejherowo 998, tu KDR. Przyjąłem.";
+        let aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu zgodnie z procedurami.`;
 
         if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
             aiReply = data.candidates[0].content.parts[0].text.trim();
         } else if (data.error) {
             console.error("Gemini API Error:", data.error);
-            aiReply = `Wejherowo 998, tu KDR. Na miejscu zdarzenia (${ev.desc}) prowadzimy działania taktyczne zgodnie z planem.`;
         }
 
         setTimeout(() => {
@@ -757,7 +757,7 @@ ZASADY:
             audioMotorola.currentTime = 0;
             audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
 
-            const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"Wejherowo 998, tu KDR. Sytuacja na miejscu zdarzenia (${ev.desc}) jest pod kontrolą."</div>`;
+            const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Na miejscu zdarzenia (${ev.desc}) sytuacja jest pod kontrolą."</div>`;
             ev.radioLogs.push(respMsg);
             document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
             chatBox.scrollTop = chatBox.scrollHeight;
