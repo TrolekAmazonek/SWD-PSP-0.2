@@ -679,17 +679,21 @@ let currentCPRData = null;
 let cprCounter = 101;
 let currentRadioVehicle = null;
 
-// --- MECHANIZM PRZESUWANIA OKIEN (DRAG AND DROP) ---
+// --- MECHANIZM PRZESUWANIA OKIEN (DRAG AND DROP) Z OCHRONĄ PRZYCISKÓW ---
 function makeDraggable(elmnt, header) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     header.onmousedown = dragMouseDown;
 
     function dragMouseDown(e) {
+        // Ignorujemy przeciąganie, jeśli kliknięto w przyciski zamykania lub minimalizacji
+        if (e.target.classList.contains('modal-close') || e.target.classList.contains('modal-min')) {
+            return;
+        }
+
         e.preventDefault();
         pos3 = e.clientX;
         pos4 = e.clientY;
 
-        // Jeśli element był wyśrodkowany flexboxem, przypisujemy mu pozycję absolutną w miejscu aktualnym
         const rect = elmnt.getBoundingClientRect();
         elmnt.style.position = 'absolute';
         elmnt.style.left = rect.left + 'px';
@@ -717,7 +721,7 @@ function makeDraggable(elmnt, header) {
     }
 }
 
-// Inicjalizacja przeciągania po załadowaniu strony dla formatki i radia
+// Inicjalizacja przeciągania dla wszystkich okien modalnych
 window.addEventListener('DOMContentLoaded', () => {
     // 1. Okno radia
     const radioModal = document.getElementById('radio-modal');
@@ -726,11 +730,18 @@ window.addEventListener('DOMContentLoaded', () => {
         makeDraggable(radioModal, radioHeader);
     }
 
-    // 2. Okno formatki zdarzenia (modal-window wewnątrz modal-event)
+    // 2. Okno formatki zdarzenia
     const eventModal = document.querySelector('#modal-event .modal-window');
     const eventHeader = document.querySelector('#modal-event .modal-header');
     if (eventModal && eventHeader) {
         makeDraggable(eventModal, eventHeader);
+    }
+
+    // 3. Okno nowego zgłoszenia CPR (112)
+    const cprModal = document.getElementById('cpr-modal');
+    const cprHeader = cprModal.querySelector('.cpr-header');
+    if (cprModal && cprHeader) {
+        makeDraggable(cprModal, cprHeader);
     }
 });
 
@@ -823,7 +834,7 @@ async function sendRadioReply() {
     });
 
     const systemPrompt = `Jesteś dowódcą akcji (KDR, kryptonim: ${currentRadioVehicle || 'KDR'}) rozmawiającym przez radio z dyspozytorem (Wejherowo 998).
-INFORMACje O AKCJI: Adres: ${ev.city}, ${ev.street}. Opis: "${ev.desc}". Wozy na miejscu: ${vehiclesListStr}.
+INFORMACJE O AKCJI: Adres: ${ev.city}, ${ev.street}. Opis: "${ev.desc}". Wozy na miejscu: ${vehiclesListStr}.
 ZASADY: Odpowiadaj naturalnie, normalnym językiem strażackim (bez sztucznego patosu, zwięźle w 1-3 zdaniach). Dostosuj się do skali zdarzenia (np. przy drobnym pożarze śmietnika nie panikuj ani nie proś o podnośnik). Zaczynaj od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ "Bez odbioru."`;
 
     const userPrompt = `Historia:\n${conversationHistory}\nOdpowiedz na ostatnie pytanie dyspozytora.`;
