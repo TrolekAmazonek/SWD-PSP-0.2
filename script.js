@@ -673,7 +673,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- POPRAWIONY ADRES ENDPOINTU NA GEMINI 2.0 FLASH ---
+// --- W PEŁNI POPRAWIONA INTEGRACJA Z GEMINI API (MODEL 3.8 FLASH, WERSJA v1) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -720,8 +720,8 @@ INSTRUKCJE:
     });
 
     try {
-        // Poprawiony adres URL korzystający z modelu gemini-2.0-flash zamiast starego 1.5-flash
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        // Zaktualizowano wersję na v1 oraz model na najnowszy gemini-3.8-flash, zgodnie z wymaganiami Google API
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
