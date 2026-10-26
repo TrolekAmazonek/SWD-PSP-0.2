@@ -673,7 +673,7 @@ function openRadioForSelectedEvent() {
     }
 }
 
-// --- POPRAWIONY MODEL NA GEMINI 3.8 FLASH ---
+// --- STABILNA INTEGRACJA Z GEMINI API (MODEL 2.5 FLASH Z PONAWIANIEM PRÓB) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -707,7 +707,7 @@ SZCZEGÓŁY ZDARZENIA:
 
 INSTRUKCJE:
 1. Wczuj się w rolę strażaka. Odpowiadaj krótko, sensownie i logicznie na pytania dyspozytora.
-2. Bazuj wyłącznie na opisie zdarzenia – wymyślaj realistyczne rozwinięcia sytuacji (np. czy są osoby poszkodowane, jak przebiega neutralizacja plamy, czy ogień wychodzi przez dach itp.) adekwatnie do tego konkretnego zgłoszenia.
+2. Bazuj wyłącznie na opisie zdarzenia – wymyślaj realistyczne rozwinięcia sytuacji adekwatnie do tego konkretnego zgłoszenia.
 3. Używaj radiowego żargonu (rozpocznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}...", zakończ "Bez odbioru"). Nigdy nie powtarzaj sztywnych formułek.`;
 
     let conversationHistory = "";
@@ -719,60 +719,69 @@ INSTRUKCJE:
         }
     });
 
-    try {
-        // Używamy najnowszego modelu gemini-3.8-flash ze ścieżką v1beta (lub v1)
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        parts: [
-                            { text: systemPrompt + "\n\nHistoria rozmowy przez radio:\n" + conversationHistory + "\n\nOdpowiedz jako KDR." }
-                        ]
-                    }
-                ]
-            })
-        });
+    let data = null;
+    let success = false;
 
-        const data = await response.json();
-        
-        if (data.error) {
-            console.error("Gemini API Error:", data.error);
-            throw new Error(data.error.message || "Błąd zapytania do API Google");
+    // Próbujemy maksymalnie 3 razy na wypadek chwilowego przeciążenia serwera (błąd 503)
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            // Używamy stabilnego i powszechnie dostępnego modelu gemini-2.5-flash
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            parts: [
+                                { text: systemPrompt + "\n\nHistoria rozmowy przez radio:\n" + conversationHistory + "\n\nOdpowiedz jako KDR." }
+                            ]
+                        }
+                    ]
+                })
+            });
+
+            data = await response.json();
+            
+            if (data.error) {
+                console.warn(`Próba ${attempt} nie powiodła się:`, data.error);
+                if (attempt < 3) {
+                    await new Promise(r => setTimeout(r, 1000)); // Odczekaj sekundę przed ponowną próbą
+                    continue;
+                }
+            } else {
+                success = true;
+                break;
+            }
+        } catch (netErr) {
+            console.warn(`Błąd sieciowy w próbie ${attempt}:`, netErr);
+            if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 1000));
+                continue;
+            }
         }
+    }
+
+    setTimeout(() => {
+        audioMotorola.currentTime = 0;
+        audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
 
         let aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu. Bez odbioru.`;
-        if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
+        
+        if (success && data && data.candidates && data.candidates[0].content && data.candidates[0].content.parts[0].text) {
             aiReply = data.candidates[0].content.parts[0].text.trim();
+        } else if (data && data.error) {
+            aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Komunikat przyjęty, prowadzimy działania (${ev.desc}).`;
         }
 
-        setTimeout(() => {
-            audioMotorola.currentTime = 0;
-            audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
-
-            const replyTimeStr = new Date().toLocaleTimeString();
-            const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
-            
-            ev.radioLogs.push(respMsg);
-            document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 1000);
-
-    } catch (err) {
-        console.error("Błąd krytyczny połączenia z Gemini:", err);
-        setTimeout(() => {
-            audioMotorola.currentTime = 0;
-            audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
-
-            const respMsg = `<div class="chat-msg chat-kdr" style="color: #ff6666;"><b>[${new Date().toLocaleTimeString()}] BŁĄD API:</b><br>"${err.message}"</div>`;
-            ev.radioLogs.push(respMsg);
-            document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 1000);
-    }
+        const replyTimeStr = new Date().toLocaleTimeString();
+        const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
+        
+        ev.radioLogs.push(respMsg);
+        document.getElementById('radio-chat').innerHTML = ev.radioLogs.join('');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }, 1000);
 }
 
 function quickReply(text) {
