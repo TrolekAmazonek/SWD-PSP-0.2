@@ -6,10 +6,10 @@ const audioMotorola = new Audio('motorola.ogg');
 function playSound(type) {
     if (type === 'cpr') {
         audioCpr.currentTime = 0;
-        audioCpr.play().catch(e => console.log("Audio CPR zablokowane"));
+        audioCpr.play().catch(e => {});
     } else if (type === 'motorola') {
         audioMotorola.currentTime = 0;
-        audioMotorola.play().catch(e => console.log("Audio Motorola zablokowane"));
+        audioMotorola.play().catch(e => {});
     }
 }
 
@@ -22,16 +22,14 @@ function playOspAlarmRepeated(ospCount) {
             audioSelekt.currentTime = 0;
             audioSelekt.play().then(() => {
                 played++;
-                if (played < ospCount) {
-                    setTimeout(playNext, 3000);
-                }
-            }).catch(e => console.log("Audio OSP zablokowane"));
+                if (played < ospCount) setTimeout(playNext, 3000);
+            }).catch(e => {});
         }
     }
     playNext();
 }
 
-// --- ZASZYFROWANE KLUCZE API ---
+// --- KLUCZE API ---
 const _k = {
     g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
     m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
@@ -42,10 +40,8 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- BŁYSKAWICZNY SILNIK AI (ZOPTYMALIZOWANY NA SZYBKOŚĆ) ---
+// --- BŁYSKAWICZNY SILNIK AI (DLA RADIA) ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
-    
-    // 1. Groq (Najszybszy model 8B Instant - generowanie w < 0.5s)
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -60,8 +56,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'user', content: userPrompt }
                 ],
                 temperature: 0.7,
-                max_tokens: 75, // Bardzo niski limit tokenów dla natychmiastowej odpowiedzi
-                ...(jsonMode ? { response_format: { type: "json_object" } } : {})
+                max_tokens: 75
             })
         });
         const data = await res.json();
@@ -69,54 +64,27 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             return data.choices[0].message.content.trim();
         }
     } catch (e) {}
-
-    // 2. OpenAI (Awaryjnie)
+    
+    // Awaryjnie Pollinations
     try {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${decodeKey(_k.o)}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 75,
-                ...(jsonMode ? { response_format: { type: "json_object" } } : {})
-            })
-        });
-        const data = await res.json();
-        if (data.choices && data.choices[0]?.message?.content) {
-            return data.choices[0].message.content.trim();
-        }
-    } catch (e) {}
-
-    // 3. Gemini (Awaryjnie)
-    try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${decodeKey(_k.m)}`;
-        const res = await fetch(url, {
+        const response = await fetch('https://text.pollinations.ai/openai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 75,
-                    ...(jsonMode ? { responseMimeType: "application/json" } : {})
-                }
+                model: 'openai',
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                temperature: 0.7
             })
         });
-        const data = await res.json();
-        if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-            return data.candidates[0].content.parts[0].text.trim();
+        if (response.ok) {
+            const data = await response.json();
+            if (data.choices && data.choices[0]?.message?.content) {
+                return data.choices[0].message.content.trim();
+            }
         }
-    } catch (e) {}
+    } catch (err) {}
 
-    throw new Error("Wszystkie usługi AI są niedostępne.");
+    throw new Error("Brak połączenia z AI.");
 }
 
 const locationsDatabase = {
@@ -275,31 +243,6 @@ function autoSelectJRGByCity(city) {
 }
 
 const streetNames = ["Gdańska", "Sobieskiego", "Zamkowa", "Leśna", "Szkolna", "Przemysłowa", "Długa", "Kwiatowa", "Słoneczna", "Łąkowa", "Krótka", "Mickiewicza", "Polna", "Ogrodowa", "Kaszubska", "Morska", "Kolejowa", "Parkowa", "Lipowa", "Brzozowa"];
-
-function getRandomStreet(category) {
-    const town = townsList[Math.floor(Math.random() * townsList.length)];
-    const stName = streetNames[Math.floor(Math.random() * streetNames.length)];
-    const num = Math.floor(Math.random() * 80) + 1;
-
-    if (category === "bus_stop") {
-        return { city: town, street: `Przystanek Autobusowy ul. ${stName}` };
-    } else if (category === "industry") {
-        const industries = [
-            { city: "Bolszewo", street: `Balex-Metal, ul. Wejherowska ${num}` },
-            { city: "Wejherowo", street: `Markisol Polska, ul. Fabryczna ${num}` },
-            { city: "Rumia", street: `Hala Magazynowa, ul. Przemysłowa ${num}` },
-            { city: "Wejherowo", street: `Tartak / Skład Drzewny, ul. Przemysłowa ${num}` },
-            { city: "Luzino", street: `Zakład Przetwórstwa Drzewnego, ul. Kolejowa ${num}` },
-            { city: "Reda", street: `Kompleks Magazynowy, ul. Przemysłowa ${num}` }
-        ];
-        return industries[Math.floor(Math.random() * industries.length)];
-    } else if (category === "residential") {
-        const types = [`ul. ${stName} ${num}`, `Kamienica, ul. ${stName} ${num}`, `Blok mieszkalny, ul. ${stName} ${num}/` + (Math.floor(Math.random()*15)+1)];
-        return { city: town, street: types[Math.floor(Math.random() * types.length)] };
-    } else {
-        return { city: town, street: `ul. ${stName} ${num}` };
-    }
-}
 
 const eventTemplatesPool = [
     { category: "bus_stop", type: "P", subtype: "P - Śmietniska, wysypiska", desc: "Zgłoszenie pożaru śmietnika w wiacie przystankowej. Zagrożenie dla oczekujących pasażerów." },
@@ -656,14 +599,10 @@ function makeDraggable(elmnt, header) {
     header.onmousedown = dragMouseDown;
 
     function dragMouseDown(e) {
-        if (e.target.closest('.modal-close, .modal-min')) {
-            return;
-        }
-
+        if (e.target.closest('.modal-close, .modal-min')) return;
         e.preventDefault();
         pos3 = e.clientX;
         pos4 = e.clientY;
-
         const rect = elmnt.getBoundingClientRect();
         elmnt.style.position = 'fixed';
         elmnt.style.left = rect.left + 'px';
@@ -671,7 +610,6 @@ function makeDraggable(elmnt, header) {
         elmnt.style.margin = '0';
         elmnt.style.right = 'auto';
         elmnt.style.bottom = 'auto';
-
         document.onmouseup = closeDragElement;
         document.onmousemove = elementDrag;
     }
@@ -682,7 +620,6 @@ function makeDraggable(elmnt, header) {
         pos2 = pos4 - e.clientY;
         pos3 = e.clientX;
         pos4 = e.clientY;
-
         elmnt.style.top = (elmnt.offsetTop - pos2) + 'px';
         elmnt.style.left = (elmnt.offsetLeft - pos1) + 'px';
     }
@@ -695,23 +632,19 @@ function makeDraggable(elmnt, header) {
 
 window.addEventListener('DOMContentLoaded', () => {
     const radioModal = document.getElementById('radio-modal');
-    const radioHeader = radioModal.querySelector('.modal-header');
-    if (radioModal && radioHeader) makeDraggable(radioModal, radioHeader);
+    if (radioModal) makeDraggable(radioModal, radioModal.querySelector('.modal-header'));
 
     const eventModal = document.querySelector('#modal-event .modal-window');
-    const eventHeader = document.querySelector('#modal-event .modal-header');
-    if (eventModal && eventHeader) makeDraggable(eventModal, eventHeader);
+    if (eventModal) makeDraggable(eventModal, document.querySelector('#modal-event .modal-header'));
 
     const cprModal = document.getElementById('cpr-modal');
-    const cprHeader = cprModal.querySelector('.cpr-header');
-    if (cprModal && cprHeader) makeDraggable(cprModal, cprHeader);
+    if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 });
 
 // --- MELDUNEK Z DOJAZDU (SZYBKI) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
-
     if (!ev.radioLogs) ev.radioLogs = [];
     openRadioForEvent(ev.id);
 
@@ -738,10 +671,8 @@ function openRadioForEvent(evId) {
     const ev = events.find(e => e.id === evId);
     if (!ev) return;
     selectedEvIdForRadio = ev.id;
-
     const chat = document.getElementById('radio-chat');
     document.getElementById('radio-title').innerText = `📻 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})`;
-    
     chat.innerHTML = (ev.radioLogs || []).join('');
     document.getElementById('radio-modal').style.display = 'flex';
     document.getElementById('btn-open-radio').style.display = 'block';
@@ -778,11 +709,10 @@ async function sendRadioReply() {
     chatBox.scrollTop = chatBox.scrollHeight;
 
     const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}). Odpowiadaj ultra-krótko (1 zdanie), profesjonalnym żargonem strażackim. Zacznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i skończ "Bez odbioru."`;
-    const userPrompt = text;
 
     let aiReply = "";
     try {
-        aiReply = await callUniversalAI(systemPrompt, userPrompt, false);
+        aiReply = await callUniversalAI(systemPrompt, text, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {
         aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, działamy. Bez odbioru.`;
@@ -815,55 +745,25 @@ function minimizeRadio() {
     bar.appendChild(item);
 }
 
-// --- SZYBKIE GENEROWANIE CPR ---
-async function simulateIncomingCPR() {
+// --- BŁYSKAWICZNE GENEROWANIE CPR (LOKALNE - 0 SEKUND OPÓŹNIENIA) ---
+function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
 
     const newCprId = `WCPR-2026-${cprCounter++}`;
-    const randomTown = townsList[Math.floor(Math.random() * townsList.length)];
-    const chosenType = Math.random() < 0.45 ? "P" : "MZ";
-    const randomSubtype = subtypesData[chosenType][Math.floor(Math.random() * subtypesData[chosenType].length)];
+    const randomTpl = eventTemplatesPool[Math.floor(Math.random() * eventTemplatesPool.length)];
+    const chosenLoc = getRandomStreet(randomTpl.category);
+    const chosenCaller = callersList[Math.floor(Math.random() * callersList.length)];
 
-    document.getElementById('cpr-id').innerText = newCprId;
-    document.getElementById('cpr-city').innerText = randomTown;
-    document.getElementById('cpr-street').innerText = "Trwa ustalanie lokalizacji...";
-    document.getElementById('cpr-type').innerText = `${chosenType} - ${randomSubtype}`;
-    document.getElementById('cpr-caller').innerText = "Łączenie z operatorem 112...";
-    document.getElementById('cpr-desc').innerText = "⏳ Błyskawiczne generowanie zgłoszenia przez AI...";
-    document.getElementById('cpr-modal').style.display = 'flex';
-
-    const sysPrompt = `Wygeneruj krótkie zgłoszenie w JSON: {"street": "ulica z nr", "caller": "Imię Nazwisko (tel. XXX-XXX-XXX)", "desc": "Krótki opis zdarzenia"}`;
-    const usrPrompt = `Miasto: ${randomTown}, Typ: ${chosenType}`;
-
-    try {
-        const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
-        const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
-        const cleaned = jsonMatch ? jsonMatch[0] : rawJson.replace(/```json|```/g, '').trim();
-        const aiEvent = JSON.parse(cleaned);
-
-        currentCPRData = {
-            id: newCprId,
-            city: randomTown,
-            street: aiEvent.street || `ul. ${streetNames[0]} 1`,
-            type: chosenType,
-            subtype: randomSubtype,
-            desc: aiEvent.desc || "Zgłoszenie z CPR.",
-            caller: aiEvent.caller || callersList[0]
-        };
-    } catch (e) {
-        const randomTpl = eventTemplatesPool[Math.floor(Math.random() * eventTemplatesPool.length)];
-        const chosenLoc = getRandomStreet(randomTpl.category);
-        currentCPRData = {
-            id: newCprId,
-            city: chosenLoc.city,
-            street: chosenLoc.street,
-            type: randomTpl.type,
-            subtype: randomTpl.subtype,
-            desc: randomTpl.desc,
-            caller: callersList[0]
-        };
-    }
+    currentCPRData = {
+        id: newCprId,
+        city: chosenLoc.city,
+        street: chosenLoc.street,
+        type: randomTpl.type,
+        subtype: randomTpl.subtype,
+        desc: randomTpl.desc,
+        caller: chosenCaller
+    };
 
     document.getElementById('cpr-id').innerText = currentCPRData.id;
     document.getElementById('cpr-city').innerText = currentCPRData.city;
@@ -871,6 +771,28 @@ async function simulateIncomingCPR() {
     document.getElementById('cpr-type').innerText = `${currentCPRData.type} - ${currentCPRData.subtype}`;
     document.getElementById('cpr-caller').innerText = currentCPRData.caller;
     document.getElementById('cpr-desc').innerText = currentCPRData.desc;
+    document.getElementById('cpr-modal').style.display = 'flex';
+}
+
+function getRandomStreet(category) {
+    const town = townsList[Math.floor(Math.random() * townsList.length)];
+    const stName = streetNames[Math.floor(Math.random() * streetNames.length)];
+    const num = Math.floor(Math.random() * 80) + 1;
+
+    if (category === "bus_stop") {
+        return { city: town, street: `Przystanek Autobusowy ul. ${stName}` };
+    } else if (category === "industry") {
+        const industries = [
+            { city: "Bolszewo", street: `Balex-Metal, ul. Wejherowska ${num}` },
+            { city: "Wejherowo", street: `Markisol Polska, ul. Fabryczna ${num}` },
+            { city: "Rumia", street: `Hala Magazynowa, ul. Przemysłowa ${num}` }
+        ];
+        return industries[Math.floor(Math.random() * industries.length)];
+    } else if (category === "residential") {
+        return { city: town, street: `ul. ${stName} ${num}` };
+    } else {
+        return { city: town, street: `ul. ${stName} ${num}` };
+    }
 }
 
 function closeCPR() { document.getElementById('cpr-modal').style.display = 'none'; }
@@ -908,11 +830,6 @@ function acceptCPRToEvent() {
     closeCPR();
     const minItem = document.getElementById(`min-cpr-${currentCPRData.id}`);
     if (minItem) minItem.remove();
-}
-
-function calculateEstimatedSeconds(desc, subtype, type) {
-    if (type === 'PZR') return -1;
-    return 180;
 }
 
 function formatMMSS(sec) {
