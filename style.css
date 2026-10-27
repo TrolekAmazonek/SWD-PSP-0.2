@@ -128,13 +128,15 @@ body, html {
     height: 240px;
     display: flex;
     gap: 4px;
+    width: 100%;
 }
 
 .left-events {
-    flex: 2.3;
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 4px;
+    overflow: hidden;
 }
 
 .btn-win {
@@ -182,11 +184,13 @@ body, html {
 .events-table tr.finished-ev td { color: var(--text-green); }
 
 .right-details {
-    flex: 1;
+    width: 420px;
+    min-width: 420px;
     background: #ffffff;
     border: 1px solid #7f9db9;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .details-bar {
