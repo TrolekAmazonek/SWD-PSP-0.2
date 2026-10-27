@@ -57,9 +57,12 @@ function calculateTravelTimeSeconds(unitName, city) {
 function autoSelectJRGByCity(city) {
     const c = (city || "").trim().toLowerCase();
     const jrgVal = (c === "rumia" || c === "reda" || c === "bojano" || c === "kielno") ? "JRG 2 Rumia" : "JRG 1 Wejherowo";
-    document.getElementById('inp-ev-jrg').value = jrgVal;
-    document.getElementById('inp-ev-lead').value = jrgVal;
-    document.getElementById('inp-ev-area').value = jrgVal;
+    const jrgEl = document.getElementById('inp-ev-jrg');
+    const leadEl = document.getElementById('inp-ev-lead');
+    const areaEl = document.getElementById('inp-ev-area');
+    if (jrgEl) jrgEl.value = jrgVal;
+    if (leadEl) leadEl.value = jrgVal;
+    if (areaEl) areaEl.value = jrgVal;
 }
 
 const streetNames = ["Gdańska", "Sobieskiego", "Zamkowa", "Leśna", "Szkolna", "Przemysłowa", "Długa", "Kwiatowa", "Słoneczna", "Łąkowa", "Krótka", "Mickiewicza", "Polna", "Ogrodowa", "Kaszubska", "Morska", "Kolejowa", "Parkowa", "Lipowa", "Brzozowa"];
@@ -384,7 +387,7 @@ let unitsOSP = [
 // --- LOSOWANIE OBSADY DLA OSP (OD 3 DO 6 OSÓB) ---
 unitsOSP.forEach(u => {
     u.vehicles.forEach(v => {
-        v.obsada = Math.floor(Math.random() * 4) + 3; // 3 do 6 osób
+        v.obsada = Math.floor(Math.random() * 4) + 3;
     });
 });
 
@@ -399,6 +402,7 @@ let currentRadioVehicle = null;
 
 // --- MECHANIZM PRZESUWANIA (POSITION: FIXED) ---
 function makeDraggable(elmnt, header) {
+    if (!elmnt || !header) return;
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     header.onmousedown = dragMouseDown;
 
@@ -443,6 +447,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
+    
+    renderUnits();
 });
 
 // --- MELDUNEK Z DOJAZDU (INTELIGENTNY I KONTEKSTOWY) ---
@@ -484,11 +490,17 @@ function openRadioForEvent(evId) {
     if (!ev) return;
     selectedEvIdForRadio = ev.id;
     const chat = document.getElementById('radio-chat');
-    document.getElementById('radio-title').innerText = `📻 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})`;
-    chat.innerHTML = (ev.radioLogs || []).join('');
-    document.getElementById('radio-modal').style.display = 'flex';
-    document.getElementById('btn-open-radio').style.display = 'block';
-    chat.scrollTop = chat.scrollHeight;
+    const titleEl = document.getElementById('radio-title');
+    const modalEl = document.getElementById('radio-modal');
+    const openBtn = document.getElementById('btn-open-radio');
+
+    if (titleEl) titleEl.innerText = `📻 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})`;
+    if (chat) {
+        chat.innerHTML = (ev.radioLogs || []).join('');
+        chat.scrollTop = chat.scrollHeight;
+    }
+    if (modalEl) modalEl.style.display = 'flex';
+    if (openBtn) openBtn.style.display = 'block';
 }
 
 function openRadioForSelectedEvent() {
@@ -497,9 +509,10 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- ROZMOWA RADIOWA (LOGICZNA I KONTEKSTOWA) ---
+// --- ROZMOWA RADIOWA ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
+    if (!input) return;
     const text = input.value.trim();
     if (!text || selectedEvIdForRadio === null) return;
 
@@ -516,7 +529,8 @@ async function sendRadioReply() {
     ev.radioLogs.push(userMsg);
 
     const chatBox = document.getElementById('radio-chat');
-    chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${currentRadioVehicle \vert{}\vert{} 'KDR'} nadaje...</div>`; input.value = ''; chatBox.scrollTop = chatBox.scrollHeight;  const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}) na miejscu zdarzenia strażackiego. 
+    if (chatBox) {
+        chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${currentRadioVehicle \vert{}\vert{} 'KDR'} nadaje...</div>`; chatBox.scrollTop = chatBox.scrollHeight; } input.value = '';  const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}) na miejscu zdarzenia strażackiego. 
 Szczegóły zdarzenia:
 - Miejscowość: ${ev.city}
 - Adres: ${ev.street}
@@ -541,35 +555,51 @@ Zawsze zaczynaj od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i koń
     const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle \vert{}\vert{} 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
     
     ev.radioLogs.push(respMsg);
-    chatBox.innerHTML = ev.radioLogs.join('');
-    chatBox.scrollTop = chatBox.scrollHeight;
+    if (chatBox) {
+        chatBox.innerHTML = ev.radioLogs.join('');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 }
 
 function quickReply(text) {
-    document.getElementById('inp-radio-reply').value = text;
+    const input = document.getElementById('inp-radio-reply');
+    if (input) input.value = text;
     sendRadioReply();
 }
 
-function closeRadio() { document.getElementById('radio-modal').style.display = 'none'; }
+function closeRadio() { 
+    const modal = document.getElementById('radio-modal');
+    if (modal) modal.style.display = 'none'; 
+}
 
 function minimizeRadio() {
-    document.getElementById('radio-modal').style.display = 'none';
+    const modal = document.getElementById('radio-modal');
+    if (modal) modal.style.display = 'none';
     const bar = document.getElementById('minimized-bar');
-    const item = document.createElement('div');
-    item.className = 'minimized-item';
-    item.innerHTML = `📻 Radio (ID: ${selectedEvIdForRadio})`; item.onclick = () => { openRadioForEvent(selectedEvIdForRadio); item.remove(); }; bar.appendChild(item); }  // --- GENEROWANIE MISJI PRZEZ AI (CPR 112) --- async function simulateIncomingCPR() { audioCpr.currentTime = 0; audioCpr.play().catch(e => {});  const newCprId = `WCPR-2026-${cprCounter++}`;
+    if (bar) {
+        const item = document.createElement('div');
+        item.className = 'minimized-item';
+        item.innerHTML = `📻 Radio (ID: ${selectedEvIdForRadio})`; item.onclick = () => { if (modal) modal.style.display = 'flex'; item.remove(); }; bar.appendChild(item); } }  // --- GENEROWANIE MISJI PRZEZ AI (CPR 112) --- async function simulateIncomingCPR() { audioCpr.currentTime = 0; audioCpr.play().catch(e => {});  const newCprId = `WCPR-2026-${cprCounter++}`;
     const randomTown = townsList[Math.floor(Math.random() * townsList.length)];
     const chosenType = Math.random() < 0.5 ? "P" : "MZ";
     const possibleSubtypes = subtypesData[chosenType];
     const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
 
-    document.getElementById('cpr-id').innerText = newCprId;
-    document.getElementById('cpr-city').innerText = randomTown;
-    document.getElementById('cpr-street').innerText = "Trwa ustalanie lokalizacji przez AI...";
-    document.getElementById('cpr-type').innerText = `${chosenType} -${randomSubtype}`;
-    document.getElementById('cpr-caller').innerText = "Łączenie z operatorem 112...";
-    document.getElementById('cpr-desc').innerText = "🤖 AI generuje nową misję ratowniczą...";
-    document.getElementById('cpr-modal').style.display = 'flex';
+    const idEl = document.getElementById('cpr-id');
+    const cityEl = document.getElementById('cpr-city');
+    const streetEl = document.getElementById('cpr-street');
+    const typeEl = document.getElementById('cpr-type');
+    const callerEl = document.getElementById('cpr-caller');
+    const descEl = document.getElementById('cpr-desc');
+    const modalEl = document.getElementById('cpr-modal');
+
+    if (idEl) idEl.innerText = newCprId;
+    if (cityEl) cityEl.innerText = randomTown;
+    if (streetEl) streetEl.innerText = "Trwa ustalanie lokalizacji przez AI...";
+    if (typeEl) typeEl.innerText = `${chosenType} -${randomSubtype}`;
+    if (callerEl) callerEl.innerText = "Łączenie z operatorem 112...";
+    if (descEl) descEl.innerText = "🤖 AI generuje nową misję ratowniczą...";
+    if (modalEl) modalEl.style.display = 'flex';
 
     const sysPrompt = `Jesteś systemem dyspozytorskim CPR 112. Wygeneruj realistyczne, unikalne zgłoszenie strażackie w formacie JSON (bez markdownu ```json):
 {
@@ -607,50 +637,68 @@ function minimizeRadio() {
         };
     }
 
-    document.getElementById('cpr-id').innerText = currentCPRData.id;
-    document.getElementById('cpr-city').innerText = currentCPRData.city;
-    document.getElementById('cpr-street').innerText = currentCPRData.street;
-    document.getElementById('cpr-type').innerText = `${currentCPRData.type} - ${currentCPRData.subtype}`;
-    document.getElementById('cpr-caller').innerText = currentCPRData.caller;
-    document.getElementById('cpr-desc').innerText = currentCPRData.desc;
+    if (idEl) idEl.innerText = currentCPRData.id;
+    if (cityEl) cityEl.innerText = currentCPRData.city;
+    if (streetEl) streetEl.innerText = currentCPRData.street;
+    if (typeEl) typeEl.innerText = `${currentCPRData.type} - ${currentCPRData.subtype}`;
+    if (callerEl) callerEl.innerText = currentCPRData.caller;
+    if (descEl) descEl.innerText = currentCPRData.desc;
 }
 
-function closeCPR() { document.getElementById('cpr-modal').style.display = 'none'; }
+function closeCPR() { 
+    const modal = document.getElementById('cpr-modal');
+    if (modal) modal.style.display = 'none'; 
+}
 
 function minimizeCPR() {
     if (!currentCPRData) return;
-    document.getElementById('cpr-modal').style.display = 'none';
+    closeCPR();
     const bar = document.getElementById('minimized-bar');
-    const item = document.createElement('div');
-    item.className = 'minimized-item';
-    item.innerHTML = `🚨 Zgłoszenie CPR (${currentCPRData.city})`;
-    item.onclick = () => { document.getElementById('cpr-modal').style.display = 'flex'; item.remove(); };
-    bar.appendChild(item);
+    if (bar) {
+        const item = document.createElement('div');
+        item.className = 'minimized-item';
+        item.innerHTML = `🚨 Zgłoszenie CPR (${currentCPRData.city})`;
+        item.onclick = () => { 
+            const modal = document.getElementById('cpr-modal');
+            if (modal) modal.style.display = 'flex'; 
+            item.remove(); 
+        };
+        bar.appendChild(item);
+    }
 }
 
 function acceptCPRToEvent() {
     if (!currentCPRData) return;
     openNewEventModal();
 
-    document.getElementById('inp-ev-received').value = 'CPR';
-    document.getElementById('inp-ev-city').value = currentCPRData.city;
-    document.getElementById('inp-ev-region').value = locationsDatabase[currentCPRData.city] || '';
-    document.getElementById('inp-ev-street').value = currentCPRData.street;
-    document.getElementById('inp-ev-desc').value = currentCPRData.desc;
+    const rec = document.getElementById('inp-ev-received');
+    const city = document.getElementById('inp-ev-city');
+    const reg = document.getElementById('inp-ev-region');
+    const street = document.getElementById('inp-ev-street');
+    const desc = document.getElementById('inp-ev-desc');
+
+    if (rec) rec.value = 'CPR';
+    if (city) city.value = currentCPRData.city;
+    if (reg) reg.value = locationsDatabase[currentCPRData.city] || '';
+    if (street) street.value = currentCPRData.street;
+    if (desc) desc.value = currentCPRData.desc;
 
     autoSelectJRGByCity(currentCPRData.city);
 
     const radioP = document.querySelector(`input[name="ev-type"][value="${currentCPRData.type}"]`);
     if (radioP) radioP.checked = true;
     updateSubtypes(currentCPRData.type);
-    document.getElementById('inp-ev-subtype').value = currentCPRData.subtype;
+    
+    const subSel = document.getElementById('inp-ev-subtype');
+    if (subSel) subSel.value = currentCPRData.subtype;
 
-    document.getElementById('inp-caller-name').value = currentCPRData.caller.split(' ')[0] || '';
-    document.getElementById('inp-caller-surname').value = currentCPRData.caller.split(' ')[1] || '';
+    const nameParts = currentCPRData.caller.split(' ');
+    const nameInp = document.getElementById('inp-caller-name');
+    const surInp = document.getElementById('inp-caller-surname');
+    if (nameInp) nameInp.value = nameParts[0] || '';
+    if (surInp) surInp.value = nameParts[1] || '';
 
     closeCPR();
-    const minItem = document.getElementById(`min-cpr-${currentCPRData.id}`);
-    if (minItem) minItem.remove();
 }
 
 function formatMMSS(sec) {
@@ -663,13 +711,16 @@ function formatMMSS(sec) {
 function updateSubtypes(type) {
     const select = document.getElementById('inp-ev-subtype');
     const group = document.getElementById('subtype-group');
+    if (!select) return;
     select.innerHTML = '';
     
-    if (type === 'PZR') {
-        group.style.display = 'none';
-        return;
-    } else {
-        group.style.display = 'flex';
+    if (group) {
+        if (type === 'PZR') {
+            group.style.display = 'none';
+            return;
+        } else {
+            group.style.display = 'flex';
+        }
     }
 
     const list = subtypesData[type] || ["Brak"];
@@ -684,13 +735,17 @@ function updateSubtypes(type) {
 function toggleService(service) {
     servicesState[service] = !servicesState[service];
     const btn = document.getElementById(service === 'prm' ? 'btn-service-prm' : 'btn-service-police');
-    if (servicesState[service]) btn.classList.add('active');
-    else btn.classList.remove('active');
+    if (btn) {
+        if (servicesState[service]) btn.classList.add('active');
+        else btn.classList.remove('active');
+    }
 }
 
 function renderUnits() {
-    document.getElementById('grid-psp').innerHTML = unitsPSP.map(u => createUnitHTML(u)).join('');
-    document.getElementById('grid-osp').innerHTML = unitsOSP.map(u => createUnitHTML(u)).join('');
+    const pspGrid = document.getElementById('grid-psp');
+    const ospGrid = document.getElementById('grid-osp');
+    if (pspGrid) pspGrid.innerHTML = unitsPSP.map(u => createUnitHTML(u)).join('');
+    if (ospGrid) ospGrid.innerHTML = unitsOSP.map(u => createUnitHTML(u)).join('');
 }
 
 function createUnitHTML(unit) {
@@ -698,7 +753,7 @@ function createUnitHTML(unit) {
         unit.vehicles.map(v => `
             <div class="vehicle-row">
                 <span class="status-dot ${v.status}"></span>
-                <span><b>${v.id}</b> - ${v.name}</span>
+                <span><b>${v.id}</b> - ${v.name} (Obsada: ${v.obsada})</span>
             </div>
         `).join('');
 
@@ -712,6 +767,7 @@ function createUnitHTML(unit) {
 
 function renderEvents() {
     const tbody = document.getElementById('events-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     events.forEach(ev => {
@@ -743,12 +799,16 @@ function selectEvent(id) {
     if (!ev) return;
 
     selectedEvIdForRadio = ev.id;
-    document.getElementById('btn-open-radio').style.display = 'block';
-    document.getElementById('details-title').innerText = `Szczegóły zdarzenia ID: ${ev.id} - ${ev.city}`;
+    const openRadioBtn = document.getElementById('btn-open-radio');
+    const detailsTitle = document.getElementById('details-title');
+    if (openRadioBtn) openRadioBtn.style.display = 'block';
+    if (detailsTitle) detailsTitle.innerText = `Szczegóły zdarzenia ID: ${ev.id} - ${ev.city}`;
     
     renderEvents();
 
     const sisBody = document.getElementById('details-sis-body');
+    if (!sisBody) return;
+
     if (ev.vehicles.length === 0) {
         sisBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Brak zadysponowanych SiS</td></tr>';
         return;
@@ -768,15 +828,22 @@ function selectEvent(id) {
 }
 
 function switchTab(tab) {
-    document.getElementById('grid-psp').style.display = tab === 'PSP' ? 'grid' : 'none';
-    document.getElementById('grid-osp').style.display = tab === 'OSP' ? 'grid' : 'none';
-    document.getElementById('btn-tab-psp').className = 'tab-btn ' + (tab === 'PSP' ? 'active' : '');
-    document.getElementById('btn-tab-osp').className = 'tab-btn ' + (tab === 'OSP' ? 'active' : '');
+    const pspGrid = document.getElementById('grid-psp');
+    const ospGrid = document.getElementById('grid-osp');
+    const btnPsp = document.getElementById('btn-tab-psp');
+    const btnOsp = document.getElementById('btn-tab-osp');
+
+    if (pspGrid) pspGrid.style.display = tab === 'PSP' ? 'grid' : 'none';
+    if (ospGrid) ospGrid.style.display = tab === 'OSP' ? 'grid' : 'none';
+    if (btnPsp) btnPsp.className = 'tab-btn ' + (tab === 'PSP' ? 'active' : '');
+    if (btnOsp) btnOsp.className = 'tab-btn ' + (tab === 'OSP' ? 'active' : '');
 }
 
 function handleCityInput(input) {
+    if (!input) return;
     const val = input.value.trim().toLowerCase();
     const suggestionsBox = document.getElementById('city-suggestions');
+    if (!suggestionsBox) return;
     suggestionsBox.innerHTML = '';
 
     if (!val) { suggestionsBox.style.display = 'none'; return; }
@@ -788,8 +855,10 @@ function handleCityInput(input) {
             div.className = 'suggestion-item';
             div.innerText = c;
             div.onclick = () => {
-                document.getElementById('inp-ev-city').value = c;
-                document.getElementById('inp-ev-region').value = locationsDatabase[c];
+                const cityInp = document.getElementById('inp-ev-city');
+                const regInp = document.getElementById('inp-ev-region');
+                if (cityInp) cityInp.value = c;
+                if (regInp) regInp.value = locationsDatabase[c];
                 autoSelectJRGByCity(c);
                 suggestionsBox.style.display = 'none';
             };
@@ -805,26 +874,41 @@ function openNewEventModal() {
     activeEditingId = null;
     selectedVehicles = [];
     servicesState = { prm: false, police: false };
-    document.getElementById('btn-service-prm').classList.remove('active');
-    document.getElementById('btn-service-police').classList.remove('active');
+    
+    const btnPrm = document.getElementById('btn-service-prm');
+    const btnPol = document.getElementById('btn-service-police');
+    if (btnPrm) btnPrm.classList.remove('active');
+    if (btnPol) btnPol.classList.remove('active');
 
-    document.getElementById('modal-event-title').innerText = "Nowa Karta Zdarzenia";
-    document.getElementById('inp-ev-time').value = new Date().toLocaleTimeString();
-    document.getElementById('inp-ev-city').value = '';
-    document.getElementById('inp-ev-region').value = '';
-    document.getElementById('inp-ev-street').value = '';
-    document.getElementById('inp-ev-desc').value = '';
-    document.getElementById('inp-caller-name').value = '';
-    document.getElementById('inp-caller-surname').value = '';
-    document.getElementById('inp-caller-phone').value = '';
-    document.getElementById('lbl-selected-count').innerText = "Wybrano pojazdów: 0";
+    const titleEl = document.getElementById('modal-event-title');
+    const timeEl = document.getElementById('inp-ev-time');
+    const cityEl = document.getElementById('inp-ev-city');
+    const regEl = document.getElementById('inp-ev-region');
+    const streetEl = document.getElementById('inp-ev-street');
+    const descEl = document.getElementById('inp-ev-desc');
+    const nameEl = document.getElementById('inp-caller-name');
+    const surEl = document.getElementById('inp-caller-surname');
+    const phoneEl = document.getElementById('inp-caller-phone');
+    const countEl = document.getElementById('lbl-selected-count');
+    const modalEl = document.getElementById('modal-event');
+
+    if (titleEl) titleEl.innerText = "Nowa Karta Zdarzenia";
+    if (timeEl) timeEl.value = new Date().toLocaleTimeString();
+    if (cityEl) cityEl.value = '';
+    if (regEl) regEl.value = '';
+    if (streetEl) streetEl.value = '';
+    if (descEl) descEl.value = '';
+    if (nameEl) nameEl.value = '';
+    if (surEl) surEl.value = '';
+    if (phoneEl) phoneEl.value = '';
+    if (countEl) countEl.innerText = "Wybrano pojazdów: 0";
 
     const radioP = document.querySelector('input[name="ev-type"][value="P"]');
     if (radioP) radioP.checked = true;
     updateSubtypes('P');
 
     switchModalTab('dane');
-    document.getElementById('modal-event').style.display = 'flex';
+    if (modalEl) modalEl.style.display = 'flex';
 }
 
 function openEditEventModal(id) {
@@ -834,36 +918,59 @@ function openEditEventModal(id) {
     activeEditingId = id;
     selectedVehicles = [...ev.vehicles];
 
-    document.getElementById('modal-event-title').innerText = `Edycja zdarzenia ID: ${ev.id}`;
-    document.getElementById('inp-ev-time').value = ev.time;
-    document.getElementById('inp-ev-city').value = ev.city;
-    document.getElementById('inp-ev-region').value = ev.region;
-    document.getElementById('inp-ev-street').value = ev.street;
-    document.getElementById('inp-ev-desc').value = ev.desc;
-    document.getElementById('lbl-selected-count').innerText = "Wybrano pojazdów: " + selectedVehicles.length;
+    const titleEl = document.getElementById('modal-event-title');
+    const timeEl = document.getElementById('inp-ev-time');
+    const cityEl = document.getElementById('inp-ev-city');
+    const regEl = document.getElementById('inp-ev-region');
+    const streetEl = document.getElementById('inp-ev-street');
+    const descEl = document.getElementById('inp-ev-desc');
+    const countEl = document.getElementById('lbl-selected-count');
+    const modalEl = document.getElementById('modal-event');
+
+    if (titleEl) titleEl.innerText = `Edycja zdarzenia ID: ${ev.id}`;
+    if (timeEl) timeEl.value = ev.time;
+    if (cityEl) cityEl.value = ev.city;
+    if (regEl) regEl.value = ev.region;
+    if (streetEl) streetEl.value = ev.street;
+    if (descEl) descEl.value = ev.desc;
+    if (countEl) countEl.innerText = "Wybrano pojazdów: " + selectedVehicles.length;
 
     const radio = document.querySelector(`input[name="ev-type"][value="${ev.type}"]`);
     if (radio) radio.checked = true;
     updateSubtypes(ev.type);
-    if (ev.type !== 'PZR') document.getElementById('inp-ev-subtype').value = ev.subtype || "";
+    
+    const subSel = document.getElementById('inp-ev-subtype');
+    if (ev.type !== 'PZR' && subSel) subSel.value = ev.subtype || "";
 
     servicesState = { ...ev.services };
-    if (servicesState.prm) document.getElementById('btn-service-prm').classList.add('active');
-    else document.getElementById('btn-service-prm').classList.remove('active');
-    if (servicesState.police) document.getElementById('btn-service-police').classList.add('active');
-    else document.getElementById('btn-service-police').classList.remove('active');
+    const btnPrm = document.getElementById('btn-service-prm');
+    const btnPol = document.getElementById('btn-service-police');
+    if (btnPrm) {
+        if (servicesState.prm) btnPrm.classList.add('active');
+        else btnPrm.classList.remove('active');
+    }
+    if (btnPol) {
+        if (servicesState.police) btnPol.classList.add('active');
+        else btnPol.classList.remove('active');
+    }
 
     switchModalTab('dane');
-    document.getElementById('modal-event').style.display = 'flex';
+    if (modalEl) modalEl.style.display = 'flex';
 }
 
 function openDispatchModal() {
     const container = document.getElementById('dispatch-list');
     const infoBar = document.getElementById('dispatch-info-bar');
-    const targetCity = document.getElementById('inp-ev-city').value.trim();
+    const cityInput = document.getElementById('inp-ev-city');
+    const modalDisp = document.getElementById('modal-dispatch');
+    
+    if (!container) return;
+    const targetCity = cityInput ? cityInput.value.trim() : "";
     container.innerHTML = '';
 
-    infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span>` : `⚠️ Brak miejscowości`;
+    if (infoBar) {
+        infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span>` : `⚠️ Brak miejscowości`;
+    }
 
     const availableUnits = [...unitsPSP, ...unitsOSP]
         .filter(u => u.vehicles.length > 0)
@@ -891,12 +998,13 @@ function openDispatchModal() {
         container.appendChild(groupDiv);
     });
 
-    document.getElementById('modal-dispatch').style.display = 'flex';
+    if (modalDisp) modalDisp.style.display = 'flex';
 }
 
 function confirmDispatch() {
     const checkboxes = document.querySelectorAll('#dispatch-list input:checked');
-    const targetCity = document.getElementById('inp-ev-city').value.trim() || "Bolszewo";
+    const cityInput = document.getElementById('inp-ev-city');
+    const targetCity = (cityInput && cityInput.value.trim()) ? cityInput.value.trim() : "Bolszewo";
     selectedVehicles = [];
 
     checkboxes.forEach(cb => {
@@ -906,17 +1014,23 @@ function confirmDispatch() {
         });
     });
 
-    document.getElementById('lbl-selected-count').innerText = "Wybrano pojazdów: " + selectedVehicles.length;
+    const countLbl = document.getElementById('lbl-selected-count');
+    if (countLbl) countLbl.innerText = "Wybrano pojazdów: " + selectedVehicles.length;
     closeModal('modal-dispatch');
 }
 
 function saveEvent() {
-    const city = document.getElementById('inp-ev-city').value;
+    const cityInput = document.getElementById('inp-ev-city');
+    const city = cityInput ? cityInput.value : "";
     if (!city) { alert('Proszę podać miejscowość!'); return; }
 
-    const typeVal = document.querySelector('input[name="ev-type"]:checked').value;
-    const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : document.getElementById('inp-ev-subtype').value;
-    const descVal = document.getElementById('inp-ev-desc').value;
+    const typeChecked = document.querySelector('input[name="ev-type"]:checked');
+    const typeVal = typeChecked ? typeChecked.value : 'P';
+    const subSel = document.getElementById('inp-ev-subtype');
+    const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : (subSel ? subSel.value : '');
+    
+    const descInput = document.getElementById('inp-ev-desc');
+    const descVal = descInput ? descInput.value : '';
 
     selectedVehicles.forEach(sv => {
         if (sv.travelTime === undefined || activeEditingId === null) sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
@@ -932,12 +1046,17 @@ function saveEvent() {
     playOspAlarmRepeated(countedOspNames.length);
 
     if (activeEditingId === null) {
+        const timeInput = document.getElementById('inp-ev-time');
+        const regInput = document.getElementById('inp-ev-region');
+        const streetInput = document.getElementById('inp-ev-street');
+        const jrgInput = document.getElementById('inp-ev-jrg');
+
         const newEv = {
             id: events.length + 1,
-            time: document.getElementById('inp-ev-time').value,
+            time: timeInput ? timeInput.value : new Date().toLocaleTimeString(),
             city: city,
-            region: document.getElementById('inp-ev-region').value,
-            street: document.getElementById('inp-ev-street').value,
+            region: regInput ? regInput.value : '',
+            street: streetInput ? streetInput.value : '',
             desc: descVal,
             type: typeVal,
             subtype: subtypeVal,
@@ -945,7 +1064,7 @@ function saveEvent() {
             firstArrived: false,
             radioReported: false,
             radioLogs: [],
-            jrg: document.getElementById('inp-ev-jrg').value,
+            jrg: jrgInput ? jrgInput.value : 'JRG 1 Wejherowo',
             services: { ...servicesState },
             vehicles: [...selectedVehicles],
             status: 'ACTIVE'
@@ -954,12 +1073,14 @@ function saveEvent() {
         selectEvent(newEv.id);
     } else {
         const ev = events.find(e => e.id === activeEditingId);
-        ev.city = city;
-        ev.desc = descVal;
-        ev.type = typeVal;
-        ev.subtype = subtypeVal;
-        ev.services = { ...servicesState };
-        ev.vehicles = [...selectedVehicles];
+        if (ev) {
+            ev.city = city;
+            ev.desc = descVal;
+            ev.type = typeVal;
+            ev.subtype = subtypeVal;
+            ev.services = { ...servicesState };
+            ev.vehicles = [...selectedVehicles];
+        }
     }
 
     selectedVehicles.forEach(sv => {
@@ -993,14 +1114,26 @@ function finishCurrentEvent() {
 }
 
 function switchModalTab(tab) {
-    document.getElementById('modal-tab-dane-content').style.display = tab === 'dane' ? 'block' : 'none';
-    document.getElementById('modal-tab-czasy-content').style.display = tab === 'czasy' ? 'block' : 'none';
-    document.getElementById('tab-modal-dane').className = 'tab-btn ' + (tab === 'dane' ? 'active' : '');
-    document.getElementById('tab-modal-czasy').className = 'tab-btn ' + (tab === 'czasy' ? 'active' : '');
+    const daneContent = document.getElementById('modal-tab-dane-content');
+    const czasyContent = document.getElementById('modal-tab-czasy-content');
+    const tabDane = document.getElementById('tab-modal-dane');
+    const tabCzasy = document.getElementById('tab-modal-czasy');
+
+    if (daneContent) daneContent.style.display = tab === 'dane' ? 'block' : 'none';
+    if (czasyContent) czasyContent.style.display = tab === 'czasy' ? 'block' : 'none';
+    if (tabDane) tabDane.className = 'tab-btn ' + (tab === 'dane' ? 'active' : '');
+    if (tabCzasy) tabCzasy.className = 'tab-btn ' + (tab === 'czasy' ? 'active' : '');
 }
 
-function openSiSModal() { document.getElementById('modal-sis').style.display = 'flex'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function openSiSModal() { 
+    const modal = document.getElementById('modal-sis');
+    if (modal) modal.style.display = 'flex'; 
+}
+
+function closeModal(id) { 
+    const modal = document.getElementById(id);
+    if (modal) modal.style.display = 'none'; 
+}
 
 setInterval(() => {
     let needsRender = false;
@@ -1049,4 +1182,9 @@ setInterval(() => {
     }
 }, 1000);
 
-renderUnits();
+// Inicjalizacja po załadowaniu DOM
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderUnits);
+} else {
+    renderUnits();
+}
