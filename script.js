@@ -154,6 +154,9 @@ const coordsMap = {
     "Zelewo": { x: -9, y: 3 },
     "Milwino": { x: -11, y: -5 },
     "Szemud": { x: -5, y: -13 },
+    "Przetoczyno": { x: -4, y: -9 },
+    "Częstkowo": { x: -8, y: -9 },
+    "Łebno": { x: -11, y: -12 },
     "Kielno": { x: 1, y: -15 },
     "Bojano": { x: 4, y: -14 },
     "Gniewino": { x: -14, y: 13 },
@@ -267,7 +270,7 @@ const subtypesData = {
     ],
     "AF": ["AF - Fałszywy z instalacji", "AF - Złośliwy", "AF - W dobrej wierze"],
     "CW": ["CW - Zagrożenie chemiczne", "CW - Zagrożenie ekologiczne"],
-    "WG": ["WG - Wybuch gazu", "WG - Inne zagrożenie выbychem"],
+    "WG": ["WG - Wybuch gazu", "WG - Inne zagrożenie wybuchem"],
     "BL": ["BL - Budynek zagrożony zawaleniem"],
     "ZPR": ["ZPR - Zagrożenie promieniotwórcze"],
     "PZR": []
@@ -800,40 +803,14 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
-// Generator konkretnych opisów ratowniczych bez ogólników
+// Generator konkretnych opisów ratowniczych bez prefiksów typu "MZ - "
 function generateFallbackDescription(subtype) {
-    const s = (subtype || "").toLowerCase();
-    if (s.includes("pożar") || s.includes("śmietnisk") || s.includes("trawy") || s.includes("las")) {
-        const options = [
-            "Pożar sadzy w przewozie kominowym w budynku jednorodzinnym. Widoczne iskry z komina.",
-            "Pożar traw i poszycia leśnego na powierzchni ok. 500 m2. Zagrożenie dla pobliskich zabudowań.",
-            "Pożar w korytarzu budynku wielorodzinnego. Silne zadymienie na wyższych kondygnacjach.",
-            "Pożar samochodu osobowego na poboczu drogi. Pojazd w całości objęty ogniem."
-        ];
-        return options[Math.floor(Math.random() * options.length)];
+    let cleanSub = (subtype || "").replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
+    if (!cleanSub || cleanSub.toLowerCase().includes("inne")) {
+        cleanSub = "Zdarzenie miejscowe wymagające interwencji służb ratowniczych";
     }
-    if (s.includes("drogow") || s.includes("kolizja") || s.includes("wypadek")) {
-        const options = [
-            "Wypadek drogowy z udziałem dwóch samochodów osobowych. Jedna osoba uwięziona w pojeździe.",
-            "Zderzenie czołowe auta osobowego z ciężarówką. Wyciek płynów eksploatacyjnych na jezdnię.",
-            "Dachowanie samochodu osobowego w rowie. Kierowca przytomny, poza pojazdem."
-        ];
-        return options[Math.floor(Math.random() * options.length)];
-    }
-    if (s.includes("otwarciu") || s.includes("zgon")) {
-        const options = [
-            "Pomoc Policji w otwarciu mieszkania. Brak kontaktu z starszym właścicielem od kilku dni.",
-            "Podejrzenie zgonu w zamkniętym lokalu mieszkalnym. Odczuwalny nieprzyjemny zapach."
-        ];
-        return options[Math.floor(Math.random() * options.length)];
-    }
-    if (s.includes("zwierzęta")) {
-        return "Kot uwięziony na wysokości ok. 8 metrów na drzewie, brak możliwości samodzielnego zejścia.";
-    }
-    if (s.includes("atmosferyczn")) {
-        return "Powalone drzewo blokuje przejazd drogą gminną. Brak osób poszkodowanych.";
-    }
-    return "Wydobywający się dym z okna na pierwszym piętrze budynku mieszkalnego. Świadkowie zgłaszają zapach spalenizny.";
+    // Zamieniamy pierwszą literę na wielką
+    return cleanSub.charAt(0).toUpperCase() + cleanSub.slice(1);
 }
 
 async function simulateIncomingCPR() {
@@ -859,7 +836,7 @@ async function simulateIncomingCPR() {
 {
   "street": "ulica i numer w mieście ${randomTown}",
   "caller": "Imię Nazwisko (tel. 6xx-xxx-xxx)",
-  "desc": "Konkretny, dokładny opis zdarzenia opisujący dokładnie co się stało (1-2 zdania). BEZWZGLĘDNY ZAKAZ używania formułek typu 'Zgłoszenie dotyczące zdarzenia...'. Napisz od razu np. 'Pożar sadzy w kominie' lub 'Wypadek dwóch aut na skrzyżowaniu'."
+  "desc": "Naturalny opis tego co się stało (1-2 zdania). BEZWZGLĘDNY ZAKAZ używania prefiksów typu 'MZ -', 'P -' lub formułek 'Zgłoszenie dotyczące...'. Napisz sam sens, np. 'Podejrzenie podłożenia ładunku wybuchowego w budynku dworca' albo 'Pożar sadzy w kominie'."
 }`;
     const usrPrompt = `Miejscowość: ${randomTown}, Zdarzenie: ${randomSubtype}`;
 
@@ -870,6 +847,8 @@ async function simulateIncomingCPR() {
         const aiEvent = JSON.parse(cleaned);
 
         let finalDesc = aiEvent.desc || generateFallbackDescription(randomSubtype);
+        // Usuwamy ewentualne prefiksy typu "MZ - " gdyby AI je dodało
+        finalDesc = finalDesc.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
         if (finalDesc.toLowerCase().includes("zgłoszenie dotycząc")) {
             finalDesc = generateFallbackDescription(randomSubtype);
         }
@@ -938,7 +917,10 @@ function acceptCPRToEvent() {
     if(inpCity) inpCity.value = currentCPRData.city;
     if(inpReg) inpReg.value = locationsDatabase[currentCPRData.city] || '';
     if(inpStreet) inpStreet.value = currentCPRData.street;
-    if(inpDesc) inpDesc.value = currentCPRData.desc;
+    
+    // Oczyszczamy opis ze wszelkich prefiksów typu "MZ - " podczas akceptacji do formatki
+    let cleanDesc = (currentCPRData.desc || "").replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
+    if (inpDesc) inpDesc.value = cleanDesc;
 
     autoSelectJRGByCity(currentCPRData.city);
 
@@ -1297,7 +1279,10 @@ function saveEvent() {
     const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : (subSel ? subSel.value : '');
     
     const descInput = document.getElementById('inp-ev-desc');
-    const descVal = descInput ? descInput.value : '';
+    let descVal = descInput ? descInput.value : '';
+    
+    // Oczyszczenie opisu również przy zapisie, gdyby użytkownik wpisał tam ręcznie prefiks
+    descVal = descVal.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
 
     selectedVehicles.forEach(sv => {
         if (sv.travelTime === undefined || activeEditingId === null) sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
