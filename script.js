@@ -648,7 +648,7 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     return `Wejherowo 998, tu ${kdrCallsign}. W odpowiedzi na "${userQuestion}" – sytuacja jest pod naszą kontrolą, realizujemy zadania na miejscu zdarzenia. Bez odbioru.`;
 }
 
-// --- WYGLĄD RADIA ZE ZDJĘCIA + POLE DO WPISYWANIA WŁASNYCH WIADOMOŚCI ---
+// --- OKNO RADIA: WYGLĄD RETRO + POLE TEKSTOWE NA SAMYM DOLE ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
         openRadioWindows[evId].style.display = 'block';
@@ -662,12 +662,12 @@ function createRadioWindow(evId) {
     modal.id = `radio-modal-${evId}`;
     modal.style.position = 'fixed';
     modal.style.zIndex = '1050';
-    modal.style.width = '430px';
+    modal.style.width = '440px';
     
     const windowCount = Object.keys(openRadioWindows).length;
     const offset = (windowCount * 25) % 150;
-    modal.style.left = `calc(50% - 215px + ${offset}px)`;
-    modal.style.top = `calc(50% - 200px + ${offset}px)`;
+    modal.style.left = `calc(50% - 220px + ${offset}px)`;
+    modal.style.top = `calc(50% - 210px + ${offset}px)`;
 
     modal.innerHTML = `
         <div style="background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); font-family: 'Segoe UI', Tahoma, sans-serif;">
@@ -679,7 +679,7 @@ function createRadioWindow(evId) {
                 </div>
             </div>
             <div style="padding: 6px; background: #c0c0c0;">
-                <div id="radio-chat-${evId}" style="background: #000000; color: #ffcc00; font-family: 'Courier New', monospace; font-weight: bold; font-size: 12px; height: 215px; padding: 6px; overflow-y: auto; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; box-sizing: border-box; line-height: 1.3;"></div>
+                <div id="radio-chat-${evId}" style="background: #000000; color: #ffcc00; font-family: 'Courier New', monospace; font-weight: bold; font-size: 12px; height: 195px; padding: 6px; overflow-y: auto; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; box-sizing: border-box; line-height: 1.3;"></div>
                 
                 <!-- Przyciski szybkiej odpowiedzi -->
                 <div style="display: flex; gap: 4px; margin-top: 6px; justify-content: space-between;">
@@ -697,10 +697,10 @@ function createRadioWindow(evId) {
                     </button>
                 </div>
 
-                <!-- Pole wpisywania własnej wiadomości -->
-                <div style="display: flex; gap: 4px; margin-top: 6px;">
-                    <input type="text" id="inp-radio-reply-${ev.id}" placeholder="Wpisz własną treść korespondencji..." style="flex: 1; padding: 4px 6px; font-size: 12px; background: #ffffff; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; outline: none;" onkeypress="if(event.key==='Enter') sendCustomInputRadio(${ev.id})">
-                    <button style="padding: 4px 10px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold;" onclick="sendCustomInputRadio(${ev.id})">Nadaj</button>
+                <!-- Pole wpisywania własnej wiadomości na samym dole -->
+                <div style="display: flex; gap: 4px; margin-top: 6px; align-items: center;">
+                    <input type="text" id="inp-radio-reply-${ev.id}" placeholder="Wpisz treść wiadomości radiowej..." style="flex: 1; padding: 5px 8px; font-size: 12px; background: #ffffff; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; outline: none;" onkeypress="if(event.key==='Enter') sendCustomInputRadio(${ev.id})">
+                    <button style="padding: 5px 12px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold;" onclick="sendCustomInputRadio(${ev.id})">Nadaj</button>
                 </div>
             </div>
         </div>
@@ -763,7 +763,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- OBSŁUGA WŁASNEGO INPUTA ---
+// --- WYSYŁANIE WŁASNEJ WIADOMOŚCI Z INPUTA ---
 function sendCustomInputRadio(evId) {
     const input = document.getElementById(`inp-radio-reply-${evId}`);
     if (!input) return;
