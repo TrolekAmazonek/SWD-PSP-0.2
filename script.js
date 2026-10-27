@@ -40,7 +40,7 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- BŁYSKAWICZNY SILNIK AI (DLA RADIA) ---
+// --- BŁYSKAWICZNY SILNIK AI (DLA RADIA I CPR) ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -55,8 +55,9 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.7,
-                max_tokens: 75
+                temperature: 0.85,
+                max_tokens: 150,
+                ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
         const data = await res.json();
@@ -73,7 +74,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 model: 'openai',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.7
+                temperature: 0.85,
+                jsonMode: jsonMode
             })
         });
         if (response.ok) {
@@ -227,435 +229,7 @@ function getUnitProximity(unitName, city) {
     const kmRounded = Math.max(1.5, Math.round(dist * 10) / 10);
     const secCalc = Math.max(20, Math.round(kmRounded * 4.5));
 
-    return { sec: secCalc, km: `${kmRounded.toFixed(1)} km` };
-}
-
-function calculateTravelTimeSeconds(unitName, city) {
-    return getUnitProximity(unitName, city).sec;
-}
-
-function autoSelectJRGByCity(city) {
-    const c = (city || "").trim().toLowerCase();
-    const jrgVal = (c === "rumia" || c === "reda" || c === "bojano" || c === "kielno") ? "JRG 2 Rumia" : "JRG 1 Wejherowo";
-    document.getElementById('inp-ev-jrg').value = jrgVal;
-    document.getElementById('inp-ev-lead').value = jrgVal;
-    document.getElementById('inp-ev-area').value = jrgVal;
-}
-
-const streetNames = ["Gdańska", "Sobieskiego", "Zamkowa", "Leśna", "Szkolna", "Przemysłowa", "Długa", "Kwiatowa", "Słoneczna", "Łąkowa", "Krótka", "Mickiewicza", "Polna", "Ogrodowa", "Kaszubska", "Morska", "Kolejowa", "Parkowa", "Lipowa", "Brzozowa"];
-
-const eventTemplatesPool = [
-    { category: "bus_stop", type: "P", subtype: "P - Śmietniska, wysypiska", desc: "Zgłoszenie pożaru śmietnika w wiacie przystankowej. Zagrożenie dla oczekujących pasażerów." },
-    { category: "residential", type: "P", subtype: "P - Obiekty mieszkalne", desc: "Ogień na balkonie w budynku wielorodzinnym. Widoczne płomienie i duże zadymienie." },
-    { category: "industry", type: "P", subtype: "P - Obiekty produkcyjne, instalacje technologiczne", desc: "Alarm pożarowy z systemu SSP w zakładzie przemysłowym. Widoczny dym z dachu hali." },
-    { category: "industry", type: "P", subtype: "P - Obiekty magazynowe, place składowe", desc: "Pożar składowiska palet i materiałów izolacyjnych na placu zewnętrznym zakładu." },
-    { category: "residential", type: "P", subtype: "P - Obiekty mieszkalne", desc: "Zgłoszenie zadymienia na klatce schodowej w budynku mieszkalnym. Domownicy ewakuowani na zewnątrz." },
-    { category: "residential", type: "P", subtype: "P - Inne pożary", desc: "Pożar sadzy w przewodzie kominowym w budynku jednorodzinnym. Iskry wydobywające się z komina." },
-    { category: "industry", type: "P", subtype: "P - Obiekty gospodarcze i inne rolnicze", desc: "Pożar w budynku gospodarczym – zapłon składowanej słomy i sprzętu rolniczego." },
-    { category: "bus_stop", type: "P", subtype: "P - Środki transportu drogowego (np. autobus)", desc: "Pożar w komorze silnika samochodu osobowego podczas jazdy. Kierowca ewakuowany." },
-    { category: "residential", type: "P", subtype: "P - Trawy, torfowiska, lasy, pola, stogi", desc: "Szybko rozprzestrzeniający się pożar nieużytków rolnych i suchej trawy blisko lasu." },
-    { category: "industry", type: "P", subtype: "P - Instytucje, obiekty użyteczności publicznej", desc: "Zgłoszenie zadymienia w piwnicy budynku użyteczności publicznej (szkoła/urząd)." },
-    { category: "bus_stop", type: "MZ", subtype: "MZ - Zwierzęta", desc: "Niebezpieczne gniazdo os / szerszeni pod dachem budynku użyteczności publicznej." },
-    { category: "road", type: "MZ", subtype: "MZ - Wypadek", desc: "Zderzenie czołowe dwóch samochodów osobowych. Zablokowany jeden pas ruchu, wyciek płynów." },
-    { category: "road", type: "MZ", subtype: "MZ - Chemiczne", desc: "Duża plama oleju napędowego na jezdni na odcinku kilkudziesięciu metrów." },
-    { category: "residential", type: "MZ", subtype: "MZ - Pomoc w otwarciu mieszkania, podejrzenie zgonu", desc: "Brak kontaktu ze starszą osobą w mieszkaniu. Wezwanie od sąsiadów i ZRM." },
-    { category: "road", type: "MZ", subtype: "MZ - Kolizja", desc: "Kolizja trzech aut na skrzyżowaniu. Uszkodzone barierki ochronne, brak rannych." },
-    { category: "residential", type: "MZ", subtype: "MZ - Budowlane", desc: "Zagrożenie oderwaniem się elementów blachy z dachu kamienicy po silnym wietrze." },
-    { category: "road", type: "MZ", subtype: "MZ - Atmosferyczne", desc: "Drzewo powalone na pas jezdni tamujące całkowicie ruch w obu kierunkach." },
-    { category: "residential", type: "MZ", subtype: "MZ - Pomoc innym służbom", desc: "Pomoc zespołowi ratownictwa medycznego w zniesieniu ciężkiego pacjenta z mieszkania." },
-    { category: "residential", type: "MZ", subtype: "MZ - Poszukiwanie osób zaginionych", desc: "Zgłoszenie zaginięcia starszej osoby z zaburzeniami pamięci w rejonie kompleksu leśnego." },
-    { category: "road", type: "MZ", subtype: "MZ - Wodne", desc: "Zgłoszenie podtopienia piwnic w budynku mieszkalnym po intensywnych opadach deszczu." }
-];
-
-const callersList = [
-    "Jan Kowalski (tel. 601-234-567)",
-    "Krystyna Lewandowska (tel. 502-888-112)",
-    "Piotr Wiśniewski (tel. 791-332-100)",
-    "Ochrona Obiektu (tel. 58-671-00-22)",
-    "Dyspozytor CPR / Świadek (tel. 605-112-998)"
-];
-
-const subtypesData = {
-    "P": [
-        "P - Inne pożary", "P - Instytucje, obiekty użyteczności publicznej", "P - Obiekty gospodarcze i inne rolnicze",
-        "P - Obiekty magazynowe, place składowe", "P - Obiekty mieszkalne", "P - Obiekty produkcyjne, instalacje technologiczne",
-        "P - Śmietniska, wysypiska", "P - Środki transportu drogowego (np. autobus)", "P - Środki transportu kolejowego",
-        "P - Środki transportu lotniczego", "P - Środki transportu wodnego", "P - Trawy, torfowiska, lasy, pola, stogi"
-    ],
-    "MZ": [
-        "Inne MZ", "MZ - Atmosferyczne", "MZ - Budowlane", "MZ - Chemiczne", "MZ - Drogowe", "MZ - Kolejowe",
-        "MZ - Kolizja", "MZ - Lotnicze", "MZ - Wodne", "MZ - Palenie ognisk w miejscach niedozwolonych",
-        "MZ - Podejrzenie podłożenia ładunku", "MZ - Pomoc innym służbom", "MZ - Pomoc Policji", "MZ - Pomoc PRM",
-        "MZ - Pomoc w otwarciu mieszkania, podejrzenie zgonu", "MZ - Poszukiwanie osób zaginionych", "MZ - Próba samobójcza",
-        "MZ - Sanitarno-epidemiologiczne", "MZ - Topienie się", "MZ - Wypadek", "MZ - Zabezpieczenie ładunku", "MZ - Zwierzęta"
-    ],
-    "AF": ["AF - Fałszywy z instalacji", "AF - Złośliwy", "AF - W dobrej wierze"],
-    "CW": ["CW - Zagrożenie chemiczne", "CW - Zagrożenie ekologiczne"],
-    "WG": ["WG - Wybuch gazu", "WG - Inne zagrożenie wybuchem"],
-    "BL": ["BL - Budynek zagrożony zawaleniem"],
-    "ZPR": ["ZPR - Zagrożenie promieniotwórcze"],
-    "PZR": []
-};
-
-let unitsPSP = [
-    {
-        name: "JRG 1 Wejherowo",
-        vehicles: [
-            { id: "551[G]21", name: "GBA 2,5/16 Volvo FL280/Bocar", status: "green", obsada: 6 },
-            { id: "551[G]25", name: "GCBA 5,4/25 Man TGM 18.320/Bocar", status: "green", obsada: 4 },
-            { id: "551[G]26", name: "GCBA 9,5/60 Man TGS 26.440/Stolarczyk", status: "green", obsada: 3 },
-            { id: "551[G]53", name: "SH-40 Volvo FM12/Bumar", status: "green", obsada: 2 },
-            { id: "551[G]90", name: "SLRr Ford Ranger", status: "green", obsada: 2 },
-            { id: "551[G]P05", name: "Przyczepa EKO", status: "green", obsada: 0 },
-            { id: "551[G]Ł01", name: "Przyczepa z pontonem", status: "green", obsada: 0 },
-            { id: "551[G]Ł02", name: "Przyczepa z łodzią hybrydową", status: "green", obsada: 0 }
-        ]
-    },
-    {
-        name: "JRG 2 Rumia",
-        vehicles: [
-            { id: "552[G]21", name: "GBAPr 2,5/28/250 MB Atego/Bocar", status: "green", obsada: 4 },
-            { id: "552[G]25", name: "GCBA 5/32 Scania P410/WISS", status: "green", obsada: 4 },
-            { id: "552[G]51", name: "SD-32 Mercedes Atego/Rosenbauer", status: "green", obsada: 2 },
-            { id: "552[G]72", name: "SRWys Mercedes Atego/Bocar", status: "green", obsada: 3 },
-            { id: "552[G]90", name: "SLRr Isuzu D-Max", status: "green", obsada: 2 },
-            { id: "552[G]Q01", name: "Quad CF Moto", status: "green", obsada: 1 }
-        ]
-    },
-    {
-        name: "KP PSP Wejherowo",
-        vehicles: [
-            { id: "550[G]81", name: "SLKw VW T6", status: "green", obsada: 2 },
-            { id: "550[G]90", name: "SLOp Skoda Octavia", status: "green", obsada: 1 },
-            { id: "550[G]92", name: "SLOp Skoda Yeti", status: "green", obsada: 1 }
-        ]
-    }
-];
-
-let unitsOSP = [
-    {
-        name: ".OSP KSRG Bolszewo",
-        vehicles: [
-            { id: "559[G]56", name: "GBA 2,5/16 Star 12.185/Stolarczyk", status: "green", obsada: 6 },
-            { id: "559[G]57", name: "SLRr Toyota Hilux", status: "green", obsada: 3 },
-            { id: "559[G]58", name: "GCBA 5/32 MB Atego/Mototruck", status: "green", obsada: 4 },
-            { id: "559[G]59", name: "SLKw Ford Transit/Stolarczyk", status: "green", obsada: 2 },
-            { id: "559[G]Q01", name: "Quad CF MOTO 500-2A", status: "green", obsada: 1 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Gościcino",
-        vehicles: [
-            { id: "559[G]63", name: "GBA 2,5/16 Volvo/Bocar", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Wejherowo",
-        vehicles: [
-            { id: "559[G]66", name: "GBA Scania", status: "green", obsada: 6 },
-            { id: "559[G]67", name: "SLRr Nissan Navara", status: "green", obsada: 3 },
-            { id: "559[G]68", name: "GBA 2,5/24 Renault Midlum/WISS", status: "green", obsada: 6 },
-            { id: "559[G]69", name: "SLKw Mitsubishi Canter/Szczęśniak", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Reda",
-        vehicles: [
-            { id: "559[G]41", name: "GBA 2,5/16 MB Atego/Mototruck", status: "green", obsada: 6 },
-            { id: "559[G]42", name: "GBA 2,5/16 Star 12.185/Stolarczyk", status: "green", obsada: 6 },
-            { id: "559[G]43", name: "GCBA Scania", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Luzino",
-        vehicles: [
-            { id: "559[G]26", name: "GBA 3,5/25 Man TGM/Mototruck", status: "green", obsada: 6 },
-            { id: "559[G]27", name: "GCBA 5/32 Man TGM/Mototruck", status: "green", obsada: 6 },
-            { id: "559[G]28", name: "SLRt Ford Transit/Stolarczyk", status: "green", obsada: 3 },
-            { id: "559[G]29", name: "SLOp Toyota Avensis", status: "green", obsada: 2 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Zelewo",
-        vehicles: [
-            { id: "559[G]87", name: "GBA Man TGM/Mototruck", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Szemud",
-        vehicles: [
-            { id: "559[G]51", name: "GBA 2,5/25 Man 13.290/Stolarczyk", status: "green", obsada: 6 },
-            { id: "559[G]52", name: "GBA 2,5/16 Man TGL/Stolarczyk", status: "green", obsada: 6 },
-            { id: "559[G]53", name: "GCBA 5/32 Scania P400/WISS", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Kielno",
-        vehicles: [
-            { id: "559[G]46", name: "GCBA 5/42 MB Axor/Mototruck", status: "green", obsada: 6 },
-            { id: "559[G]47", name: "GCBA 8,3/60 MAN KAT.1 Buffalo/Rosenbauer", status: "green", obsada: 3 },
-            { id: "559[G]48", name: "GBA 3/24 Man TGM/Mototruck", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Bojano",
-        vehicles: [
-            { id: "559[G]76", name: "GCBA 5/32 Man TGM/Stolarczyk", status: "green", obsada: 6 },
-            { id: "559[G]77", name: "GBA Man TGM/Stolarczyk", status: "green", obsada: 6 },
-            { id: "559[G]78", name: "SLRr Nissan Navara", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Choczewo",
-        vehicles: [
-            { id: "559[G]01", name: "GCBA 5/32 Man TGM 18.340/Mototruck", status: "green", obsada: 6 },
-            { id: "559[G]02", name: "GBA 2,5/16 Star 244/JZS", status: "green", obsada: 6 },
-            { id: "559[G]03", name: "SLRt Ford Transit/Bocar", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Słajszewo",
-        vehicles: [
-            { id: "559[G]81", name: "GBA 4,5/30 Man TGM 18.340/Moto-Truck", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Sasino",
-        vehicles: [
-            { id: "559[G]91", name: "GBA Volvo FL280/Bocar", status: "green", obsada: 6 },
-            { id: "559[G]92", name: "SLRr Ford Ranger", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Gniewino",
-        vehicles: [
-            { id: "559[G]06", name: "GBA 2,5/25 Man TGM/Stolarczyk", status: "green", obsada: 6 },
-            { id: "559[G]07", name: "SLKw Ford Transit/Stolarczyk", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Nadole",
-        vehicles: [
-            { id: "559[G]11", name: "GCBA 5/32 Volvo FMX/Bocar", status: "green", obsada: 6 },
-            { id: "559[G]12", name: "SLRt Renault Master/Pasikonik", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Kostkowo",
-        vehicles: [
-            { id: "559[G]71", name: "GBA 2/24 Renault Midlum/Wawrzaszek", status: "green", obsada: 6 },
-            { id: "559[G]72", name: "GCBA 7/42 Scania P450/Szczęśniak", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Linia",
-        vehicles: [
-            { id: "559[G]16", name: "GBA 2,5/16 Volvo FL280/Bocar", status: "green", obsada: 6 },
-            { id: "559[G]17", name: "GCBA 5/35 Man TGM/Stolarczyk", status: "green", obsada: 6 },
-            { id: "559[G]18", name: "SLRt Lublin III/FSO", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Strzepcz",
-        vehicles: [
-            { id: "559[G]21", name: "GBA 2,5/16 MB Atego/Mototruck", status: "green", obsada: 6 },
-            { id: "559[G]22", name: "SLRt Ford Transit/Stolarczyk", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Bożepole Wielkie",
-        vehicles: [
-            { id: "559[G]31", name: "GBA 2,5/16 MB Atego/Mototruck", status: "green", obsada: 6 },
-            { id: "559[G]32", name: "SLRt Iveco Daily/PS", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Łęczyce",
-        vehicles: [
-            { id: "559[G]36", name: "GCBA 5/32 Man TGM/Mototruck", status: "green", obsada: 6 },
-            { id: "559[G]37", name: "GBA Man TGM", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: ".OSP KSRG Rozłazino",
-        vehicles: [
-            { id: "559[G]96", name: "GBA Volvo FL280/Bocar", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Gowino",
-        vehicles: [
-            { id: "557[G]66", name: "GBA 4,5/32 Scania P370/Szczęśniak", status: "green", obsada: 6 },
-            { id: "557[G]67", name: "GLBA Iveco Daily/Bocar", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Orle",
-        vehicles: [
-            { id: "557[G]76", name: "GCBA 5/37 MB Atego/Szczęśniak", status: "green", obsada: 6 },
-            { id: "557[G]77", name: "SLRr Mitsubishi L200", status: "green", obsada: 3 }
-        ]
-    },
-    {
-        name: "OSP Kniewo",
-        vehicles: [
-            { id: "557[G]71", name: "GBA Mercedes Benz 1124/Ziegler", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Zbychowo",
-        vehicles: [
-            { id: "557[G]81", name: "GBA 2,5/16 MB Atego/Mototruck", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Gniewowo",
-        vehicles: [
-            { id: "557[G]86", name: "GBA 2/20 Renault Midliner M210/Wawrzaszek", status: "green", obsada: 6 },
-            { id: "557[G]87", name: "GBM 2,5/8 Star 244/JZS", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Góra",
-        vehicles: [
-            { id: "557[G]91", name: "GBA Iveco Eurocargo/Sides", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Nowy Dwór Wejherowski",
-        vehicles: [
-            { id: "558[G]01", name: "GLM 8 Volkswagen T4", status: "green", obsada: 6 },
-            { id: "558[G]02", name: "GLBA Iveco Daily/Szczęśniak", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Rybno",
-        vehicles: [
-            { id: "557[G]11", name: "GBA 2,5/16 Mercedes Atego/Mototruck", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Opalino",
-        vehicles: [
-            { id: "557[G]96", name: "GCBA 5/24 Jelcz 422/JZS", status: "green", obsada: 4 }
-        ]
-    },
-    {
-        name: "OSP Kopalino",
-        vehicles: [
-            { id: "557[G]01", name: "GLM 8 Ford Transit/Stolarczyk", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Lewino",
-        vehicles: [
-            { id: "557[G]21", name: "GBA 2,5/16 Mercedes 1619", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Milwino",
-        vehicles: [
-            { id: "557[G]26", name: "GBA 2,5/16 Renault Midlum/Camiva", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Kaczkowo",
-        vehicles: [
-            { id: "557[G]36", name: "GBA Renault Range D/Mototruck", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Częstkowo",
-        vehicles: [
-            { id: "557[G]51", name: "GCBA Scania", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Łebno",
-        vehicles: [
-            { id: "557[G]56", name: "GBA 2,5/16 Mercedes Atego/Bonex", status: "green", obsada: 6 }
-        ]
-    },
-    {
-        name: "OSP Przetoczyno",
-        vehicles: [
-            { id: "557[G]61", name: "GBA 2,5/16 Magirus", status: "green", obsada: 6 }
-        ]
-    }
-];
-
-// --- LOSOWANIE OBSADY DLA OSP (OD 3 DO 6 OSÓB) ---
-unitsOSP.forEach(u => {
-    u.vehicles.forEach(v => {
-        v.obsada = Math.floor(Math.random() * 4) + 3; // Generuje losowo 3, 4, 5 lub 6
-    });
-});
-
-let events = [];
-let activeEditingId = null;
-let selectedEvIdForRadio = null;
-let selectedVehicles = [];
-let servicesState = { prm: false, police: false };
-let currentCPRData = null;
-let cprCounter = 101;
-let currentRadioVehicle = null;
-
-// --- MECHANIZM PRZESUWANIA (POSITION: FIXED) ---
-function makeDraggable(elmnt, header) {
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    header.onmousedown = dragMouseDown;
-
-    function dragMouseDown(e) {
-        if (e.target.closest('.modal-close, .modal-min')) return;
-        e.preventDefault();
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        const rect = elmnt.getBoundingClientRect();
-        elmnt.style.position = 'fixed';
-        elmnt.style.left = rect.left + 'px';
-        elmnt.style.top = rect.top + 'px';
-        elmnt.style.margin = '0';
-        elmnt.style.right = 'auto';
-        elmnt.style.bottom = 'auto';
-        document.onmouseup = closeDragElement;
-        document.onmousemove = elementDrag;
-    }
-
-    function elementDrag(e) {
-        e.preventDefault();
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        pos3 = e.clientX;
-        pos4 = e.clientY;
-        elmnt.style.top = (elmnt.offsetTop - pos2) + 'px';
-        elmnt.style.left = (elmnt.offsetLeft - pos1) + 'px';
-    }
-
-    function closeDragElement() {
-        document.onmouseup = null;
-        document.onmousemove = null;
-    }
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    const radioModal = document.getElementById('radio-modal');
-    if (radioModal) makeDraggable(radioModal, radioModal.querySelector('.modal-header'));
-
-    const eventModal = document.querySelector('#modal-event .modal-window');
-    if (eventModal) makeDraggable(eventModal, document.querySelector('#modal-event .modal-header'));
-
-    const cprModal = document.getElementById('cpr-modal');
-    if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
-});
-
-// --- MELDUNEK Z DOJAZDU (SZYBKI) ---
-async function triggerArrivalRadioReport(ev, vehicle) {
-    currentRadioVehicle = vehicle.id;
-    selectedEvIdForRadio = ev.id;
-    if (!ev.radioLogs) ev.radioLogs = [];
-    openRadioForEvent(ev.id);
-
-    const sysPrompt = `Jesteś dowódcą (${vehicle.id}). Odpowiedz ultra-krótko (max 1 zdanie), żargonem strażackim.`;
+    return { sec: secCalc, km: `${kmRounded.toFixed(1)} km` }; }  function calculateTravelTimeSeconds(unitName, city) { return getUnitProximity(unitName, city).sec; }  function autoSelectJRGByCity(city) { const c = (city \vert{}\vert{} "").trim().toLowerCase(); const jrgVal = (c === "rumia" \vert{}\vert{} c === "reda" \vert{}\vert{} c === "bojano" \vert{}\vert{} c === "kielno") ? "JRG 2 Rumia" : "JRG 1 Wejherowo"; document.getElementById('inp-ev-jrg').value = jrgVal; document.getElementById('inp-ev-lead').value = jrgVal; document.getElementById('inp-ev-area').value = jrgVal; }  const streetNames = ["Gdańska", "Sobieskiego", "Zamkowa", "Leśna", "Szkolna", "Przemysłowa", "Długa", "Kwiatowa", "Słoneczna", "Łąkowa", "Krótka", "Mickiewicza", "Polna", "Ogrodowa", "Kaszubska", "Morska", "Kolejowa", "Parkowa", "Lipowa", "Brzozowa"];  const subtypesData = { "P": [ "P - Inne pożary", "P - Instytucje, obiekty użyteczności publicznej", "P - Obiekty gospodarcze i inne rolnicze", "P - Obiekty magazynowe, place składowe", "P - Obiekty mieszkalne", "P - Obiekty produkcyjne, instalacje technologiczne", "P - Śmietniska, wysypiska", "P - Środki transportu drogowego (np. autobus)", "P - Środki transportu kolejowego", "P - Środki transportu lotniczego", "P - Środki transportu wodnego", "P - Trawy, torfowiska, lasy, pola, stogi" ], "MZ": [ "Inne MZ", "MZ - Atmosferyczne", "MZ - Budowlane", "MZ - Chemiczne", "MZ - Drogowe", "MZ - Kolejowe", "MZ - Kolizja", "MZ - Lotnicze", "MZ - Wodne", "MZ - Palenie ognisk w miejscach niedozwolonych", "MZ - Podejrzenie podłożenia ładunku", "MZ - Pomoc innym służbom", "MZ - Pomoc Policji", "MZ - Pomoc PRM", "MZ - Pomoc w otwarciu mieszkania, podejrzenie zgonu", "MZ - Poszukiwanie osób zaginionych", "MZ - Próba samobójcza", "MZ - Sanitarno-epidemiologiczne", "MZ - Topienie się", "MZ - Wypadek", "MZ - Zabezpieczenie ładunku", "MZ - Zwierzęta" ], "AF": ["AF - Fałszywy z instalacji", "AF - Złośliwy", "AF - W dobrej wierze"], "CW": ["CW - Zagrożenie chemiczne", "CW - Zagrożenie ekologiczne"], "WG": ["WG - Wybuch gazu", "WG - Inne zagrożenie wybuchem"], "BL": ["BL - Budynek zagrożony zawaleniem"], "ZPR": ["ZPR - Zagrożenie promieniotwórcze"], "PZR": [] };  let unitsPSP = [ { name: "JRG 1 Wejherowo", vehicles: [ { id: "551[G]21", name: "GBA 2,5/16 Volvo FL280/Bocar", status: "green", obsada: 6 }, { id: "551[G]25", name: "GCBA 5,4/25 Man TGM 18.320/Bocar", status: "green", obsada: 4 }, { id: "551[G]26", name: "GCBA 9,5/60 Man TGS 26.440/Stolarczyk", status: "green", obsada: 3 }, { id: "551[G]53", name: "SH-40 Volvo FM12/Bumar", status: "green", obsada: 2 }, { id: "551[G]90", name: "SLRr Ford Ranger", status: "green", obsada: 2 }, { id: "551[G]P05", name: "Przyczepa EKO", status: "green", obsada: 0 }, { id: "551[G]Ł01", name: "Przyczepa z pontonem", status: "green", obsada: 0 }, { id: "551[G]Ł02", name: "Przyczepa z łodzią hybrydową", status: "green", obsada: 0 } ] }, { name: "JRG 2 Rumia", vehicles: [ { id: "552[G]21", name: "GBAPr 2,5/28/250 MB Atego/Bocar", status: "green", obsada: 4 }, { id: "552[G]25", name: "GCBA 5/32 Scania P410/WISS", status: "green", obsada: 4 }, { id: "552[G]51", name: "SD-32 Mercedes Atego/Rosenbauer", status: "green", obsada: 2 }, { id: "552[G]72", name: "SRWys Mercedes Atego/Bocar", status: "green", obsada: 3 }, { id: "552[G]90", name: "SLRr Isuzu D-Max", status: "green", obsada: 2 }, { id: "552[G]Q01", name: "Quad CF Moto", status: "green", obsada: 1 } ] }, { name: "KP PSP Wejherowo", vehicles: [ { id: "550[G]81", name: "SLKw VW T6", status: "green", obsada: 2 }, { id: "550[G]90", name: "SLOp Skoda Octavia", status: "green", obsada: 1 }, { id: "550[G]92", name: "SLOp Skoda Yeti", status: "green", obsada: 1 } ] } ];  let unitsOSP = [ { name: ".OSP KSRG Bolszewo", vehicles: [ { id: "559[G]56", name: "GBA 2,5/16 Star 12.185/Stolarczyk", status: "green", obsada: 6 }, { id: "559[G]57", name: "SLRr Toyota Hilux", status: "green", obsada: 3 }, { id: "559[G]58", name: "GCBA 5/32 MB Atego/Mototruck", status: "green", obsada: 4 }, { id: "559[G]59", name: "SLKw Ford Transit/Stolarczyk", status: "green", obsada: 2 }, { id: "559[G]Q01", name: "Quad CF MOTO 500-2A", status: "green", obsada: 1 } ] }, { name: ".OSP KSRG Gościcino", vehicles: [ { id: "559[G]63", name: "GBA 2,5/16 Volvo/Bocar", status: "green", obsada: 6 } ] }, { name: ".OSP KSRG Wejherowo", vehicles: [ { id: "559[G]66", name: "GBA Scania", status: "green", obsada: 6 }, { id: "559[G]67", name: "SLRr Nissan Navara", status: "green", obsada: 3 }, { id: "559[G]68", name: "GBA 2,5/24 Renault Midlum/WISS", status: "green", obsada: 6 }, { id: "559[G]69", name: "SLKw Mitsubishi Canter/Szczęśniak", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Reda", vehicles: [ { id: "559[G]41", name: "GBA 2,5/16 MB Atego/Mototruck", status: "green", obsada: 6 }, { id: "559[G]42", name: "GBA 2,5/16 Star 12.185/Stolarczyk", status: "green", obsada: 6 }, { id: "559[G]43", name: "GCBA Scania", status: "green", obsada: 6 } ] }, { name: ".OSP KSRG Luzino", vehicles: [ { id: "559[G]26", name: "GBA 3,5/25 Man TGM/Mototruck", status: "green", obsada: 6 }, { id: "559[G]27", name: "GCBA 5/32 Man TGM/Mototruck", status: "green", obsada: 6 }, { id: "559[G]28", name: "SLRt Ford Transit/Stolarczyk", status: "green", obsada: 3 }, { id: "559[G]29", name: "SLOp Toyota Avensis", status: "green", obsada: 2 } ] }, { name: ".OSP KSRG Zelewo", vehicles: [ { id: "559[G]87", name: "GBA Man TGM/Mototruck", status: "green", obsada: 6 } ] }, { name: ".OSP KSRG Szemud", vehicles: [ { id: "559[G]51", name: "GBA 2,5/25 Man 13.290/Stolarczyk", status: "green", obsada: 6 }, { id: "559[G]52", name: "GBA 2,5/16 Man TGL/Stolarczyk", status: "green", obsada: 6 }, { id: "559[G]53", name: "GCBA 5/32 Scania P400/WISS", status: "green", obsada: 6 } ] }, { name: ".OSP KSRG Kielno", vehicles: [ { id: "559[G]46", name: "GCBA 5/42 MB Axor/Mototruck", status: "green", obsada: 6 }, { id: "559[G]47", name: "GCBA 8,3/60 MAN KAT.1 Buffalo/Rosenbauer", status: "green", obsada: 3 }, { id: "559[G]48", name: "GBA 3/24 Man TGM/Mototruck", status: "green", obsada: 6 } ] }, { name: ".OSP KSRG Bojano", vehicles: [ { id: "559[G]76", name: "GCBA 5/32 Man TGM/Stolarczyk", status: "green", obsada: 6 }, { id: "559[G]77", name: "GBA Man TGM/Stolarczyk", status: "green", obsada: 6 }, { id: "559[G]78", name: "SLRr Nissan Navara", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Choczewo", vehicles: [ { id: "559[G]01", name: "GCBA 5/32 Man TGM 18.340/Mototruck", status: "green", obsada: 6 }, { id: "559[G]02", name: "GBA 2,5/16 Star 244/JZS", status: "green", obsada: 6 }, { id: "559[G]03", name: "SLRt Ford Transit/Bocar", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Słajszewo", vehicles: [ { id: "559[G]81", name: "GBA 4,5/30 Man TGM 18.340/Moto-Truck", status: "green", obsada: 6 } ] }, { name: ".OSP KSRG Sasino", vehicles: [ { id: "559[G]91", name: "GBA Volvo FL280/Bocar", status: "green", obsada: 6 }, { id: "559[G]92", name: "SLRr Ford Ranger", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Gniewino", vehicles: [ { id: "559[G]06", name: "GBA 2,5/25 Man TGM/Stolarczyk", status: "green", obsada: 6 }, { id: "559[G]07", name: "SLKw Ford Transit/Stolarczyk", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Nadole", vehicles: [ { id: "559[G]11", name: "GCBA 5/32 Volvo FMX/Bocar", status: "green", obsada: 6 }, { id: "559[G]12", name: "SLRt Renault Master/Pasikonik", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Kostkowo", vehicles: [ { id: "559[G]71", name: "GBA 2/24 Renault Midlum/Wawrzaszek", status: "green", obsada: 6 }, { id: "559[G]72", name: "GCBA 7/42 Scania P450/Szczęśniak", status: "green", obsada: 6 } ] }, { name: ".OSP KSRG Linia", vehicles: [ { id: "559[G]16", name: "GBA 2,5/16 Volvo FL280/Bocar", status: "green", obsada: 6 }, { id: "559[G]17", name: "GCBA 5/35 Man TGM/Stolarczyk", status: "green", obsada: 6 }, { id: "559[G]18", name: "SLRt Lublin III/FSO", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Strzepcz", vehicles: [ { id: "559[G]21", name: "GBA 2,5/16 MB Atego/Mototruck", status: "green", obsada: 6 }, { id: "559[G]22", name: "SLRt Ford Transit/Stolarczyk", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Bożepole Wielkie", vehicles: [ { id: "559[G]31", name: "GBA 2,5/16 MB Atego/Mototruck", status: "green", obsada: 6 }, { id: "559[G]32", name: "SLRt Iveco Daily/PS", status: "green", obsada: 3 } ] }, { name: ".OSP KSRG Łęczyce", vehicles: [ { id: "559[G]36", name: "GCBA 5/32 Man TGM/Mototruck", status: "green", obsada: 6 }, { id: "559[G]37", name: "GBA Man TGM", status: "green", obsada: 6 } ] }, { name: ".OSP KSRG Rozłazino", vehicles: [ { id: "559[G]96", name: "GBA Volvo FL280/Bocar", status: "green", obsada: 6 } ] }, { name: "OSP Gowino", vehicles: [ { id: "557[G]66", name: "GBA 4,5/32 Scania P370/Szczęśniak", status: "green", obsada: 6 }, { id: "557[G]67", name: "GLBA Iveco Daily/Bocar", status: "green", obsada: 6 } ] }, { name: "OSP Orle", vehicles: [ { id: "557[G]76", name: "GCBA 5/37 MB Atego/Szczęśniak", status: "green", obsada: 6 }, { id: "557[G]77", name: "SLRr Mitsubishi L200", status: "green", obsada: 3 } ] }, { name: "OSP Kniewo", vehicles: [ { id: "557[G]71", name: "GBA Mercedes Benz 1124/Ziegler", status: "green", obsada: 6 } ] }, { name: "OSP Zbychowo", vehicles: [ { id: "557[G]81", name: "GBA 2,5/16 MB Atego/Mototruck", status: "green", obsada: 6 } ] }, { name: "OSP Gniewowo", vehicles: [ { id: "557[G]86", name: "GBA 2/20 Renault Midliner M210/Wawrzaszek", status: "green", obsada: 6 }, { id: "557[G]87", name: "GBM 2,5/8 Star 244/JZS", status: "green", obsada: 6 } ] }, { name: "OSP Góra", vehicles: [ { id: "557[G]91", name: "GBA Iveco Eurocargo/Sides", status: "green", obsada: 6 } ] }, { name: "OSP Nowy Dwór Wejherowski", vehicles: [ { id: "558[G]01", name: "GLM 8 Volkswagen T4", status: "green", obsada: 6 }, { id: "558[G]02", name: "GLBA Iveco Daily/Szczęśniak", status: "green", obsada: 6 } ] }, { name: "OSP Rybno", vehicles: [ { id: "557[G]11", name: "GBA 2,5/16 Mercedes Atego/Mototruck", status: "green", obsada: 6 } ] }, { name: "OSP Opalino", vehicles: [ { id: "557[G]96", name: "GCBA 5/24 Jelcz 422/JZS", status: "green", obsada: 4 } ] }, { name: "OSP Kopalino", vehicles: [ { id: "557[G]01", name: "GLM 8 Ford Transit/Stolarczyk", status: "green", obsada: 6 } ] }, { name: "OSP Lewino", vehicles: [ { id: "557[G]21", name: "GBA 2,5/16 Mercedes 1619", status: "green", obsada: 6 } ] }, { name: "OSP Milwino", vehicles: [ { id: "557[G]26", name: "GBA 2,5/16 Renault Midlum/Camiva", status: "green", obsada: 6 } ] }, { name: "OSP Kaczkowo", vehicles: [ { id: "557[G]36", name: "GBA Renault Range D/Mototruck", status: "green", obsada: 6 } ] }, { name: "OSP Częstkowo", vehicles: [ { id: "557[G]51", name: "GCBA Scania", status: "green", obsada: 6 } ] }, { name: "OSP Łebno", vehicles: [ { id: "557[G]56", name: "GBA 2,5/16 Mercedes Atego/Bonex", status: "green", obsada: 6 } ] }, { name: "OSP Przetoczyno", vehicles: [ { id: "557[G]61", name: "GBA 2,5/16 Magirus", status: "green", obsada: 6 } ] } ];  // --- LOSOWANIE OBSADY DLA OSP (OD 3 DO 6 OSÓB) --- unitsOSP.forEach(u => { u.vehicles.forEach(v => { v.obsada = Math.floor(Math.random() * 4) + 3; }); });  let events = []; let activeEditingId = null; let selectedEvIdForRadio = null; let selectedVehicles = []; let servicesState = { prm: false, police: false }; let currentCPRData = null; let cprCounter = 101; let currentRadioVehicle = null;  // --- MECHANIZM PRZESUWANIA (POSITION: FIXED) --- function makeDraggable(elmnt, header) { let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0; header.onmousedown = dragMouseDown;  function dragMouseDown(e) { if (e.target.closest('.modal-close, .modal-min')) return; e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY; const rect = elmnt.getBoundingClientRect(); elmnt.style.position = 'fixed'; elmnt.style.left = rect.left + 'px'; elmnt.style.top = rect.top + 'px'; elmnt.style.margin = '0'; elmnt.style.right = 'auto'; elmnt.style.bottom = 'auto'; document.onmouseup = closeDragElement; document.onmousemove = elementDrag; }  function elementDrag(e) { e.preventDefault(); pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY; pos3 = e.clientX; pos4 = e.clientY; elmnt.style.top = (elmnt.offsetTop - pos2) + 'px'; elmnt.style.left = (elmnt.offsetLeft - pos1) + 'px'; }  function closeDragElement() { document.onmouseup = null; document.onmousemove = null; } }  window.addEventListener('DOMContentLoaded', () => { const radioModal = document.getElementById('radio-modal'); if (radioModal) makeDraggable(radioModal, radioModal.querySelector('.modal-header'));  const eventModal = document.querySelector('#modal-event .modal-window'); if (eventModal) makeDraggable(eventModal, document.querySelector('#modal-event .modal-header'));  const cprModal = document.getElementById('cpr-modal'); if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header')); });  // --- MELDUNEK Z DOJAZDU (SZYBKI) --- async function triggerArrivalRadioReport(ev, vehicle) { currentRadioVehicle = vehicle.id; selectedEvIdForRadio = ev.id; if (!ev.radioLogs) ev.radioLogs = []; openRadioForEvent(ev.id);  const sysPrompt = `Jesteś dowódcą (${vehicle.id}). Odpowiedz ultra-krótko (max 1 zdanie), żargonem strażackim.`;
     const usrPrompt = `Dojechaliście do: ${ev.city}, ${ev.street}. Zgł.: "${ev.desc}". Napisz meldunek zaczynając od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ "Bez odbioru."`;
 
     let reportText = "";
@@ -711,11 +285,7 @@ async function sendRadioReply() {
     ev.radioLogs.push(userMsg);
 
     const chatBox = document.getElementById('radio-chat');
-    chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${currentRadioVehicle || 'KDR'} nadaje...</div>`;
-    input.value = '';
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-    const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}). Odpowiadaj ultra-krótko (1 zdanie), profesjonalnym żargonem strażackim. Zacznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i skończ "Bez odbioru."`;
+    chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${currentRadioVehicle \vert{}\vert{} 'KDR'} nadaje...</div>`; input.value = ''; chatBox.scrollTop = chatBox.scrollHeight;  const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}). Odpowiadaj ultra-krótko (1 zdanie), profesjonalnym żargonem strażackim. Zacznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i skończ "Bez odbioru."`;
 
     let aiReply = "";
     try {
@@ -728,7 +298,7 @@ async function sendRadioReply() {
     audioMotorola.currentTime = 0;
     audioMotorola.play().catch(e => {});
 
-    const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
+    const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle \vert{}\vert{} 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
     
     ev.radioLogs.push(respMsg);
     chatBox.innerHTML = ev.radioLogs.join('');
@@ -747,30 +317,56 @@ function minimizeRadio() {
     const bar = document.getElementById('minimized-bar');
     const item = document.createElement('div');
     item.className = 'minimized-item';
-    item.innerHTML = `📻 Radio (ID: ${selectedEvIdForRadio})`;
-    item.onclick = () => { openRadioForEvent(selectedEvIdForRadio); item.remove(); };
-    bar.appendChild(item);
-}
+    item.innerHTML = `📻 Radio (ID: ${selectedEvIdForRadio})`; item.onclick = () => { openRadioForEvent(selectedEvIdForRadio); item.remove(); }; bar.appendChild(item); }  // --- GENEROWANIE MISJI Przez AI (DYNAMICZNE, UNIKALNE ZDARZENIA) --- async function simulateIncomingCPR() { audioCpr.currentTime = 0; audioCpr.play().catch(e => {});  const newCprId = `WCPR-2026-${cprCounter++}`;
+    const randomTown = townsList[Math.floor(Math.random() * townsList.length)];
+    const chosenType = Math.random() < 0.5 ? "P" : "MZ";
+    const possibleSubtypes = subtypesData[chosenType];
+    const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
 
-// --- BŁYSKAWICZNE GENEROWANIE CPR (LOKALNE - 0 SEKUND OPÓŹNIENIA) ---
-function simulateIncomingCPR() {
-    audioCpr.currentTime = 0;
-    audioCpr.play().catch(e => {});
+    document.getElementById('cpr-id').innerText = newCprId;
+    document.getElementById('cpr-city').innerText = randomTown;
+    document.getElementById('cpr-street').innerText = "Trwa ustalanie lokalizacji...";
+    document.getElementById('cpr-type').innerText = `${chosenType} -${randomSubtype}`;
+    document.getElementById('cpr-caller').innerText = "Łączenie z operatorem 112...";
+    document.getElementById('cpr-desc').innerText = "🤖 AI generuje nową misję ratowniczą...";
+    document.getElementById('cpr-modal').style.display = 'flex';
 
-    const newCprId = `WCPR-2026-${cprCounter++}`;
-    const randomTpl = eventTemplatesPool[Math.floor(Math.random() * eventTemplatesPool.length)];
-    const chosenLoc = getRandomStreet(randomTpl.category);
-    const chosenCaller = callersList[Math.floor(Math.random() * callersList.length)];
+    const sysPrompt = `Jesteś systemem dyspozytorskim CPR 112. Wygeneruj realistyczne, unikalne zgłoszenie strażackie w formacie JSON (bez markdownu ```json):
+{
+  "street": "nazwa ulicy z nr lub obiekt w podanym mieście",
+  "caller": "Imię Nazwisko (tel. XXX-XXX-XXX)",
+  "desc": "Realistyczny, dynamiczny opis zgłoszenia od świadka (2-3 zdania)"
+}`;
+    const usrPrompt = `Miejscowość: ${randomTown}, Kategoria: ${chosenType}, Podrodzaj: ${randomSubtype}`;
 
-    currentCPRData = {
-        id: newCprId,
-        city: chosenLoc.city,
-        street: chosenLoc.street,
-        type: randomTpl.type,
-        subtype: randomTpl.subtype,
-        desc: randomTpl.desc,
-        caller: chosenCaller
-    };
+    try {
+        const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
+        const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
+        const cleaned = jsonMatch ? jsonMatch[0] : rawJson.replace(/```json|```/g, '').trim();
+        const aiEvent = JSON.parse(cleaned);
+
+        currentCPRData = {
+            id: newCprId,
+            city: randomTown,
+            street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 50) + 1}`,
+            type: chosenType,
+            subtype: randomSubtype,
+            desc: aiEvent.desc || "Zgłoszenie alarmowe przekazane z CPR.",
+            caller: aiEvent.caller || "Jan Kowalski (tel. 601-234-567)"
+        };
+    } catch (e) {
+        // Awaryjny zestaw w razie problemów z siecią
+        const stName = streetNames[Math.floor(Math.random() * streetNames.length)];
+        currentCPRData = {
+            id: newCprId,
+            city: randomTown,
+            street: `ul. ${stName} ${Math.floor(Math.random() * 50) + 1}`,
+            type: chosenType,
+            subtype: randomSubtype,
+            desc: `Zgłoszenie dotyczące zdarzenia typu ${randomSubtype} w miejscowości ${randomTown}. Wymagany pilny wyjazd służb ratunkowych.`,
+            caller: "Jan Kowalski (tel. 601-234-567)"
+        };
+    }
 
     document.getElementById('cpr-id').innerText = currentCPRData.id;
     document.getElementById('cpr-city').innerText = currentCPRData.city;
@@ -778,28 +374,6 @@ function simulateIncomingCPR() {
     document.getElementById('cpr-type').innerText = `${currentCPRData.type} - ${currentCPRData.subtype}`;
     document.getElementById('cpr-caller').innerText = currentCPRData.caller;
     document.getElementById('cpr-desc').innerText = currentCPRData.desc;
-    document.getElementById('cpr-modal').style.display = 'flex';
-}
-
-function getRandomStreet(category) {
-    const town = townsList[Math.floor(Math.random() * townsList.length)];
-    const stName = streetNames[Math.floor(Math.random() * streetNames.length)];
-    const num = Math.floor(Math.random() * 80) + 1;
-
-    if (category === "bus_stop") {
-        return { city: town, street: `Przystanek Autobusowy ul. ${stName}` };
-    } else if (category === "industry") {
-        const industries = [
-            { city: "Bolszewo", street: `Balex-Metal, ul. Wejherowska ${num}` },
-            { city: "Wejherowo", street: `Markisol Polska, ul. Fabryczna ${num}` },
-            { city: "Rumia", street: `Hala Magazynowa, ul. Przemysłowa ${num}` }
-        ];
-        return industries[Math.floor(Math.random() * industries.length)];
-    } else if (category === "residential") {
-        return { city: town, street: `ul. ${stName} ${num}` };
-    } else {
-        return { city: town, street: `ul. ${stName} ${num}` };
-    }
 }
 
 function closeCPR() { document.getElementById('cpr-modal').style.display = 'none'; }
@@ -827,9 +401,10 @@ function acceptCPRToEvent() {
 
     autoSelectJRGByCity(currentCPRData.city);
 
-    const radioP = document.querySelector('input[name="ev-type"][value="P"]');
+    const radioP = document.querySelector(`input[name="ev-type"][value="${currentCPRData.type}"]`);
     if (radioP) radioP.checked = true;
-    updateSubtypes('P');
+    updateSubtypes(currentCPRData.type);
+    document.getElementById('inp-ev-subtype').value = currentCPRData.subtype;
 
     document.getElementById('inp-caller-name').value = currentCPRData.caller.split(' ')[0] || '';
     document.getElementById('inp-caller-surname').value = currentCPRData.caller.split(' ')[1] || '';
@@ -884,7 +459,7 @@ function createUnitHTML(unit) {
         unit.vehicles.map(v => `
             <div class="vehicle-row">
                 <span class="status-dot ${v.status}"></span>
-                <span><b>${v.id}</b> - ${v.name}</span>
+                <span><b>${v.id}</b> - ${v.name} (Obsada: ${v.obsada})</span>
             </div>
         `).join('');
 
