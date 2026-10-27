@@ -670,10 +670,10 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-async function sendRadioReply() {
+// --- W PEŁNI UNIWERSALNA ROZMOWA RADIOWA Z AI ---
+async function sendRadioReply(customText = null) {
     const input = document.getElementById('inp-radio-reply');
-    if(!input) return;
-    const text = input.value.trim();
+    const text = customText !== null ? customText : (input ? input.value.trim() : "");
     if (!text || selectedEvIdForRadio === null) return;
 
     audioMotorola.currentTime = 0;
@@ -693,16 +693,19 @@ async function sendRadioReply() {
         chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${currentRadioVehicle || 'KDR'} nadaje...</div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
     }
-    input.value = '';
+    if(input) input.value = '';
 
-    const systemPrompt = `Jesteś KDR (${currentRadioVehicle || 'KDR'}) w ${ev.city}. Zdarzenie: ${ev.subtype || ev.type}. Odpowiedz zwięźle (1 zdanie). Zaczynaj: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ: "Bez odbioru."`;
+    const systemPrompt = `Jesteś KDR (${currentRadioVehicle || 'KDR'}) w miejscowości ${ev.city}. Zdarzenie: ${ev.subtype || ev.type}. 
+Odpowiedz w pełni logicznie i profesjonalnie na komunikat lub pytanie dyspozytora (Wejherowo 998). 
+Twoja wypowiedź musi być zwięzła (1 zdanie). 
+Zawsze zaczynaj od: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ: "Bez odbioru."`;
 
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, text, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem zgłoszenie. Bez odbioru.`;
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem zgłoszenie, działamy. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -718,9 +721,7 @@ async function sendRadioReply() {
 }
 
 function quickReply(text) {
-    const input = document.getElementById('inp-radio-reply');
-    if(input) input.value = text;
-    sendRadioReply();
+    sendRadioReply(text);
 }
 
 function closeRadio() { 
@@ -1208,7 +1209,6 @@ function saveEvent() {
         if (sv.travelTime === undefined || activeEditingId === null) sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
     });
 
-    // Sprawdzenie czy to NOWE zdarzenie (dźwięk selektu OSP zagra tylko przy pierwszym utworzeniu)
     if (activeEditingId === null) {
         let countedOspNames = [];
         selectedVehicles.forEach(sv => {
@@ -1244,7 +1244,6 @@ function saveEvent() {
         events.push(newEv);
         selectEvent(newEv.id);
     } else {
-        // EDYCJA ISTNIEJĄCEGO ZDARZENIA - selekt NIE ODTWARZA SIĘ PONOWNIE
         const ev = events.find(e => e.id === activeEditingId);
         if (ev) {
             ev.city = city;
@@ -1342,7 +1341,7 @@ setInterval(() => {
                 ev.vehicles.forEach(sv => {
                     [...unitsPSP, ...unitsOSP].forEach(u => {
                         const veh = u.vehicles.find(vObj => vObj.id === sv.id);
-                        if (v) v.status = 'green';
+                        if (veh) veh.status = 'green';
                     });
                 });
                 needsRender = true;
