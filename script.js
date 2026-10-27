@@ -777,6 +777,7 @@ async function simulateIncomingCPR() {
     const possibleSubtypes = subtypesData[chosenType];
     const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
 
+    // Wpisanie wartości początkowych (ładowanie)
     safeSetElementText('cpr-id', newCprId);
     safeSetElementText('cpr-city', randomTown);
     safeSetElementText('cpr-street', "Trwa ustalanie lokalizacji przez AI...");
@@ -784,7 +785,7 @@ async function simulateIncomingCPR() {
     safeSetElementText('cpr-desc', "🤖 AI generuje unikalną misję ratowniczą...");
     
     const cprModal = document.getElementById('cpr-modal');
-    if(cprModal) cprModal.style.display = 'flex';
+    if (cprModal) cprModal.style.display = 'flex';
 
     const sysPrompt = `Jesteś systemem dyspozytorskim CPR 112. Wygeneruj realistyczne, unikalne zgłoszenie strażackie w formacie JSON (bez żadnych znaczników markdown typu \`\`\`json):
 {
@@ -822,6 +823,7 @@ async function simulateIncomingCPR() {
         };
     }
 
+    // Ładowanie właściwych danych do widocznych pól
     safeSetElementText('cpr-id', currentCPRData.id);
     safeSetElementText('cpr-city', currentCPRData.city);
     safeSetElementText('cpr-street', currentCPRData.street);
