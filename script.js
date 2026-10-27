@@ -635,20 +635,20 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     const hasSis = q.includes("dodatkow") || q.includes("siły") || q.includes("srodki") || q.includes("zastęp");
 
     if (hasPrm && hasPol) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Tak, proszę o zadysponowanie na miejsce zarówno zespołu ZRM, jak i patrolu Policji. Bez odbioru.`;
+        return `Wejherowo 998, tu ${kdrCallsign}. Tak, proszę o zadysponowanie na miejsce zarówno zespołu ZRM, jak i patrolu Policji. Odbiór.`;
     } else if (hasPrm) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Tak, na miejscu jest osoba wymagająca pomocy medycznej. Proszę o zadysponowanie ZRM. Bez odbioru.`;
+        return `Wejherowo 998, tu ${kdrCallsign}. Tak, na miejscu jest osoba wymagająca pomocy medycznej. Proszę o zadysponowanie ZRM. Odbiór.`;
     } else if (hasPol) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Policja nie przybyła jeszcze na miejsce, proszę wysłać patrol do zabezpieczenia terenu. Bez odbioru.`;
+        return `Wejherowo 998, tu ${kdrCallsign}. Policja nie przybyła jeszcze na miejsce, proszę wysłać patrol do zabezpieczenia terenu. Odbiór.`;
     } else if (hasSis) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Siły i środki na miejscu są obecnie wystarczające, nie potrzebuję dodatkowych zastępów. Bez odbioru.`;
+        return `Wejherowo 998, tu ${kdrCallsign}. Siły i środki na miejscu są obecnie wystarczające, nie potrzebuję dodatkowych zastępów. Odbiór.`;
     }
 
     if (q.includes("przyjąłem") || q.includes("zrozumiałem")) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Działamy zgodnie z procedurą. Bez odbioru.`;
+        return `Wejherowo 998, tu ${kdrCallsign}. Działamy zgodnie z procedurą. Odbiór.`;
     }
 
-    return `Wejherowo 998, tu ${kdrCallsign}. W odpowiedzi na "${userQuestion}" – sytuacja jest pod naszą kontrolą, realizujemy zadania na miejscu zdarzenia. Bez odbioru.`;
+    return `Wejherowo 998, tu ${kdrCallsign}. W odpowiedzi na "${userQuestion}" – sytuacja jest pod naszą kontrolą, realizujemy zadania na miejscu zdarzenia. Odbiór.`;
 }
 
 // --- MELDUNEK Z DOJAZDU ---
@@ -661,7 +661,7 @@ async function triggerArrivalRadioReport(ev, vehicle) {
     const sysPrompt = `Jesteś KDR (${vehicle.id}). Przybyłeś na miejsce: ${ev.city}. 
 Zdarzenie z karty: "${ev.desc}". 
 Złóż 1-zdaniowy meldunek z dojazdu. Musi pasować wyłącznie do podanego opisu zdarzenia. 
-Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
+Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Odbiór."`;
 
     let reportText = "";
     try {
@@ -672,12 +672,15 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
     const descLower = (ev.desc || "").toLowerCase();
     const textLower = (reportText || "").toLowerCase();
     if (textLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień")) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}, sytuacja potwierdzona (${ev.desc}). Przystępujemy do działań. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}, sytuacja potwierdzona (${ev.desc}). Przystępujemy do działań. Odbiór.`;
     }
 
     if (!reportText) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. Zdarzenie: ${ev.desc}. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. Zdarzenie: ${ev.desc}. Odbiór.`;
     }
+
+    // Zamiana "bez odbioru" na "odbiór" jeśli AI mimo wszystko dołączyło poprzednią frazę
+    reportText = reportText.replace(/bez odbioru/gi, 'Odbiór.');
 
     audioMotorola.currentTime = 0;
     audioMotorola.play().catch(e => {});
@@ -743,7 +746,7 @@ Dyspozytor (Wejherowo 998) pyta Cię: "${text}".
 GŁÓWNA ZASADA: Odpowiedz bezpośrednio na to zadane pytanie! Np. jeśli pyta o pogotowie i policję, odpowiadasz czy potrzebne jest pogotowie i policja! Nie używaj ogólników typu "przyjąłem, realizujemy zadanie"!
 
 Format:
-"Wejherowo 998, tu ${kdrName}. [Trafna odpowiedź na pytanie]. Bez odbioru."`;
+"Wejherowo 998, tu ${kdrName}. [Trafna odpowiedź na pytanie]. Odbiór."`;
 
     let aiReply = "";
     try {
@@ -756,6 +759,12 @@ Format:
     // Jeśli AI zawiodło lub zwróciło sztywny zwrot, używamy dynamicznego silnika logiki
     if (!aiReply || replyLower.includes("realizujemy zadanie") || replyLower.includes("przyjąłem zgłoszenie")) {
         aiReply = generateSmartKdrResponse(kdrName, text, ev);
+    }
+
+    // Gwarancja zakończenia frazą "Odbiór." zamiast "Bez odbioru."
+    aiReply = aiReply.replace(/bez odbioru/gi, 'Odbiór.');
+    if (!/odbiór\.?$/i.test(aiReply)) {
+        aiReply = aiReply.trim() + " Odbiór.";
     }
 
     audioMotorola.currentTime = 0;
