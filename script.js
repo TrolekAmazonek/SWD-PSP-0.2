@@ -766,7 +766,7 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
-// --- DYNAMICZNE GENEROWANIE CPR PRZEZ AI (Z zachowaniem ID, Miejscowości, Adresu i Zgłaszającego) ---
+// --- DYNAMICZNE GENEROWANIE CPR PRZEZ AI (Z zachowaniem ID, Miejscowości, Adresu i Zgłaszającego, bez pola Rodzaj) ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -777,7 +777,6 @@ async function simulateIncomingCPR() {
     const possibleSubtypes = subtypesData[chosenType];
     const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
 
-    // Wpisanie wartości początkowych (ładowanie)
     safeSetElementText('cpr-id', newCprId);
     safeSetElementText('cpr-city', randomTown);
     safeSetElementText('cpr-street', "Trwa ustalanie lokalizacji przez AI...");
@@ -823,7 +822,6 @@ async function simulateIncomingCPR() {
         };
     }
 
-    // Ładowanie właściwych danych do widocznych pól
     safeSetElementText('cpr-id', currentCPRData.id);
     safeSetElementText('cpr-city', currentCPRData.city);
     safeSetElementText('cpr-street', currentCPRData.street);
@@ -978,6 +976,38 @@ function renderEvents() {
     });
 }
 
+// Funkcja pomocnicza aktualizująca tabelę SiS w panelu szczegółów na bieżąco co sekundę
+function renderSelectedEventDetails() {
+    if (selectedEvIdForRadio === null) return;
+    const ev = events.find(e => e.id === selectedEvIdForRadio);
+    if (!ev) return;
+
+    const sisBody = document.getElementById('details-sis-body');
+    if (!sisBody) return;
+
+    if (ev.vehicles.length === 0) {
+        sisBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Brak zadysponowanych SiS</td></tr>';
+        return;
+    }
+
+    sisBody.innerHTML = ev.vehicles.map(v => {
+        let statusText = v.travelTime > 0 
+            ? `<span style="color: #f39c12; font-weight: bold;">Dojazd (${v.travelTime}s)</span>` 
+            : (ev.status === 'ACTIVE' 
+                ? `<span style="color: #ff3333; font-weight: bold;">Na miejscu</span>` 
+                : `<span style="color: #00ff00;">Wolny</span>`);
+                
+        return `
+            <tr>
+                <td><b>${v.id}</b> - ${v.name}</td>
+                <td>${v.obsada}</td>
+                <td>${v.unitName}</td>
+                <td>${statusText}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
 function selectEvent(id) {
     const ev = events.find(e => e.id === id);
     if (!ev) return;
@@ -989,25 +1019,7 @@ function selectEvent(id) {
     if(detailsTitle) detailsTitle.innerText = `Szczegóły zdarzenia ID: ${ev.id} - ${ev.city}`;
     
     renderEvents();
-
-    const sisBody = document.getElementById('details-sis-body');
-    if(!sisBody) return;
-    if (ev.vehicles.length === 0) {
-        sisBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Brak zadysponowanych SiS</td></tr>';
-        return;
-    }
-
-    sisBody.innerHTML = ev.vehicles.map(v => {
-        let statusText = v.travelTime > 0 ? `<span style="color: #f39c12; font-weight: bold;">Dojazd (${v.travelTime}s)</span>` : (ev.status === 'ACTIVE' ? `<span style="color: #ff3333; font-weight: bold;">Na miejscu</span>` : `<span style="color: #00ff00;">Wolny</span>`);
-        return `
-            <tr>
-                <td><b>${v.id}</b> - ${v.name}</td>
-                <td>${v.obsada}</td>
-                <td>${v.unitName}</td>
-                <td>${statusText}</td>
-            </tr>
-        `;
-    }).join('');
+    renderSelectedEventDetails();
 }
 
 function switchTab(tab) {
@@ -1362,6 +1374,9 @@ setInterval(() => {
         renderUnits();
         renderEvents();
     }
+    
+    // Odświeżanie statusów i odliczania na żywo w panelu szczegółów SiS co sekundę
+    renderSelectedEventDetails();
 }, 1000);
 
 renderUnits();
