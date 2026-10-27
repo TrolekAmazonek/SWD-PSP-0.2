@@ -740,7 +740,7 @@ function minimizeRadio() {
     bar.appendChild(item);
 }
 
-// --- DYNAMICZNE GENEROWANIE CPR PRZEZ AI (BEZ "RODZAJ: Rodzaj") ---
+// --- DYNAMICZNE GENEROWANIE CPR PRZEZ AI (BEZ POLA "Rodzaj") ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -754,7 +754,13 @@ async function simulateIncomingCPR() {
     document.getElementById('cpr-id').innerText = newCprId;
     document.getElementById('cpr-city').innerText = randomTown;
     document.getElementById('cpr-street').innerText = "Trwa ustalanie lokalizacji przez AI...";
-    document.getElementById('cpr-type').innerText = randomSubtype; // Poprawiono: wyświetla sam podrodzaj bez dopisku "Rodzaj:"
+    
+    // Ukrywamy/usuwamy element rodzaju z formatki CPR, jeśli istnieje w HTML, lub przypisujemy pusty/brakujący tekst
+    const typeEl = document.getElementById('cpr-type');
+    if (typeEl && typeEl.parentElement) {
+        typeEl.parentElement.style.display = 'none'; // Całkowite ukrycie linii Rodzaj w oknie CPR
+    }
+
     document.getElementById('cpr-caller').innerText = "Łączenie z operatorem 112...";
     document.getElementById('cpr-desc').innerText = "🤖 AI generuje unikalną misję ratowniczą...";
     document.getElementById('cpr-modal').style.display = 'flex';
@@ -798,7 +804,11 @@ async function simulateIncomingCPR() {
     document.getElementById('cpr-id').innerText = currentCPRData.id;
     document.getElementById('cpr-city').innerText = currentCPRData.city;
     document.getElementById('cpr-street').innerText = currentCPRData.street;
-    document.getElementById('cpr-type').innerText = currentCPRData.subtype; // Sam podrodzaj
+    
+    if (typeEl && typeEl.parentElement) {
+        typeEl.parentElement.style.display = 'none';
+    }
+
     document.getElementById('cpr-caller').innerText = currentCPRData.caller;
     document.getElementById('cpr-desc').innerText = currentCPRData.desc;
 }
