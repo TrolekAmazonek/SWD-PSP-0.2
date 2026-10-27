@@ -55,8 +55,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.2, // Bardzo niska temperatura zapobiega halucynacjom
-                max_tokens: 90,
+                temperature: 0.3,
+                max_tokens: 120,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
@@ -74,7 +74,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 model: 'openai',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.2,
+                temperature: 0.3,
                 jsonMode: jsonMode
             })
         });
@@ -622,6 +622,26 @@ window.addEventListener('DOMContentLoaded', () => {
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 });
 
+// --- DYNAMICZNY GENERATOR ODPOWIEDZI ZAPASOWYCH DLA RADIA ---
+function generateFallbackRadioReply(kdrCallsign, userQuestion, ev) {
+    const q = userQuestion.toLowerCase();
+    
+    if (q.includes("policj") || q.includes("policje") || q.includes("policja")) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Patrolu Policji brak na miejscu, proszę o zadysponowanie wsparcia. Bez odbioru.`;
+    }
+    if (q.includes("zrm") || q.includes("prm") || q.includes("pogotowi") || q.includes("karetk")) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Potwierdzam zapotrzebowanie na ZRM do poszkodowanych na miejscu. Bez odbioru.`;
+    }
+    if (q.includes("dodatkow") || q.includes("sis") || q.includes("siły") || q.includes("zastęp")) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Na ten moment siły i środki na miejscu są wystarczające. Bez odbioru.`;
+    }
+    if (q.includes("przyjąłem") || q.includes("zrozumiałem")) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Działamy zgodnie z wytycznymi. Bez odbioru.`;
+    }
+    
+    return `Wejherowo 998, tu ${kdrCallsign}. W kwestii "${userQuestion}" – na miejscu sytuacja jest opanowana, kontynuujemy działania. Bez odbioru.`;
+}
+
 // --- MELDUNEK Z DOJAZDU (BLOKADA HALUCYNACJI) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
@@ -634,7 +654,7 @@ KRYTYCZNA ZASADA: Musisz opisać dokładnie to zdarzenie, które jest w karcie!
 - Miejscowość: ${ev.city}
 - Typ/Podrodzaj: ${ev.subtype || ev.type}
 - Opis: "${ev.desc}"
-Zabrania się wymyślania pożaru, jeśli zgłoszenie dotyczy czegoś innego (np. wypadku lotniczego, plamy oleju, zwierząt itp.).
+Zabrania się wymyślania pożaru, jeśli zgłoszenie dotyczy czegoś innego (np. wypadku lotniczego, otwarcia mieszkania, plamy oleju, zwierząt itp.).
 Format: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. [Opis sytuacji wynikający wyłącznie z: ${ev.desc}]. Rozpoznanie w toku. Bez odbioru."`;
 
     let reportText = "";
@@ -643,7 +663,6 @@ Format: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. [Op
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {}
 
-    // Zabezpieczenie systemowe: jeśli AI zignoruje opis i wklepać słowo "pożar" mimo że w opisie nie ma pożaru, nadpiszemy to poprawnym tekstem:
     const descLower = (ev.desc || "").toLowerCase();
     const textLower = (reportText || "").toLowerCase();
     if (textLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień")) {
@@ -685,7 +704,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- ODPOWIEDŹ AI ZE ŚCISŁYM DOPASOWANIEM DO KARTY ---
+// --- ODPOWIEDŹ AI LOGICZNIE POWIĄZANA Z PYTANIEM DYSPOZYTORA ---
 async function sendRadioReply(customText = null) {
     const input = document.getElementById('inp-radio-reply');
     const text = customText !== null ? customText : (input ? input.value.trim() : "");
@@ -697,6 +716,7 @@ async function sendRadioReply(customText = null) {
     const ev = events.find(e => e.id === selectedEvIdForRadio);
     if (!ev) return;
 
+    const kdrName = currentRadioVehicle || 'KDR';
     const timeStr = new Date().toLocaleTimeString();
     const userMsg = `<div class="chat-msg chat-sk"><b>[${timeStr}] Wejherowo 998 ➔ KDR:</b><br>"${text}"</div>`;
     
@@ -705,24 +725,33 @@ async function sendRadioReply(customText = null) {
 
     const chatBox = document.getElementById('radio-chat');
     if(chatBox) {
-        chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${currentRadioVehicle || 'KDR'} nadaje...</div>`;
+        chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${kdrName} nadaje...</div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
     }
     if(input) input.value = '';
 
-    const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}) na miejscu zdarzenia.
-DANE ZDARZENIA (BEZWZGLĘDNIE ICH PRZESTRZEGAJ):
+    // Pobieramy czysty tekst z historii rozmowy dla kontekstu AI
+    const rawHistory = ev.radioLogs.map(item => item.replace(/<[^>]*>?/gm, '')).slice(-4).join("\n");
+
+    const systemPrompt = `Jesteś dowódcą akcji (${kdrName}) na miejscu zdarzenia.
+DANE ZDARZENIA:
 - Miejscowość: ${ev.city}
-- Kategoria: ${ev.type}
-- Podrodzaj: ${ev.subtype}
-- Dokładny opis zgłoszenia: "${ev.desc}"
+- Opis ze zgłoszenia: "${ev.desc}"
 
-Dyspozytor (Wejherowo 998) pyta lub nakazuje: "${text}".
-Odpowiedz w 1-2 zwięzłych zdaniach profesjonalnego żargonu strażackiego. 
-UWAGA: Odpowiadaj wyłącznie w kontekście powyższego opisu (${ev.desc}). Nigdy nie wymyślaj pożaru ani innych zdarzeń niezgodnych z kartą!
+HISTORIA DOTYCHCZASOWEJ ROZMOWY:
+${rawHistory}
 
-Zawsze zaczynaj od: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..."
-Zawsze kończ na: "... Bez odbioru."`;
+WYMAGANIE BEZWZGLĘDNE:
+Dyspozytor (Wejherowo 998) pyta Cię właśnie: "${text}".
+Musisz ODPOWIEDZIEĆ WPROST I LOGICZNIE na to konkretne pytanie!
+Przykłady:
+- Jeśli pyta: "a policje masz na miejscu?" -> Odpowiedz czy Policja jest na miejscu, czy trzeba ją wezwać. Nie używaj ogólnej formułki "Przyjąłem, realizujemy zadanie"!
+- Jeśli pyta: "potrzebujesz ZRM?" -> Odpowiedz czy potrzebujesz karetki pogotowia.
+
+Zasady komunikatu:
+1. Zawsze rozpoczynaj od: "Wejherowo 998, tu ${kdrName}."
+2. Zawsze kończ na: "Bez odbioru."
+3. Maksymalnie 1-2 zwięzłe zdania w żargonie strażackim.`;
 
     let aiReply = "";
     try {
@@ -730,21 +759,18 @@ Zawsze kończ na: "... Bez odbioru."`;
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {}
 
-    // Blokada halucynacji o pożarze
+    // Weryfikacja czy odpowiedź nie jest generyczną formułką ani halucynacją pożaru
     const descLower = (ev.desc || "").toLowerCase();
     const replyLower = (aiReply || "").toLowerCase();
-    if (replyLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień")) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu zgodnie z dyspozycją i charakterem zdarzenia. Bez odbioru.`;
-    }
 
-    if (!aiReply) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, realizujemy zadanie. Bez odbioru.`;
+    if (!aiReply || replyLower.includes("przyjąłem, realizujemy zadanie") || (replyLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień"))) {
+        aiReply = generateFallbackRadioReply(kdrName, text, ev);
     }
 
     audioMotorola.currentTime = 0;
     audioMotorola.play().catch(e => {});
 
-    const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
+    const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${kdrName} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
     
     ev.radioLogs.push(respMsg);
     if(chatBox) {
