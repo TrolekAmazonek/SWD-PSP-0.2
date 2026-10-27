@@ -1,6 +1,6 @@
 // --- MODUŁ AUDIO ---
 const audioSelekt = new Audio('selekt.wav');
-const audioCpr = new Audio('nowe zdarzenie odbierz.mp3');
+const audioCpr = new Audio('nowe zdارzenie odbierz.mp3');
 const audioMotorola = new Audio('motorola.ogg');
 
 function playSound(type) {
@@ -259,7 +259,7 @@ const subtypesData = {
         "P - Inne pożary", "P - Instytucje, obiekty użyteczności publicznej", "P - Obiekty gospodarcze i inne rolnicze",
         "P - Obiekty magazynowe, place składowe", "P - Obiekty mieszkalne", "P - Obiekty produkcyjne, instalacje technologiczne",
         "P - Śmietniska, wysypiska", "P - Środki transportu drogowego (np. autobus)", "P - Środki transportu kolejowego",
-        "P - Środki transportu lotniczego", "P - Środki transportu wodnego", "P - Trawy, torfowiska, lasy, pola, stogi"
+        "P - Środki transportu lotniczego", "P - Środki transportu wodного", "P - Trawy, torfowiska, lasy, pola, stogi"
     ],
     "MZ": [
         "Inne MZ", "MZ - Atmosferyczne", "MZ - Budowlane", "MZ - Chemiczne", "MZ - Drogowe", "MZ - Kolejowe",
@@ -809,7 +809,6 @@ function generateFallbackDescription(subtype) {
     if (!cleanSub || cleanSub.toLowerCase().includes("inne")) {
         cleanSub = "Zdarzenie miejscowe wymagające interwencji służb ratowniczych";
     }
-    // Zamieniamy pierwszą literę na wielką
     return cleanSub.charAt(0).toUpperCase() + cleanSub.slice(1);
 }
 
@@ -847,7 +846,6 @@ async function simulateIncomingCPR() {
         const aiEvent = JSON.parse(cleaned);
 
         let finalDesc = aiEvent.desc || generateFallbackDescription(randomSubtype);
-        // Usuwamy ewentualne prefiksy typu "MZ - " gdyby AI je dodało
         finalDesc = finalDesc.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
         if (finalDesc.toLowerCase().includes("zgłoszenie dotycząc")) {
             finalDesc = generateFallbackDescription(randomSubtype);
@@ -918,7 +916,6 @@ function acceptCPRToEvent() {
     if(inpReg) inpReg.value = locationsDatabase[currentCPRData.city] || '';
     if(inpStreet) inpStreet.value = currentCPRData.street;
     
-    // Oczyszczamy opis ze wszelkich prefiksów typu "MZ - " podczas akceptacji do formatki
     let cleanDesc = (currentCPRData.desc || "").replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
     if (inpDesc) inpDesc.value = cleanDesc;
 
@@ -1281,7 +1278,6 @@ function saveEvent() {
     const descInput = document.getElementById('inp-ev-desc');
     let descVal = descInput ? descInput.value : '';
     
-    // Oczyszczenie opisu również przy zapisie, gdyby użytkownik wpisał tam ręcznie prefiks
     descVal = descVal.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
 
     selectedVehicles.forEach(sv => {
@@ -1434,5 +1430,24 @@ setInterval(() => {
     
     renderSelectedEventDetails();
 }, 1000);
+
+// --- AUTOMATYCZNE GENEROWANIE ZGŁOSZEŃ CO PEWIEN CZAS ---
+function scheduleNextAutoCPR() {
+    // Losowy czas między 45 a 90 sekundami (45000 - 90000 ms)
+    const randomTime = Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000;
+    
+    setTimeout(() => {
+        // Generujemy nowe zgłoszenie samoczynnie tylko wtedy, gdy akurat nie jest otwarte inne okno CPR
+        const cprModal = document.getElementById('cpr-modal');
+        if (!cprModal || cprModal.style.display !== 'flex') {
+            simulateIncomingCPR();
+        }
+        // Planujemy kolejne losowe zgłoszenie
+        scheduleNextAutoCPR();
+    }, randomTime);
+}
+
+// Uruchomienie automatycznego generatora misji po załadowaniu skryptu
+scheduleNextAutoCPR();
 
 renderUnits();
