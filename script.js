@@ -154,9 +154,6 @@ const coordsMap = {
     "Zelewo": { x: -9, y: 3 },
     "Milwino": { x: -11, y: -5 },
     "Szemud": { x: -5, y: -13 },
-    "Przetoczyno": { x: -4, y: -9 },
-    "Częstkowo": { x: -8, y: -9 },
-    "Łebno": { x: -11, y: -12 },
     "Kielno": { x: 1, y: -15 },
     "Bojano": { x: 4, y: -14 },
     "Gniewino": { x: -14, y: 13 },
@@ -270,7 +267,7 @@ const subtypesData = {
     ],
     "AF": ["AF - Fałszywy z instalacji", "AF - Złośliwy", "AF - W dobrej wierze"],
     "CW": ["CW - Zagrożenie chemiczne", "CW - Zagrożenie ekologiczne"],
-    "WG": ["WG - Wybuch gazu", "WG - Inne zagrożenie wybuchem"],
+    "WG": ["WG - Wybuch gazu", "WG - Inne zagrożenie выbychem"],
     "BL": ["BL - Budynek zagrożony zawaleniem"],
     "ZPR": ["ZPR - Zagrożenie promieniotwórcze"],
     "PZR": []
@@ -679,7 +676,6 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Odbiór."`;
         reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. Zdarzenie: ${ev.desc}. Odbiór.`;
     }
 
-    // Zamiana "bez odbioru" na "odbiór" jeśli AI mimo wszystko dołączyło poprzednią frazę
     reportText = reportText.replace(/bez odbioru/gi, 'Odbiór.');
 
     audioMotorola.currentTime = 0;
@@ -756,12 +752,10 @@ Format:
 
     const replyLower = (aiReply || "").toLowerCase();
 
-    // Jeśli AI zawiodło lub zwróciło sztywny zwrot, używamy dynamicznego silnika logiki
     if (!aiReply || replyLower.includes("realizujemy zadanie") || replyLower.includes("przyjąłem zgłoszenie")) {
         aiReply = generateSmartKdrResponse(kdrName, text, ev);
     }
 
-    // Gwarancja zakończenia frazą "Odbiór." zamiast "Bez odbioru."
     aiReply = aiReply.replace(/bez odbioru/gi, 'Odbiór.');
     if (!/odbiór\.?$/i.test(aiReply)) {
         aiReply = aiReply.trim() + " Odbiór.";
@@ -806,6 +800,42 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
+// Generator konkretnych opisów ratowniczych bez ogólników
+function generateFallbackDescription(subtype) {
+    const s = (subtype || "").toLowerCase();
+    if (s.includes("pożar") || s.includes("śmietnisk") || s.includes("trawy") || s.includes("las")) {
+        const options = [
+            "Pożar sadzy w przewozie kominowym w budynku jednorodzinnym. Widoczne iskry z komina.",
+            "Pożar traw i poszycia leśnego na powierzchni ok. 500 m2. Zagrożenie dla pobliskich zabudowań.",
+            "Pożar w korytarzu budynku wielorodzinnego. Silne zadymienie na wyższych kondygnacjach.",
+            "Pożar samochodu osobowego na poboczu drogi. Pojazd w całości objęty ogniem."
+        ];
+        return options[Math.floor(Math.random() * options.length)];
+    }
+    if (s.includes("drogow") || s.includes("kolizja") || s.includes("wypadek")) {
+        const options = [
+            "Wypadek drogowy z udziałem dwóch samochodów osobowych. Jedna osoba uwięziona w pojeździe.",
+            "Zderzenie czołowe auta osobowego z ciężarówką. Wyciek płynów eksploatacyjnych na jezdnię.",
+            "Dachowanie samochodu osobowego w rowie. Kierowca przytomny, poza pojazdem."
+        ];
+        return options[Math.floor(Math.random() * options.length)];
+    }
+    if (s.includes("otwarciu") || s.includes("zgon")) {
+        const options = [
+            "Pomoc Policji w otwarciu mieszkania. Brak kontaktu z starszym właścicielem od kilku dni.",
+            "Podejrzenie zgonu w zamkniętym lokalu mieszkalnym. Odczuwalny nieprzyjemny zapach."
+        ];
+        return options[Math.floor(Math.random() * options.length)];
+    }
+    if (s.includes("zwierzęta")) {
+        return "Kot uwięziony na wysokości ok. 8 metrów na drzewie, brak możliwości samodzielnego zejścia.";
+    }
+    if (s.includes("atmosferyczn")) {
+        return "Powalone drzewo blokuje przejazd drogą gminną. Brak osób poszkodowanych.";
+    }
+    return "Wydobywający się dym z okna na pierwszym piętrze budynku mieszkalnego. Świadkowie zgłaszają zapach spalenizny.";
+}
+
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -820,16 +850,16 @@ async function simulateIncomingCPR() {
     safeSetElementText('cpr-city', randomTown);
     safeSetElementText('cpr-street', "Ustalanie lokalizacji...");
     safeSetElementText('cpr-caller', "Łączenie z 112...");
-    safeSetElementText('cpr-desc', "🤖 AI generuje treść zgłoszenia...");
+    safeSetElementText('cpr-desc', "🤖 Generowanie opisu zdarzenia...");
     
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) cprModal.style.display = 'flex';
 
-    const sysPrompt = `Wygeneruj zwięzłe zgłoszenie ratownicze 112 w JSON (bez markdown):
+    const sysPrompt = `Jesteś operatorem CPR 112. Wygeneruj zgłoszenie w formacie JSON (bez kodu markdown):
 {
   "street": "ulica i numer w mieście ${randomTown}",
   "caller": "Imię Nazwisko (tel. 6xx-xxx-xxx)",
-  "desc": "Krótki opis zdarzenia (1-2 zdania)"
+  "desc": "Konkretny, dokładny opis zdarzenia opisujący dokładnie co się stało (1-2 zdania). BEZWZGLĘDNY ZAKAZ używania formułek typu 'Zgłoszenie dotyczące zdarzenia...'. Napisz od razu np. 'Pożar sadzy w kominie' lub 'Wypadek dwóch aut na skrzyżowaniu'."
 }`;
     const usrPrompt = `Miejscowość: ${randomTown}, Zdarzenie: ${randomSubtype}`;
 
@@ -839,13 +869,18 @@ async function simulateIncomingCPR() {
         const cleaned = jsonMatch ? jsonMatch[0] : rawJson.replace(/```json|```/g, '').trim();
         const aiEvent = JSON.parse(cleaned);
 
+        let finalDesc = aiEvent.desc || generateFallbackDescription(randomSubtype);
+        if (finalDesc.toLowerCase().includes("zgłoszenie dotycząc")) {
+            finalDesc = generateFallbackDescription(randomSubtype);
+        }
+
         currentCPRData = {
             id: newCprId,
             city: randomTown,
             street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 50) + 1}`,
             type: chosenType,
             subtype: randomSubtype,
-            desc: aiEvent.desc || "Zgłoszenie przekazane z CPR.",
+            desc: finalDesc,
             caller: aiEvent.caller || "Jan Kowalski (tel. 601-234-567)"
         };
     } catch (e) {
@@ -856,7 +891,7 @@ async function simulateIncomingCPR() {
             street: `ul. ${stName} ${Math.floor(Math.random() * 50) + 1}`,
             type: chosenType,
             subtype: randomSubtype,
-            desc: `Zgłoszenie dotyczące zdarzenia w miejscowości ${randomTown}. Wymagany wyjazd służb.`,
+            desc: generateFallbackDescription(randomSubtype),
             caller: "Jan Kowalski (tel. 601-234-567)"
         };
     }
