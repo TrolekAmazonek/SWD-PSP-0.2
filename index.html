@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SWD PSP v1.5.0 - Symulator</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 </head>
 <body>
 
@@ -14,9 +16,9 @@
         <div class="menu-item">Rejestr Wyjazdów</div>
         <div class="menu-item">Ewid</div>
         <div class="menu-item" onclick="openSiSModal()">Siły i środki</div>
-        <div class="menu-item">Mapy</div>
-        <div class="menu-item">Podział Bojowy</div>
-        <div class="menu-item">Zestawienia i raporty</div>
+        <div class="menu-item" onclick="switchMainView('map')">Mapy</div>
+        <div class="menu-item" onclick="switchMainView('table')">Podział Bojowy</div>
+        <div class="menu-item" onclick="openReportsModal()">Zestawienia i raporty</div>
         <div class="menu-item">Urządzenia</div>
         <div class="menu-item">Okna</div>
         <div class="menu-item">Komunikator</div>
@@ -24,68 +26,78 @@
     </div>
 
     <div class="workspace">
-        <div class="tabs-bar">
+        <div class="tabs-bar" id="main-tabs-bar">
             <button class="tab-btn active" id="btn-tab-psp" onclick="switchTab('PSP')">PSP</button>
             <button class="tab-btn" id="btn-tab-osp" onclick="switchTab('OSP')">OSP</button>
+            <button class="tab-btn" id="btn-tab-map" onclick="switchMainView('map')">🗺️ Widok Mapy Operacyjnej</button>
         </div>
 
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden;">
-            <div id="grid-psp" class="units-grid"></div>
-            <div id="grid-osp" class="units-grid" style="display: none;"></div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden; position: relative;">
+            <!-- WIDOK TABELI / JEDNOSTEK -->
+            <div id="view-units-container" style="flex: 1; display: flex; flex-direction: column; gap: 4px; overflow: hidden;">
+                <div id="grid-psp" class="units-grid"></div>
+                <div id="grid-osp" class="units-grid" style="display: none;"></div>
 
-            <div class="bottom-panel">
-                <div class="left-events">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <button class="btn-win" onclick="openNewEventModal()">Utwórz kartę zdarzenia</button>
-                        <button class="btn-win" style="background: #ffe6e6; border-color: #b30000; font-weight: bold; color: #800000;" onclick="simulateIncomingCPR()">⚡ Symuluj nowe zgłoszenie z CPR (112)</button>
-                        <button class="btn-win" id="btn-open-radio" style="background: #e6f2ff; border-color: #0a246a; font-weight: bold; color: #0a246a; display: none;" onclick="openRadioForSelectedEvent()">📻 Otwórz radio zdarzenia</button>
+                <div class="bottom-panel">
+                    <div class="left-events">
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button class="btn-win" onclick="openNewEventModal()">Utwórz kartę zdarzenia</button>
+                            <button class="btn-win" style="background: #ffe6e6; border-color: #b30000; font-weight: bold; color: #800000;" onclick="simulateIncomingCPR()">⚡ Symuluj nowe zgłoszenie z CPR (112)</button>
+                            <button class="btn-win" id="btn-open-radio" style="background: #e6f2ff; border-color: #0a246a; font-weight: bold; color: #0a246a; display: none;" onclick="openRadioForSelectedEvent()">📻 Otwórz radio zdarzenia</button>
+                        </div>
+                        <div class="events-table-container">
+                            <table class="events-table">
+                               <thead>
+                                    <tr>
+                                        <th>ID zdarzenia</th>
+                                        <th>Data/Godzina</th>
+                                        <th>KP/KM</th>
+                                        <th>JRG</th>
+                                        <th>Miejsce</th>
+                                        <th>Zastępy</th>
+                                        <th>Rodzaj</th>
+                                        <th>Opis</th>
+                                        <th>Czas / Status</th>
+                                        <th>Nr meldunku</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="events-body"></tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div class="events-table-container">
-                        <table class="events-table">
-                            <thead>
-                                <tr>
-                                    <th>ID zdarzenia</th>
-                                    <th>Data/Godzina</th>
-                                    <th>KP/KM</th>
-                                    <th>JRG</th>
-                                    <th>Miejsce</th>
-                                    <th>Zastępy</th>
-                                    <th>Rodzaj</th>
-                                    <th>Opis</th>
-                                    <th>Czas / Status</th>
-                                    <th>Nr meldunku</th>
-                                </tr>
-                            </thead>
-                            <tbody id="events-body"></tbody>
-                        </table>
-                    </div>
-                </div>
 
-                <div class="right-details">
-                    <div class="details-bar">
-                        <button style="font-size: 10px;">S</button>
-                        <button style="font-size: 10px; font-weight: bold;">L</button>
-                        <span id="details-title">Szczegóły zdarzenia</span>
-                    </div>
-                    <div style="padding: 4px; flex: 1; overflow-y: auto;">
-                        <table class="sis-table">
-                            <thead>
-                                <tr>
-                                    <th>Nazwa</th>
-                                    <th>Obsada</th>
-                                    <th>Jednostka</th>
-                                    <th>Status SiS</th>
-                                </tr>
-                            </thead>
-                            <tbody id="details-sis-body">
-                                <tr><td colspan="4" style="text-align: center; color: #888;">Brak wybranego zdarzenia</td></tr>
-                            </tbody>
-                        </table>
+                    <div class="right-details">
+                        <div class="details-bar">
+                            <button style="font-size: 10px;">S</button>
+                            <button style="font-size: 10px; font-weight: bold;">L</button>
+                            <span id="details-title">Szczegóły zdarzenia</span>
+                        </div>
+                        <div style="padding: 4px; flex: 1; overflow-y: auto;">
+                            <table class="sis-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nazwa</th>
+                                        <th>Obsada</th>
+                                        <th>Jednostka</th>
+                                        <th>Status SiS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="details-sis-body">
+                                    <tr><td colspan="4" style="text-align: center; color: #888;">Brak wybranego zdarzenia</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- WIDOK MAPY LEAFLET -->
+            <div id="view-map-container" style="flex: 1; display: none; width: 100%; height: 100%; border: 1px solid #7f9db9; position: relative;">
+                <div id="leaflet-map" style="width: 100%; height: 100%;"></div>
+            </div>
         </div>
 
+        <!-- OKNO CPR -->
         <div class="cpr-window" id="cpr-modal">
             <div class="cpr-header">
                 <span>🚨 NOWE ZGŁOSZENIE SI WCPR (112)</span>
@@ -104,7 +116,7 @@
                 </div>
                 <div class="form-title">Treść powiadomienia:</div>
                 <div id="cpr-desc" style="padding: 6px; background: #f9f9f9; border: 1px solid #ccc; font-style: italic; margin-bottom: 8px;">
-                    Zgłoszenie pożaru komory silnika w autobusie komunikacji miejskiej. Pasażerowie ewakuowani.
+                    Zgłoszenie pożaru.
                 </div>
                 <div style="display: flex; gap: 4px; justify-content: flex-end;">
                     <button class="btn-win" onclick="minimizeCPR()">Minimalizuj</button>
@@ -112,29 +124,146 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="radio-window" id="radio-modal">
-            <div class="modal-header" style="background: #004080;">
-                <span id="radio-title">📻 Korespondencja Radiowa - KDR</span>
-                <div style="display: flex; gap: 2px;">
-                    <div class="modal-min" onclick="minimizeRadio()">_</div>
-                    <div class="modal-close" onclick="closeRadio()">×</div>
-                </div>
+    <!-- MODAL: RAPORTY I STATYSTYKA (WZÓR SWD) -->
+    <div class="modal-overlay" id="modal-reports">
+        <div class="modal-window" style="width: 860px; height: 600px; background: #ece9d8;">
+            <div class="modal-header" style="background: #0a246a; display: flex; justify-content: space-between; align-items: center; padding: 4px 8px;">
+                <span style="color: #fff; font-weight: bold;">Raporty — Statystyka</span>
+                <div class="modal-close" onclick="closeModal('modal-reports')">×</div>
             </div>
-            <div class="modal-body" style="display: flex; flex-direction: column;">
-                <div class="chat-box" id="radio-chat"></div>
-                <div style="display: flex; flex-direction: column; gap: 4px;">
-                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                        <button class="btn-win" style="font-size: 10px;" onclick="quickReply('Wejherowo 998, przyjąłem.')">✅ Przyjąłem</button>
-                        <button class="btn-win" style="font-size: 10px;" onclick="quickReply('Wejherowo 998, czy potrzebujecie ZRM / Pogotowia?')">🚑 Wymagany ZRM?</button>
-                        <button class="btn-win" style="font-size: 10px;" onclick="quickReply('Wejherowo 998, czy Policja jest potrzebna na miejscu?')">🚔 Potrzebna Policja?</button>
-                        <button class="btn-win" style="font-size: 10px;" onclick="quickReply('Wejherowo 998, czy potrzebne dodatkowe siły i środki Straży?')">🚒 Dodatkowe SiS?</button>
+            <div class="modal-body" style="padding: 8px; display: flex; flex-direction: column; gap: 8px; background: #ece9d8; overflow-y: auto;">
+                
+                <!-- Górny pasek zakresu -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #dfdfdf; padding: 4px 8px; border: 1px solid #999;">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <span><b>Zakres:</b></span>
+                        <button class="btn-win active" style="font-size: 11px;">Dzień</button>
+                        <button class="btn-win" style="font-size: 11px;">Miesiąc</button>
+                        <button class="btn-win" style="font-size: 11px;">Rok</button>
+                        <button class="btn-win" style="font-size: 11px;">Wszystkie</button>
+                        <span id="stat-date-label" style="margin-left: 10px; font-size: 11px; color: #333;">Statystyka z dnia bieżącego</span>
                     </div>
-                    <div style="display: flex; gap: 4px;">
-                        <input type="text" id="inp-radio-reply" placeholder="Napisz odpowiedź (Wejherowo 998)..." style="flex: 1;" onkeypress="if(event.key==='Enter') sendRadioReply()">
-                        <button class="btn-win" style="font-weight: bold;" onclick="sendRadioReply()">Wyślij</button>
+                    <button class="btn-win" style="font-weight: bold;" onclick="window.print()">Drukuj</button>
+                </div>
+
+                <div style="font-size: 11px; background: #f5f5f5; padding: 4px; border: 1px solid #ccc;">
+                    <b>Tryb statystyk:</b> online / lokalny. Dane obejmują zdarzenia zarejestrowane w bieżącej sesji służby.
+                </div>
+
+                <!-- Siatka głównych liczników -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                    <div class="rep-box">
+                        <div class="rep-box-title">Zgłoszenia ogółem</div>
+                        <div class="rep-box-val" id="stat-total">0</div>
+                    </div>
+                    <div class="rep-box">
+                        <div class="rep-box-title">Aktywne</div>
+                        <div class="rep-box-val" id="stat-active" style="color: #b30000;">0</div>
+                    </div>
+                    <div class="rep-box">
+                        <div class="rep-box-title">Zakończone</div>
+                        <div class="rep-box-val" id="stat-finished" style="color: #008000;">0</div>
+                    </div>
+                    <div class="rep-box">
+                        <div class="rep-box-title">Średni czas obsługi</div>
+                        <div class="rep-box-val" style="font-size: 14px; padding-top: 6px;">03:15 min</div>
                     </div>
                 </div>
+
+                <!-- Druga linia liczników -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                    <div class="rep-box">
+                        <div class="rep-box-title">Odmowy</div>
+                        <div class="rep-box-val">0</div>
+                    </div>
+                    <div class="rep-box">
+                        <div class="rep-box-title">Zdarzenia powiązane</div>
+                        <div class="rep-box-val">0</div>
+                    </div>
+                    <div class="rep-box">
+                        <div class="rep-box-title">Nowe powyżej 2 min</div>
+                        <div class="rep-box-val">0</div>
+                    </div>
+                    <div class="rep-box">
+                        <div class="rep-box-title">Zakres danych</div>
+                        <div class="rep-box-val" style="font-size: 11px; padding-top: 8px;" id="stat-range-text">Sesja bieżąca</div>
+                    </div>
+                </div>
+
+                <!-- Tabela Służby -->
+                <div class="rep-section">
+                    <div class="rep-section-header">SŁUŻBY — PRM / PSP / POLICJA</div>
+                    <table class="rep-table">
+                        <thead>
+                            <tr>
+                                <th>Służba</th>
+                                <th>Zadysponowano</th>
+                                <th>Oczekuje</th>
+                                <th>Obsługa</th>
+                                <th>Zakończono</th>
+                                <th>Śr. reakcja</th>
+                                <th>Śr. obsługa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>PRM / ZRM</td>
+                                <td id="stat-prm-count">0</td>
+                                <td>0</td>
+                                <td id="stat-prm-active">0</td>
+                                <td id="stat-prm-fin">0</td>
+                                <td>00:01:30</td>
+                                <td>--:--:--</td>
+                            </tr>
+                            <tr>
+                                <td>PSP (SiS Straż)</td>
+                                <td id="stat-psp-count">0</td>
+                                <td>0</td>
+                                <td id="stat-psp-active">0</td>
+                                <td id="stat-psp-fin">0</td>
+                                <td>00:00:45</td>
+                                <td>--:--:--</td>
+                            </tr>
+                            <tr>
+                                <td>Policja</td>
+                                <td id="stat-pol-count">0</td>
+                                <td>0</td>
+                                <td id="stat-pol-active">0</td>
+                                <td id="stat-pol-fin">0</td>
+                                <td>00:02:10</td>
+                                <td>--:--:--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Dolne tabele podsumowań -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <div class="rep-section">
+                        <div class="rep-section-header">TOP KATEGORIE ZDARZEŃ</div>
+                        <table class="rep-table">
+                            <thead><tr><th>Kategoria</th><th>Liczba</th></tr></thead>
+                            <tbody id="stat-cat-body">
+                                <tr><td>Brak danych</td><td>0</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="rep-section">
+                        <div class="rep-section-header">MIEJSCOWOŚCI / ADRESY</div>
+                        <table class="rep-table">
+                            <thead><tr><th>Miejscowość</th><th>Liczba</th></tr></thead>
+                            <tbody id="stat-town-body">
+                                <tr><td>Brak danych</td><td>0</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+            <div style="padding: 6px; background: #d4d0c8; border-top: 1px solid #999; display: flex; justify-content: flex-end;">
+                <button class="btn-win" onclick="closeModal('modal-reports')">Zamknij</button>
             </div>
         </div>
     </div>
@@ -217,15 +346,11 @@
                                     <label>Adres:</label>
                                     <input type="text" id="inp-ev-street" placeholder="Ulica / Nr budynku">
                                 </div>
-                                <div class="form-row" style="margin-top: 4px;">
-                                    <div class="form-group" style="flex:1;"><label>Obiekt:</label><input type="text"></div>
-                                    <div class="form-group" style="width:50px;"><label>Piętro:</label><input type="text" value="0"></div>
-                                </div>
                             </div>
 
                             <div class="form-box">
                                 <div class="form-title">Informacje dodatkowe - opis zdarzenia</div>
-                                <textarea id="inp-ev-desc" style="width: 100%; height: 50px;" placeholder="Wpisz np. pożar autobusu, pożar hali..."></textarea>
+                                <textarea id="inp-ev-desc" style="width: 100%; height: 50px;" placeholder="Wpisz opis..."></textarea>
                             </div>
 
                             <div class="form-box">
@@ -244,22 +369,6 @@
                                     <label>Podrodzaj:</label>
                                     <select id="inp-ev-subtype"></select>
                                 </div>
-                                <div class="form-row" style="margin-top: 4px;">
-                                    <div class="form-group" style="flex:1;">
-                                        <label>Jedn. prow.:</label>
-                                        <select id="inp-ev-lead">
-                                            <option>JRG 1 Wejherowo</option>
-                                            <option>JRG 2 Rumia</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group" style="flex:1;">
-                                        <label>Teren działania:</label>
-                                        <select id="inp-ev-area">
-                                            <option>JRG 1 Wejherowo</option>
-                                            <option>JRG 2 Rumia</option>
-                                        </select>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -277,27 +386,6 @@
                                     <div class="service-btn" id="btn-service-prm" onclick="toggleService('prm')">⚕ PRM</div>
                                     <div class="service-btn" id="btn-service-police" onclick="toggleService('police')">🚔 Policja</div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                                    <label><input type="checkbox"> Pogotowie Gazowe</label>
-                                    <label><input type="checkbox"> Pogotowie Energetyczne</label>
-                                    <label><input type="checkbox"> Straż Miejska</label>
-                                    <label><input type="checkbox"> Wojsko</label>
-                                </div>
-                            </div>
-
-                            <div class="form-box">
-                                <div class="form-title">Flagi zdarzenia</div>
-                                <div class="flags-container">
-                                    <label><input type="checkbox"> Do wiadomości KG</label>
-                                    <label><input type="checkbox"> Do wiadomości KW</label>
-                                    <label><input type="checkbox"> Doskonalenie kierowców</label>
-                                    <label><input type="checkbox"> Działania międzynarodowe</label>
-                                    <label><input type="checkbox"> Ewakuacja osób</label>
-                                    <label><input type="checkbox"> GIOŚ / WIOŚ</label>
-                                    <label><input type="checkbox"> HNS</label>
-                                    <label><input type="checkbox"> IZRM</label>
-                                    <label><input type="checkbox"> Koronawirus</label>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -307,8 +395,6 @@
                     <div class="form-box">
                         <div class="form-title">Czasy operacyjne zdarzenia</div>
                         <div class="form-group"><label>Czas rozpoczęcia:</label><input type="text" id="time-start"></div>
-                        <div class="form-group" style="margin-top: 4px;"><label>Czas Lokalizacji:</label><input type="text" id="time-lok"></div>
-                        <div class="form-group" style="margin-top: 4px;"><label>Czas zakończenia:</label><input type="text" id="time-end"></div>
                     </div>
                 </div>
             </div>
@@ -321,10 +407,11 @@
         </div>
     </div>
 
+    <!-- MODAL: DYSPOYCJA -->
     <div class="modal-overlay" id="modal-dispatch">
         <div class="modal-window" style="width: 550px; height: 500px;">
             <div class="modal-header">
-                <span id="dispatch-modal-title">Wybór Sił i Środków (wg odległości)</span>
+                <span>Wybór Sił i Środków (wg odległości)</span>
                 <div class="modal-close" onclick="closeModal('modal-dispatch')">×</div>
             </div>
             <div id="dispatch-info-bar" style="background: #f0f4f9; padding: 4px 8px; border-bottom: 1px solid #7f9db9; font-weight: bold; color: #0a246a;">
@@ -338,32 +425,8 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="modal-sis">
-        <div class="modal-window" style="width: 600px; height: 350px;">
-            <div class="modal-header">
-                <span>Zarządzanie siłami i środkami</span>
-                <div class="modal-close" onclick="closeModal('modal-sis')">×</div>
-            </div>
-            <div class="modal-body">
-                <div style="display: flex; gap: 8px;">
-                    <div class="form-box" style="flex:1;">
-                        <div class="form-title">Państwowa Straż Pożarna</div>
-                        <button class="btn-win" onclick="alert('Dodawanie jednostki PSP')">Dodaj jednostkę</button>
-                        <button class="btn-win" onclick="alert('Dodawanie pojazdu PSP')">Dodaj pojazd</button>
-                    </div>
-                    <div class="form-box" style="flex:1;">
-                        <div class="form-title">Ochotnicza Straż Pożarna</div>
-                        <button class="btn-win" onclick="alert('Dodawanie jednostki OSP')">Dodaj jednostkę</button>
-                        <button class="btn-win" onclick="alert('Dodawanie pojazdu OSP')">Dodaj pojazd</button>
-                    </div>
-                </div>
-            </div>
-            <div style="padding: 6px; background: #e1e1e1; display: flex; justify-content: flex-end;">
-                <button class="btn-win" onclick="closeModal('modal-sis')">Zamknij</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="script.js"></script>
 </body>
 </html>
