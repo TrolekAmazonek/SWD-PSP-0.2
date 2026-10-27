@@ -648,7 +648,7 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     return `Wejherowo 998, tu ${kdrCallsign}. W odpowiedzi na "${userQuestion}" – sytuacja jest pod naszą kontrolą, realizujemy zadania na miejscu zdarzenia. Odbiór.`;
 }
 
-// --- SYSTEM WIELU OKIEN RADIOWYCH Z ORYGINALNYM WYGLĄDEM ---
+// --- SYSTEM WIELU OKIEN RADIOWYCH W ORYGINALNYM CSS ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
         openRadioWindows[evId].style.display = 'flex';
@@ -667,7 +667,7 @@ function createRadioWindow(evId) {
     const windowCount = Object.keys(openRadioWindows).length;
     const offset = (windowCount * 25) % 150;
 
-    // Strukturalnie IDENTYCZNA z oryginalnym modalem radiowym z HTML
+    // Oryginalna struktura HTML i klasy CSS z oryginalnego szablonu
     modal.innerHTML = `
         <div class="modal-window" style="left: calc(50% - 220px + ${offset}px); top: calc(50% - 200px + ${offset}px); margin:0; position:fixed;">
             <div class="modal-header">
@@ -677,16 +677,16 @@ function createRadioWindow(evId) {
                     <button class="modal-close" onclick="closeRadioWindow(${ev.id})">&times;</button>
                 </div>
             </div>
-            <div class="modal-body" style="display: flex; flex-direction: column; height: 350px;">
-                <div id="radio-chat-${evId}" style="flex: 1; background: #111; color: #00ff00; font-family: monospace; padding: 8px; overflow-y: auto; border: 1px solid #444; margin-bottom: 8px; font-size: 13px;"></div>
-                <div style="display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap;">
-                    <button class="action-btn" style="font-size: 11px; padding: 4px 8px;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, podaj stan sytuacji na miejscu.')">Stan sytuacji?</button>
-                    <button class="action-btn" style="font-size: 11px; padding: 4px 8px;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebne ZRM lub Policja?')">ZRM/Policja?</button>
-                    <button class="action-btn" style="font-size: 11px; padding: 4px 8px;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebujecie dodatkowych sił i środków?')">Dodatkowe SiS?</button>
+            <div class="modal-body">
+                <div id="radio-chat-${evId}" class="radio-chat-box"></div>
+                <div class="radio-quick-actions">
+                    <button class="action-btn" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, podaj stan sytuacji na miejscu.')">Stan sytuacji?</button>
+                    <button class="action-btn" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebne ZRM lub Policja?')">ZRM/Policja?</button>
+                    <button class="action-btn" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebujecie dodatkowych sił i środków?')">Dodatkowe SiS?</button>
                 </div>
-                <div style="display: flex; gap: 6px;">
-                    <input type="text" id="inp-radio-reply-${evId}" placeholder="Napisz wiadomość radiową..." style="flex:1; padding: 6px; background: #222; border: 1px solid #444; color: #fff;" onkeypress="if(event.key==='Enter') sendRadioReplyDynamic(${ev.id})">
-                    <button class="action-btn" onclick="sendRadioReplyDynamic(${evId})">Nadaj</button>
+                <div class="radio-input-row">
+                    <input type="text" id="inp-radio-reply-${evId}" placeholder="Napisz wiadomość radiową..." onkeypress="if(event.key==='Enter') sendRadioReplyDynamic(${ev.id})">
+                    <button class="action-btn" onclick="sendRadioReplyDynamic(${ev.id})">Nadaj</button>
                 </div>
             </div>
         </div>
