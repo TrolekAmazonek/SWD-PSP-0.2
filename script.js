@@ -31,7 +31,7 @@ function playOspAlarmRepeated(ospCount) {
     playNext();
 }
 
-// --- ZASZYFROWANE KLUCZE API (BEZPIECZNE DLA GITHUB) ---
+// --- ZASZYFROWANE KLUCZE API ---
 const _k = {
     g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
     m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
@@ -42,10 +42,10 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- GŁÓWNY SILNIK KASKADOWY AI ---
+// --- BŁYSKAWICZNY SILNIK AI (ZOPTYMALIZOWANY NA SZYBKOŚĆ) ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     
-    // 1. Groq
+    // 1. Groq (Najszybszy model 8B Instant - generowanie w < 0.5s)
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -54,13 +54,13 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                 'Authorization': `Bearer ${decodeKey(_k.g)}`
             },
             body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
+                model: 'llama-3.1-8b-instant',
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
                 temperature: 0.7,
-                max_tokens: 120, // Zmniejszone tokeny dla wymuszenia zwięzłości
+                max_tokens: 75, // Bardzo niski limit tokenów dla natychmiastowej odpowiedzi
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
@@ -70,39 +70,32 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
         }
     } catch (e) {}
 
-    // 2. OpenAI
-    const openaiEndpoints = [
-        'https://api.openai.com/v1/chat/completions',
-        'https://corsproxy.io/?url=' + encodeURIComponent('https://api.openai.com/v1/chat/completions')
-    ];
-    
-    for (const endpoint of openaiEndpoints) {
-        try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${decodeKey(_k.o)}`
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o-mini',
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt }
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 120,
-                    ...(jsonMode ? { response_format: { type: "json_object" } } : {})
-                })
-            });
-            const data = await res.json();
-            if (data.choices && data.choices[0]?.message?.content) {
-                return data.choices[0].message.content.trim();
-            }
-        } catch (e) {}
-    }
+    // 2. OpenAI (Awaryjnie)
+    try {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${decodeKey(_k.o)}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 75,
+                ...(jsonMode ? { response_format: { type: "json_object" } } : {})
+            })
+        });
+        const data = await res.json();
+        if (data.choices && data.choices[0]?.message?.content) {
+            return data.choices[0].message.content.trim();
+        }
+    } catch (e) {}
 
-    // 3. Gemini
+    // 3. Gemini (Awaryjnie)
     try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${decodeKey(_k.m)}`;
         const res = await fetch(url, {
@@ -112,7 +105,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                 contents: [{ parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }],
                 generationConfig: {
                     temperature: 0.7,
-                    maxOutputTokens: 120,
+                    maxOutputTokens: 75,
                     ...(jsonMode ? { responseMimeType: "application/json" } : {})
                 }
             })
@@ -123,30 +116,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
         }
     } catch (e) {}
 
-    // 4. Awaryjne Pollinations AI
-    try {
-        const response = await fetch('https://text.pollinations.ai/openai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'openai',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature: 0.7,
-                jsonMode: jsonMode
-            })
-        });
-        if (response.ok) {
-            const data = await response.json();
-            if (data.choices && data.choices[0]?.message?.content) {
-                return data.choices[0].message.content.trim();
-            }
-        }
-    } catch (err) {}
-
-    throw new Error("Wszystkie usługi AI są w tej chwili niedostępne.");
+    throw new Error("Wszystkie usługi AI są niedostępne.");
 }
 
 const locationsDatabase = {
@@ -680,7 +650,7 @@ let currentCPRData = null;
 let cprCounter = 101;
 let currentRadioVehicle = null;
 
-// --- NAPRAWIONY MECHANIZM PRZESUWANIA (POSITION: FIXED + OCHRONA PRZYCISKÓW) ---
+// --- MECHANIZM PRZESUWANIA (POSITION: FIXED) ---
 function makeDraggable(elmnt, header) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     header.onmousedown = dragMouseDown;
@@ -723,29 +693,21 @@ function makeDraggable(elmnt, header) {
     }
 }
 
-// Inicjalizacja przeciągania dla okien
 window.addEventListener('DOMContentLoaded', () => {
     const radioModal = document.getElementById('radio-modal');
     const radioHeader = radioModal.querySelector('.modal-header');
-    if (radioModal && radioHeader) {
-        makeDraggable(radioModal, radioHeader);
-    }
+    if (radioModal && radioHeader) makeDraggable(radioModal, radioHeader);
 
     const eventModal = document.querySelector('#modal-event .modal-window');
     const eventHeader = document.querySelector('#modal-event .modal-header');
-    if (eventModal && eventHeader) {
-        makeDraggable(eventModal, eventHeader);
-    }
+    if (eventModal && eventHeader) makeDraggable(eventModal, eventHeader);
 
     const cprModal = document.getElementById('cpr-modal');
     const cprHeader = cprModal.querySelector('.cpr-header');
-    if (cprModal && cprHeader) {
-        makeDraggable(cprModal, cprHeader);
-    }
+    if (cprModal && cprHeader) makeDraggable(cprModal, cprHeader);
 });
 
-
-// --- MELDUNEK Z DOJAZDU NA MIEJSCE (AI) ---
+// --- MELDUNEK Z DOJAZDU (SZYBKI) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
@@ -753,10 +715,8 @@ async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     openRadioForEvent(ev.id);
 
-    const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.name})`).join(', ');
-    const sysPrompt = `Jesteś dowódcą zastępu (${vehicle.id}) na miejscu zdarzenia w pow. wejherowskim. Rozmawiasz przez radio z Wejherowo 998. Odpowiadaj maksymalnie krótko i konkretnie (maksymalnie 1 zdanie), typowym radiowym żargonem strażackim.`;
-    const usrPrompt = `Dojechaliście do: ${ev.city}, ${ev.street}. Zgłoszenie: "${ev.desc}".
-Napisz krótki meldunek z dojazdu zaczynając od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ na "Bez odbioru."`;
+    const sysPrompt = `Jesteś dowódcą (${vehicle.id}). Odpowiedz ultra-krótko (max 1 zdanie), żargonem strażackim.`;
+    const usrPrompt = `Dojechaliście do: ${ev.city}, ${ev.street}. Zgł.: "${ev.desc}". Napisz meldunek zaczynając od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ "Bez odbioru."`;
 
     let reportText = "";
     try {
@@ -767,7 +727,7 @@ Napisz krótki meldunek z dojazdu zaczynając od: "Wejherowo 998, tu ${vehicle.i
     }
 
     audioMotorola.currentTime = 0;
-    audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+    audioMotorola.play().catch(e => {});
 
     const initialMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${vehicle.id} ➔ Wejherowo 998:</b><br>"${reportText}"</div>`;
     ev.radioLogs.push(initialMsg);
@@ -789,23 +749,19 @@ function openRadioForEvent(evId) {
 }
 
 function openRadioForSelectedEvent() {
-    if (selectedEvIdForRadio !== null) {
-        openRadioForEvent(selectedEvIdForRadio);
-    } else if (events.length > 0) {
-        openRadioForEvent(events[0].id);
-    } else {
-        alert('Brak aktywnych zdarzeń do otwarcia radia.');
-    }
+    if (selectedEvIdForRadio !== null) openRadioForEvent(selectedEvIdForRadio);
+    else if (events.length > 0) openRadioForEvent(events[0].id);
+    else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- ROZMOWA RADIOWA Z KDR (KRÓTKO I ZWIŹLE) ---
+// --- ROZMOWA RADIOWA (SZYBKA) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
     if (!text || selectedEvIdForRadio === null) return;
 
     audioMotorola.currentTime = 0;
-    audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+    audioMotorola.play().catch(e => {});
 
     const ev = events.find(e => e.id === selectedEvIdForRadio);
     if (!ev) return;
@@ -821,22 +777,8 @@ async function sendRadioReply() {
     input.value = '';
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.name})`).join(', ');
-    let conversationHistory = "";
-    ev.radioLogs.forEach(log => {
-        const cleanMsg = log.split('<br>"')[1]?.replace('"<\/div>', '') || "";
-        if (log.includes("Wejherowo 998 ➔ KDR")) {
-            conversationHistory += `Dyspozytor (Wejherowo 998): ${cleanMsg}\n`;
-        } else {
-            conversationHistory += `KDR (${currentRadioVehicle || 'KDR'}): ${cleanMsg}\n`;
-        }
-    });
-
-    const systemPrompt = `Jesteś dowódcą akcji (KDR, kryptonim: ${currentRadioVehicle || 'KDR'}) w kontakcie radiowym z Wejherowo 998.
-ZASADA BEZWZGLĘDNA: Odpowiadaj ultra-krótko, zwięźle i rzeczowo (maksymalnie 1 krótkie zdanie, zero zbędnego gadania, czysty profesjonalny meldunek strażacki).
-Zaczynaj od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ "Bez odbioru."`;
-
-    const userPrompt = `Historia:\n${conversationHistory}\nOdpowiedz bardzo krótko na ostatni komunikat dyspozytora.`;
+    const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}). Odpowiadaj ultra-krótko (1 zdanie), profesjonalnym żargonem strażackim. Zacznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i skończ "Bez odbioru."`;
+    const userPrompt = text;
 
     let aiReply = "";
     try {
@@ -847,10 +789,9 @@ Zaczynaj od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ "Bez
     }
 
     audioMotorola.currentTime = 0;
-    audioMotorola.play().catch(e => console.log("Audio motorola zablokowane"));
+    audioMotorola.play().catch(e => {});
 
-    const replyTimeStr = new Date().toLocaleTimeString();
-    const respMsg = `<div class="chat-msg chat-kdr"><b>[${replyTimeStr}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
+    const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
     
     ev.radioLogs.push(respMsg);
     chatBox.innerHTML = ev.radioLogs.join('');
@@ -862,54 +803,38 @@ function quickReply(text) {
     sendRadioReply();
 }
 
-function closeRadio() {
-    document.getElementById('radio-modal').style.display = 'none';
-}
+function closeRadio() { document.getElementById('radio-modal').style.display = 'none'; }
 
 function minimizeRadio() {
     document.getElementById('radio-modal').style.display = 'none';
-
     const bar = document.getElementById('minimized-bar');
     const item = document.createElement('div');
     item.className = 'minimized-item';
-    item.id = `min-radio-${selectedEvIdForRadio}`;
     item.innerHTML = `📻 Radio (ID: ${selectedEvIdForRadio})`;
-    item.onclick = () => {
-        openRadioForEvent(selectedEvIdForRadio);
-        item.remove();
-    };
-
+    item.onclick = () => { openRadioForEvent(selectedEvIdForRadio); item.remove(); };
     bar.appendChild(item);
 }
 
-// --- GENEROWANIE ZGŁOSZEŃ CPR (112) PRZEZ AI ---
+// --- SZYBKIE GENEROWANIE CPR ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
-    audioCpr.play().catch(e => console.log("Audio CPR zablokowane"));
+    audioCpr.play().catch(e => {});
 
     const newCprId = `WCPR-2026-${cprCounter++}`;
     const randomTown = townsList[Math.floor(Math.random() * townsList.length)];
-    const isFire = Math.random() < 0.45;
-    const chosenType = isFire ? "P" : "MZ";
-    const possibleSubtypes = subtypesData[chosenType];
-    const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
+    const chosenType = Math.random() < 0.45 ? "P" : "MZ";
+    const randomSubtype = subtypesData[chosenType][Math.floor(Math.random() * subtypesData[chosenType].length)];
 
     document.getElementById('cpr-id').innerText = newCprId;
     document.getElementById('cpr-city').innerText = randomTown;
     document.getElementById('cpr-street').innerText = "Trwa ustalanie lokalizacji...";
     document.getElementById('cpr-type').innerText = `${chosenType} - ${randomSubtype}`;
     document.getElementById('cpr-caller').innerText = "Łączenie z operatorem 112...";
-    document.getElementById('cpr-desc').innerText = "⏳ Trwa odbieranie formatki zgłoszenia z WCPR (AI generuje zgłoszenie)...";
+    document.getElementById('cpr-desc').innerText = "⏳ Błyskawiczne generowanie zgłoszenia przez AI...";
     document.getElementById('cpr-modal').style.display = 'flex';
 
-    const sysPrompt = `Jesteś operatorem numeru alarmowego 112. Wygeneruj realistyczne zgłoszenie strażackie w formacie JSON.`;
-    const usrPrompt = `Miejscowość: "${randomTown}", Kategoria: "${chosenType}".
-Zwróć WYŁĄCZNIE poprawny JSON (bez markdownu):
-{
-  "street": "ulica z numerem lub obiekt",
-  "caller": "Imię Nazwisko (tel. XXX-XXX-XXX)",
-  "desc": "Realistyczny opis zgłoszenia od świadka (2-3 zdania)"
-}`;
+    const sysPrompt = `Wygeneruj krótkie zgłoszenie w JSON: {"street": "ulica z nr", "caller": "Imię Nazwisko (tel. XXX-XXX-XXX)", "desc": "Krótki opis zdarzenia"}`;
+    const usrPrompt = `Miasto: ${randomTown}, Typ: ${chosenType}`;
 
     try {
         const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
@@ -920,11 +845,11 @@ Zwróć WYŁĄCZNIE poprawny JSON (bez markdownu):
         currentCPRData = {
             id: newCprId,
             city: randomTown,
-            street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 50) + 1}`,
+            street: aiEvent.street || `ul. ${streetNames[0]} 1`,
             type: chosenType,
             subtype: randomSubtype,
-            desc: aiEvent.desc || "Zgłoszenie przekazane z CPR 112.",
-            caller: aiEvent.caller || callersList[Math.floor(Math.random() * callersList.length)]
+            desc: aiEvent.desc || "Zgłoszenie z CPR.",
+            caller: aiEvent.caller || callersList[0]
         };
     } catch (e) {
         const randomTpl = eventTemplatesPool[Math.floor(Math.random() * eventTemplatesPool.length)];
@@ -936,7 +861,7 @@ Zwróć WYŁĄCZNIE poprawny JSON (bez markdownu):
             type: randomTpl.type,
             subtype: randomTpl.subtype,
             desc: randomTpl.desc,
-            caller: callersList[Math.floor(Math.random() * callersList.length)]
+            caller: callersList[0]
         };
     }
 
@@ -948,28 +873,19 @@ Zwróć WYŁĄCZNIE poprawny JSON (bez markdownu):
     document.getElementById('cpr-desc').innerText = currentCPRData.desc;
 }
 
-function closeCPR() {
-    document.getElementById('cpr-modal').style.display = 'none';
-}
+function closeCPR() { document.getElementById('cpr-modal').style.display = 'none'; }
 
 function minimizeCPR() {
     if (!currentCPRData) return;
     document.getElementById('cpr-modal').style.display = 'none';
-
     const bar = document.getElementById('minimized-bar');
     const item = document.createElement('div');
     item.className = 'minimized-item';
-    item.id = `min-cpr-${currentCPRData.id}`;
-    item.innerHTML = `🚨 Zgłoszenie CPR (${currentCPRData.city} - ${currentCPRData.street})`;
-    item.onclick = () => {
-        document.getElementById('cpr-modal').style.display = 'flex';
-        item.remove();
-    };
-
+    item.innerHTML = `🚨 Zgłoszenie CPR (${currentCPRData.city})`;
+    item.onclick = () => { document.getElementById('cpr-modal').style.display = 'flex'; item.remove(); };
     bar.appendChild(item);
 }
 
-// --- RĘCZNY WYBÓR RODZAJU I PODRODZAJU PRZY PRZYJĘCIU ZGŁOSZENIA Z CPR ---
 function acceptCPRToEvent() {
     if (!currentCPRData) return;
     openNewEventModal();
@@ -996,16 +912,6 @@ function acceptCPRToEvent() {
 
 function calculateEstimatedSeconds(desc, subtype, type) {
     if (type === 'PZR') return -1;
-    const text = (desc + " " + subtype).toLowerCase();
-    if (text.includes("hala") || text.includes("magazyn") || text.includes("zakład") || text.includes("przemysł") || text.includes("balex")) {
-        return 600;
-    } else if (text.includes("wypadek") || text.includes("zakleszczony")) {
-        return 240;
-    } else if (text.includes("mieszkaniu") || text.includes("balkonie") || text.includes("dym")) {
-        return 300;
-    } else if (text.includes("śmietnik") || text.includes("szerszeni") || text.includes("plama")) {
-        return 120;
-    }
     return 180;
 }
 
@@ -1040,11 +946,8 @@ function updateSubtypes(type) {
 function toggleService(service) {
     servicesState[service] = !servicesState[service];
     const btn = document.getElementById(service === 'prm' ? 'btn-service-prm' : 'btn-service-police');
-    if (servicesState[service]) {
-        btn.classList.add('active');
-    } else {
-        btn.classList.remove('active');
-    }
+    if (servicesState[service]) btn.classList.add('active');
+    else btn.classList.remove('active');
 }
 
 function renderUnits() {
@@ -1053,17 +956,13 @@ function renderUnits() {
 }
 
 function createUnitHTML(unit) {
-    let vehiclesHTML = '';
-    if (unit.vehicles.length === 0) {
-        vehiclesHTML = `<div style="padding: 4px; color: #888; font-style: italic;">Brak pojazdów</div>`;
-    } else {
-        vehiclesHTML = unit.vehicles.map(v => `
+    let vehiclesHTML = unit.vehicles.length === 0 ? `<div style="padding: 4px; color: #888; font-style: italic;">Brak pojazdów</div>` :
+        unit.vehicles.map(v => `
             <div class="vehicle-row">
                 <span class="status-dot ${v.status}"></span>
                 <span><b>${v.id}</b> - ${v.name}</span>
             </div>
         `).join('');
-    }
 
     return `
         <div class="unit-box">
@@ -1080,21 +979,10 @@ function renderEvents() {
     events.forEach(ev => {
         const tr = document.createElement('tr');
         tr.className = (ev.status === 'ACTIVE' ? 'active-ev' : 'finished-ev') + (selectedEvIdForRadio === ev.id ? ' selected-ev' : '');
-        
-        tr.ondblclick = () => {
-            openEditEventModal(ev.id);
-        };
-
+        tr.ondblclick = () => openEditEventModal(ev.id);
         tr.onclick = () => selectEvent(ev.id);
 
-        let timeDisplay = "";
-        if (ev.status === 'FINISHED') {
-            timeDisplay = "0:00 min (Zakończono)";
-        } else if (!ev.firstArrived) {
-            timeDisplay = `Oczekiwanie na dojazd... (${formatMMSS(ev.remainingSeconds)})`;
-        } else {
-            timeDisplay = formatMMSS(ev.remainingSeconds);
-        }
+        let timeDisplay = ev.status === 'FINISHED' ? "0:00 min (Zakończono)" : (!ev.firstArrived ? `Oczekiwanie... (${formatMMSS(ev.remainingSeconds)})` : formatMMSS(ev.remainingSeconds));
 
         tr.innerHTML = `
             <td>${ev.id}/???/2026</td>
@@ -1105,7 +993,7 @@ function renderEvents() {
             <td>${ev.vehicles.length}</td>
             <td>${ev.type}</td>
             <td>${ev.desc}</td>
-            <td><b style="color: ${ev.status === 'ACTIVE' && ev.firstArrived ? '#ffcc00' : '#ff8000'};">${timeDisplay}</b></td>
+            <td><b>${timeDisplay}</b></td>
             <td>???-0000${ev.id}</td>
         `;
         tbody.appendChild(tr);
@@ -1118,7 +1006,7 @@ function selectEvent(id) {
 
     selectedEvIdForRadio = ev.id;
     document.getElementById('btn-open-radio').style.display = 'block';
-    document.getElementById('details-title').innerText = `Zdarzenie ID: ${ev.id} - ${ev.city}`;
+    document.getElementById('details-title').innerText = `Szczegóły zdarzenia ID: ${ev.id} - ${ev.city}`;
     
     renderEvents();
 
@@ -1129,11 +1017,7 @@ function selectEvent(id) {
     }
 
     sisBody.innerHTML = ev.vehicles.map(v => {
-        let statusText = "W bazie";
-        if (v.travelTime > 0) statusText = `<span style="color: #f39c12; font-weight: bold;">Dojazd (${v.travelTime}s)</span>`;
-        else if (ev.status === 'ACTIVE') statusText = `<span style="color: #ff3333; font-weight: bold;">Na miejscu</span>`;
-        else statusText = `<span style="color: #00ff00;">Powrót/Wolny</span>`;
-
+        let statusText = v.travelTime > 0 ? `<span style="color: #f39c12; font-weight: bold;">Dojazd (${v.travelTime}s)</span>` : (ev.status === 'ACTIVE' ? `<span style="color: #ff3333; font-weight: bold;">Na miejscu</span>` : `<span style="color: #00ff00;">Wolny</span>`);
         return `
             <tr>
                 <td><b>${v.id}</b> - ${v.name}</td>
@@ -1212,7 +1096,7 @@ function openEditEventModal(id) {
     activeEditingId = id;
     selectedVehicles = [...ev.vehicles];
 
-    document.getElementById('modal-event-title').innerText = `Edycja zdarzenia ID: ${ev.id} - ???-0000${ev.id}`;
+    document.getElementById('modal-event-title').innerText = `Edycja zdarzenia ID: ${ev.id}`;
     document.getElementById('inp-ev-time').value = ev.time;
     document.getElementById('inp-ev-city').value = ev.city;
     document.getElementById('inp-ev-region').value = ev.region;
@@ -1223,14 +1107,11 @@ function openEditEventModal(id) {
     const radio = document.querySelector(`input[name="ev-type"][value="${ev.type}"]`);
     if (radio) radio.checked = true;
     updateSubtypes(ev.type);
-    if (ev.type !== 'PZR') {
-        document.getElementById('inp-ev-subtype').value = ev.subtype || "";
-    }
+    if (ev.type !== 'PZR') document.getElementById('inp-ev-subtype').value = ev.subtype || "";
 
     servicesState = { ...ev.services };
     if (servicesState.prm) document.getElementById('btn-service-prm').classList.add('active');
     else document.getElementById('btn-service-prm').classList.remove('active');
-
     if (servicesState.police) document.getElementById('btn-service-police').classList.add('active');
     else document.getElementById('btn-service-police').classList.remove('active');
 
@@ -1244,49 +1125,31 @@ function openDispatchModal() {
     const targetCity = document.getElementById('inp-ev-city').value.trim();
     container.innerHTML = '';
 
-    if (targetCity) {
-        infoBar.innerHTML = `📍 Kolejność dysponowania wg odległości dla miejscowości: <span style="color:#b30000;">${targetCity}</span>`;
-    } else {
-        infoBar.innerHTML = `⚠️ Nie wpisano miejscowości – wyświetlono kolejność domyślną`;
-    }
+    infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span>` : `⚠️ Brak miejscowości`;
 
     const availableUnits = [...unitsPSP, ...unitsOSP]
         .filter(u => u.vehicles.length > 0)
-        .map(u => {
-            const prox = getUnitProximity(u.name, targetCity);
-            return { ...u, travelSec: prox.sec, distanceKm: prox.km };
-        })
-        .sort((a, b) => a.travelSec - b.travelSec);
+        .map(u => ({ ...u, ...getUnitProximity(u.name, targetCity) }))
+        .sort((a, b) => a.sec - b.sec);
 
     availableUnits.forEach((u, index) => {
         const isClosest = index === 0 && targetCity !== "";
         const groupDiv = document.createElement('div');
         groupDiv.className = 'dispatch-unit-group';
 
-        const headerHTML = `
+        groupDiv.innerHTML = `
             <div class="dispatch-unit-header ${isClosest ? 'closest' : ''}">
                 <span>${index + 1}. ${u.name} ${isClosest ? '⭐ (Najbliższa)' : ''}</span>
-                <span>${u.distanceKm} | Dojazd: ~${u.travelSec}s</span>
+                <span>${u.km} | Dojazd: ~${u.sec}s</span>
             </div>
-        `;
-
-        const vehiclesHTML = u.vehicles.map(v => {
-            const isChecked = selectedVehicles.some(sv => sv.id === v.id);
-            const statusLabel = v.status === 'green' 
-                ? '<span style="color:#2ecc71; font-size:10px;">(Wolny)</span>' 
-                : '<span style="color:#e74c3c; font-size:10px;">(W akcji)</span>';
-
-            return `
+            ${u.vehicles.map(v => `
                 <label class="dispatch-vehicle-item" style="cursor:pointer;">
-                    <input type="checkbox" value="${v.id}" ${isChecked ? 'checked' : ''}>
+                    <input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}>
                     <span class="status-dot ${v.status}"></span>
                     <span><b>${v.id}</b> - ${v.name}</span>
-                    <span style="margin-left:auto;">${statusLabel}</span>
                 </label>
-            `;
-        }).join('');
-
-        groupDiv.innerHTML = headerHTML + vehiclesHTML;
+            `).join('')}
+        `;
         container.appendChild(groupDiv);
     });
 
@@ -1301,10 +1164,7 @@ function confirmDispatch() {
     checkboxes.forEach(cb => {
         [...unitsPSP, ...unitsOSP].forEach(u => {
             const v = u.vehicles.find(veh => veh.id === cb.value);
-            if (v) {
-                const travel = calculateTravelTimeSeconds(u.name, targetCity);
-                selectedVehicles.push({ ...v, unitName: u.name, travelTime: travel });
-            }
+            if (v) selectedVehicles.push({ ...v, unitName: u.name, travelTime: calculateTravelTimeSeconds(u.name, targetCity) });
         });
     });
 
@@ -1316,45 +1176,22 @@ function saveEvent() {
     const city = document.getElementById('inp-ev-city').value;
     if (!city) { alert('Proszę podać miejscowość!'); return; }
 
-    const evTypeRadio = document.querySelector('input[name="ev-type"]:checked');
-    const typeVal = evTypeRadio ? evTypeRadio.value : 'P';
+    const typeVal = document.querySelector('input[name="ev-type"]:checked').value;
     const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : document.getElementById('inp-ev-subtype').value;
     const descVal = document.getElementById('inp-ev-desc').value;
-    const estSec = calculateEstimatedSeconds(descVal, subtypeVal, typeVal);
 
     selectedVehicles.forEach(sv => {
-        if (sv.travelTime === undefined || activeEditingId === null) {
-            sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
-        }
+        if (sv.travelTime === undefined || activeEditingId === null) sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
     });
 
-    let uniqueOspUnitsCount = 0;
     let countedOspNames = [];
     selectedVehicles.forEach(sv => {
-        if (!sv.unitName.includes("JRG") && !sv.unitName.includes("KP PSP")) {
-            if (!countedOspNames.includes(sv.unitName)) {
-                countedOspNames.push(sv.unitName);
-                uniqueOspUnitsCount++;
-            }
+        if (!sv.unitName.includes("JRG") && !sv.unitName.includes("KP PSP") && !countedOspNames.includes(sv.unitName)) {
+            countedOspNames.push(sv.unitName);
         }
     });
 
-    if (uniqueOspUnitsCount > 0) {
-        const audioSelekt = new Audio('selekt.wav');
-        let played = 0;
-        function playNextSelekt() {
-            if (played < uniqueOspUnitsCount) {
-                audioSelekt.currentTime = 0;
-                audioSelekt.play().then(() => {
-                    played++;
-                    if (played < uniqueOspUnitsCount) {
-                        setTimeout(playNextSelekt, 3000);
-                    }
-                }).catch(e => console.log("Audio selekt zablokowane"));
-            }
-        }
-        playNextSelekt();
-    }
+    playOspAlarmRepeated(countedOspNames.length);
 
     if (activeEditingId === null) {
         const newEv = {
@@ -1366,7 +1203,7 @@ function saveEvent() {
             desc: descVal,
             type: typeVal,
             subtype: subtypeVal,
-            remainingSeconds: estSec,
+            remainingSeconds: 180,
             firstArrived: false,
             radioReported: false,
             radioLogs: [],
@@ -1383,7 +1220,6 @@ function saveEvent() {
         ev.desc = descVal;
         ev.type = typeVal;
         ev.subtype = subtypeVal;
-        ev.remainingSeconds = estSec;
         ev.services = { ...servicesState };
         ev.vehicles = [...selectedVehicles];
     }
@@ -1403,7 +1239,6 @@ function saveEvent() {
 function finishCurrentEvent() {
     if (activeEditingId === null) return;
     const ev = events.find(e => e.id === activeEditingId);
-
     if (ev) {
         ev.status = 'FINISHED';
         ev.remainingSeconds = 0;
@@ -1414,7 +1249,6 @@ function finishCurrentEvent() {
             });
         });
     }
-
     renderUnits();
     renderEvents();
     closeModal('modal-event');
@@ -1432,7 +1266,6 @@ function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
 setInterval(() => {
     let needsRender = false;
-
     events.forEach(ev => {
         if (ev.status === 'ACTIVE') {
             ev.vehicles.forEach(v => {
@@ -1444,7 +1277,6 @@ setInterval(() => {
                         const veh = u.vehicles.find(vObj => vObj.id === v.id);
                         if (veh && veh.status === 'orange') {
                             veh.status = 'red';
-                            
                             if (!ev.firstArrived) {
                                 ev.firstArrived = true;
                                 if (!ev.radioReported) {
@@ -1473,7 +1305,6 @@ setInterval(() => {
             }
         }
     });
-
     if (needsRender) {
         renderUnits();
         renderEvents();
