@@ -1,6 +1,6 @@
 // --- MODUŁ AUDIO ---
 const audioSelekt = new Audio('selekt.wav');
-const audioCpr = new Audio('nowe zdارzenie odbierz.mp3');
+const audioCpr = new Audio('nowe zdarzenie odbierz.mp3');
 const audioMotorola = new Audio('motorola.ogg');
 
 function playSound(type) {
@@ -259,7 +259,7 @@ const subtypesData = {
         "P - Inne pożary", "P - Instytucje, obiekty użyteczności publicznej", "P - Obiekty gospodarcze i inne rolnicze",
         "P - Obiekty magazynowe, place składowe", "P - Obiekty mieszkalne", "P - Obiekty produkcyjne, instalacje technologiczne",
         "P - Śmietniska, wysypiska", "P - Środki transportu drogowego (np. autobus)", "P - Środki transportu kolejowego",
-        "P - Środki transportu lotniczego", "P - Środki transportu wodного", "P - Trawy, torfowiska, lasy, pola, stogi"
+        "P - Środki transportu lotniczego", "P - Środki transportu wodnego", "P - Trawy, torfowiska, lasy, pola, stogi"
     ],
     "MZ": [
         "Inne MZ", "MZ - Atmosferyczne", "MZ - Budowlane", "MZ - Chemiczne", "MZ - Drogowe", "MZ - Kolejowe",
@@ -577,7 +577,7 @@ let selectedVehicles = [];
 let servicesState = { prm: false, police: false };
 let currentCPRData = null;
 let cprCounter = 101;
-let currentRadioVehicle = null;
+let openRadioWindows = {}; // Przechowuje aktywne okienka wg id zdarzenia
 
 // --- MECHANIZM PRZESUWANIA (POSITION: FIXED) ---
 function makeDraggable(elmnt, header) {
@@ -617,9 +617,6 @@ function makeDraggable(elmnt, header) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    const radioModal = document.getElementById('radio-modal');
-    if (radioModal) makeDraggable(radioModal, radioModal.querySelector('.modal-header'));
-
     const eventModal = document.querySelector('#modal-event .modal-window');
     if (eventModal) makeDraggable(eventModal, document.querySelector('#modal-event .modal-header'));
 
@@ -651,12 +648,111 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     return `Wejherowo 998, tu ${kdrCallsign}. W odpowiedzi na "${userQuestion}" – sytuacja jest pod naszą kontrolą, realizujemy zadania na miejscu zdarzenia. Odbiór.`;
 }
 
-// --- MELDUNEK Z DOJAZDU ---
+// --- SYSTEM WIELU OKIEN RADIOWYCH ---
+function createRadioWindow(evId) {
+    if (openRadioWindows[evId]) {
+        openRadioWindows[evId].style.display = 'flex';
+        return openRadioWindows[evId];
+    }
+
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return null;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.id = `radio-modal-${evId}`;
+    modal.style.display = 'flex';
+    modal.style.zIndex = '1050';
+
+    // Przesunięcie nowego okna na ekranie
+    const windowCount = Object.keys(openRadioWindows).length;
+    const offset = (windowCount * 25) % 150;
+
+    modal.innerHTML = `
+        <div class="modal-window radio-window-dynamic" style="left: calc(50% - 220px + ${offset}px); top: calc(50% - 200px + ${offset}px); margin:0; position:fixed;">
+            <div class="modal-header">
+                <span class="radio-title">📻 Radio - ID: ${ev.id} (${ev.city})</span>
+                <div>
+                    <button class="modal-min" onclick="minimizeRadioWindow(${ev.id})">_</button>
+                    <button class="modal-close" onclick="closeRadioWindow(${ev.id})">&times;</button>
+                </div>
+            </div>
+            <div class="radio-chat" id="radio-chat-${ev.id}"></div>
+            <div class="radio-quick-buttons">
+                <button onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, podaj stan sytuacji na miejscu.')">Stan sytuacji?</button>
+                <button onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebne ZRM lub Policja?')">ZRM/Policja?</button>
+                <button onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebujecie dodatkowych sił i środków?')">Dodatkowe SiS?</button>
+            </div>
+            <div class="radio-input-box">
+                <input type="text" id="inp-radio-reply-${ev.id}" placeholder="Napisz wiadomość radiową..." onkeypress="if(event.key==='Enter') sendRadioReplyDynamic(${ev.id})">
+                <button onclick="sendRadioReplyDynamic(${ev.id})">Nadaj</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    makeDraggable(modal.querySelector('.modal-window'), modal.querySelector('.modal-header'));
+
+    openRadioWindows[evId] = modal;
+    updateRadioChatDynamic(evId);
+
+    return modal;
+}
+
+function updateRadioChatDynamic(evId) {
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+    const chat = document.getElementById(`radio-chat-${evId}`);
+    if (chat) {
+        chat.innerHTML = (ev.radioLogs || []).join('');
+        chat.scrollTop = chat.scrollHeight;
+    }
+}
+
+function closeRadioWindow(evId) {
+    if (openRadioWindows[evId]) {
+        openRadioWindows[evId].remove();
+        delete openRadioWindows[evId];
+    }
+}
+
+function minimizeRadioWindow(evId) {
+    if (openRadioWindows[evId]) {
+        openRadioWindows[evId].style.display = 'none';
+        const bar = document.getElementById('minimized-bar');
+        if (bar) {
+            const item = document.createElement('div');
+            item.className = 'minimized-item';
+            item.id = `min-radio-${evId}`;
+            item.innerHTML = `📻 Radio (ID: ${evId})`;
+            item.onclick = () => {
+                if (openRadioWindows[evId]) openRadioWindows[evId].style.display = 'flex';
+                item.remove();
+            };
+            bar.appendChild(item);
+        }
+    }
+}
+
+function openRadioForEvent(evId) {
+    selectedEvIdForRadio = evId;
+    createRadioWindow(evId);
+    const btnOpen = document.getElementById('btn-open-radio');
+    if (btnOpen) btnOpen.style.display = 'block';
+}
+
+function openRadioForSelectedEvent() {
+    if (selectedEvIdForRadio !== null) openRadioForEvent(selectedEvIdForRadio);
+    else if (events.length > 0) openRadioForEvent(events[0].id);
+    else alert('Brak aktywnych zdarzeń.');
+}
+
+// --- MELDUNEK Z DOJAZDU (TWORZY OSOBNE OKNO) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
-    currentRadioVehicle = vehicle.id;
-    selectedEvIdForRadio = ev.id;
     if (!ev.radioLogs) ev.radioLogs = [];
-    openRadioForEvent(ev.id);
+    
+    // Otwórz własne okno dla konkretnego zdarzenia
+    createRadioWindow(ev.id);
 
     const sysPrompt = `Jesteś KDR (${vehicle.id}). Przybyłeś na miejsce: ${ev.city}. 
 Zdarzenie z karty: "${ev.desc}". 
@@ -686,57 +782,36 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Odbiór."`;
 
     const initialMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${vehicle.id} ➔ Wejherowo 998:</b><br>"${reportText}"</div>`;
     ev.radioLogs.push(initialMsg);
-    openRadioForEvent(ev.id);
+
+    ev.kdrVehicleId = vehicle.id;
+    updateRadioChatDynamic(ev.id);
 }
 
-function openRadioForEvent(evId) {
+// --- WYSYŁANIE ODPOWIEDZI W DYNAMICZNYM OKNIE ---
+async function sendRadioReplyDynamic(evId, customText = null) {
+    const input = document.getElementById(`inp-radio-reply-${evId}`);
+    const text = customText !== null ? customText : (input ? input.value.trim() : "");
+    if (!text) return;
+
     const ev = events.find(e => e.id === evId);
     if (!ev) return;
-    selectedEvIdForRadio = ev.id;
-    const chat = document.getElementById('radio-chat');
-    const titleEl = document.getElementById('radio-title');
-    if(titleEl) titleEl.innerText = `📻 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})`;
-    if(chat) {
-        chat.innerHTML = (ev.radioLogs || []).join('');
-        chat.scrollTop = chat.scrollHeight;
-    }
-    const modal = document.getElementById('radio-modal');
-    if(modal) modal.style.display = 'flex';
-    const btnOpen = document.getElementById('btn-open-radio');
-    if(btnOpen) btnOpen.style.display = 'block';
-}
-
-function openRadioForSelectedEvent() {
-    if (selectedEvIdForRadio !== null) openRadioForEvent(selectedEvIdForRadio);
-    else if (events.length > 0) openRadioForEvent(events[0].id);
-    else alert('Brak aktywnych zdarzeń.');
-}
-
-// --- ODPOWIEDŹ NA KAŻDE PYTANIE I PRZYCISK RADIOWY ---
-async function sendRadioReply(customText = null) {
-    const input = document.getElementById('inp-radio-reply');
-    const text = customText !== null ? customText : (input ? input.value.trim() : "");
-    if (!text || selectedEvIdForRadio === null) return;
 
     audioMotorola.currentTime = 0;
     audioMotorola.play().catch(e => {});
 
-    const ev = events.find(e => e.id === selectedEvIdForRadio);
-    if (!ev) return;
-
-    const kdrName = currentRadioVehicle || 'KDR';
+    const kdrName = ev.kdrVehicleId || (ev.vehicles[0] ? ev.vehicles[0].id : 'KDR');
     const timeStr = new Date().toLocaleTimeString();
     const userMsg = `<div class="chat-msg chat-sk"><b>[${timeStr}] Wejherowo 998 ➔ KDR:</b><br>"${text}"</div>`;
     
     if (!ev.radioLogs) ev.radioLogs = [];
     ev.radioLogs.push(userMsg);
 
-    const chatBox = document.getElementById('radio-chat');
-    if(chatBox) {
-        chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${kdrName} nadaje...</div>`;
+    const chatBox = document.getElementById(`radio-chat-${evId}`);
+    if (chatBox) {
+        chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing-${evId}" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${kdrName} nadaje...</div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
     }
-    if(input) input.value = '';
+    if (input) input.value = '';
 
     const systemPrompt = `Jesteś dowódcą zastępu (${kdrName}) w miejscowości ${ev.city}. 
 Opis zdarzenia z karty: "${ev.desc}".
@@ -770,32 +845,7 @@ Format:
     const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${kdrName} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
     
     ev.radioLogs.push(respMsg);
-    if(chatBox) {
-        chatBox.innerHTML = ev.radioLogs.join('');
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-}
-
-function quickReply(text) {
-    sendRadioReply(text);
-}
-
-function closeRadio() { 
-    const modal = document.getElementById('radio-modal');
-    if(modal) modal.style.display = 'none'; 
-}
-
-function minimizeRadio() {
-    const modal = document.getElementById('radio-modal');
-    if(modal) modal.style.display = 'none';
-    const bar = document.getElementById('minimized-bar');
-    if(bar) {
-        const item = document.createElement('div');
-        item.className = 'minimized-item';
-        item.innerHTML = `📻 Radio (ID: ${selectedEvIdForRadio})`;
-        item.onclick = () => { if(modal) modal.style.display = 'flex'; item.remove(); };
-        bar.appendChild(item);
-    }
+    updateRadioChatDynamic(evId);
 }
 
 function safeSetElementText(id, text) {
@@ -1431,23 +1481,17 @@ setInterval(() => {
     renderSelectedEventDetails();
 }, 1000);
 
-// --- AUTOMATYCZNE GENEROWANIE ZGŁOSZEŃ CO PEWIEN CZAS ---
+// --- AUTOMATYCZNE GENEROWANIE ZGŁOSZEŃ ---
 function scheduleNextAutoCPR() {
-    // Losowy czas między 45 a 90 sekundami (45000 - 90000 ms)
     const randomTime = Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000;
-    
     setTimeout(() => {
-        // Generujemy nowe zgłoszenie samoczynnie tylko wtedy, gdy akurat nie jest otwarte inne okno CPR
         const cprModal = document.getElementById('cpr-modal');
         if (!cprModal || cprModal.style.display !== 'flex') {
             simulateIncomingCPR();
         }
-        // Planujemy kolejne losowe zgłoszenie
         scheduleNextAutoCPR();
     }, randomTime);
 }
 
-// Uruchomienie automatycznego generatora misji po załadowaniu skryptu
 scheduleNextAutoCPR();
-
 renderUnits();
