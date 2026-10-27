@@ -40,7 +40,7 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- BŁYSKAWICZNY SILNIK AI (DLA RADIA I CPR) ---
+// --- INTELIGENTNY SILNIK AI (DLA RADIA I CPR) ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -619,22 +619,29 @@ window.addEventListener('DOMContentLoaded', () => {
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 });
 
-// --- MELDUNEK Z DOJAZDU (SZYBKI) ---
+// --- MELDUNEK Z DOJAZDU ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
     if (!ev.radioLogs) ev.radioLogs = [];
     openRadioForEvent(ev.id);
 
-    const sysPrompt = `Jesteś dowódcą (${vehicle.id}). Odpowiedz ultra-krótko (max 1 zdanie), żargonem strażackim.`;
-    const usrPrompt = `Dojechaliście do: ${ev.city}, ${ev.street}. Zgł.: "${ev.desc}". Napisz meldunek zaczynając od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ "Bez odbioru."`;
+    const sysPrompt = `Jesteś dowódcą zastępu strażackiego (${vehicle.id}) na miejscu zdarzenia. 
+Szczegóły zdarzenia:
+- Miejscowość: ${ev.city}
+- Adres: ${ev.street}
+- Rodzaj zdarzenia: ${ev.subtype || ev.type}
+- Opis: ${ev.desc}
+
+Napisz krótki, profesjonalny meldunek po dotarciu na miejsce (max 1-2 zdania). 
+Zacznij obowiązkowo od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i zakończ "Bez odbioru."`;
 
     let reportText = "";
     try {
-        reportText = await callUniversalAI(sysPrompt, usrPrompt, false);
+        reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z dojazdu.", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu. Działamy. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu, sytuacja potwierdzona, przystępujemy do działań. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -663,7 +670,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- ROZMOWA RADIOWA (SZYBKA) ---
+// --- INTELIGENTNA ROZMOWA RADIOWA Z AI ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -686,14 +693,24 @@ async function sendRadioReply() {
     input.value = '';
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}). Odpowiadaj ultra-krótko (1 zdanie), profesjonalnym żargonem strażackim. Zacznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i skończ "Bez odbioru."`;
+    const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}) na miejscu zdarzenia strażackiego. 
+Szczegóły zdarzenia:
+- Miejscowość: ${ev.city}
+- Adres: ${ev.street}
+- Rodzaj: ${ev.subtype || ev.type}
+- Opis zgłoszenia: ${ev.desc}
+
+Zadanie: Odpowiadaj w sposób w pełni logiczny, spójny i adekwatny na komunikaty lub pytania dyspozytora (Wejherowo 998). 
+Jeśli dyspozytor pyta o siły i środki, potrzebę Policji/ZRM, stan działań lub podaje dyspozycje, odnieś się do tego bezpośrednio w swojej odpowiedzi, używając profesjonalnego żargonu strażackiego. 
+Twoja wypowiedź musi być zwięzła (1-2 zdania). 
+Zawsze zaczynaj od: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ: "Bez odbioru."`;
 
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, text, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, działamy. Bez odbioru.`;
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, działamy zgodnie z wytycznymi. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -723,7 +740,7 @@ function minimizeRadio() {
     bar.appendChild(item);
 }
 
-// --- DYNAMICZNE GENEROWANIE CPR PRZEZ AI ---
+// --- DYNAMICZNE GENEROWANIE CPR PRZEZ AI (BEZ "RODZAJ: Rodzaj") ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -737,7 +754,7 @@ async function simulateIncomingCPR() {
     document.getElementById('cpr-id').innerText = newCprId;
     document.getElementById('cpr-city').innerText = randomTown;
     document.getElementById('cpr-street').innerText = "Trwa ustalanie lokalizacji przez AI...";
-    document.getElementById('cpr-type').innerText = `${chosenType} - ${randomSubtype}`;
+    document.getElementById('cpr-type').innerText = randomSubtype; // Poprawiono: wyświetla sam podrodzaj bez dopisku "Rodzaj:"
     document.getElementById('cpr-caller').innerText = "Łączenie z operatorem 112...";
     document.getElementById('cpr-desc').innerText = "🤖 AI generuje unikalną misję ratowniczą...";
     document.getElementById('cpr-modal').style.display = 'flex';
@@ -781,7 +798,7 @@ async function simulateIncomingCPR() {
     document.getElementById('cpr-id').innerText = currentCPRData.id;
     document.getElementById('cpr-city').innerText = currentCPRData.city;
     document.getElementById('cpr-street').innerText = currentCPRData.street;
-    document.getElementById('cpr-type').innerText = `${currentCPRData.type} - ${currentCPRData.subtype}`;
+    document.getElementById('cpr-type').innerText = currentCPRData.subtype; // Sam podrodzaj
     document.getElementById('cpr-caller').innerText = currentCPRData.caller;
     document.getElementById('cpr-desc').innerText = currentCPRData.desc;
 }
