@@ -648,10 +648,10 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     return `Wejherowo 998, tu ${kdrCallsign}. W odpowiedzi na "${userQuestion}" – sytuacja jest pod naszą kontrolą, realizujemy zadania na miejscu zdarzenia. Odbiór.`;
 }
 
-// --- SYSTEM WIELU OKIEN RADIOWYCH W ORYGINALNYM CSS ---
+// --- DOKŁADNY WYGLĄD RADIA ZE ZDJĘCIA ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
-        openRadioWindows[evId].style.display = 'flex';
+        openRadioWindows[evId].style.display = 'block';
         return openRadioWindows[evId];
     }
 
@@ -659,41 +659,48 @@ function createRadioWindow(evId) {
     if (!ev) return null;
 
     const modal = document.createElement('div');
-    modal.className = 'modal-backdrop';
     modal.id = `radio-modal-${evId}`;
-    modal.style.display = 'flex';
+    modal.style.position = 'fixed';
     modal.style.zIndex = '1050';
-
+    modal.style.width = '420px';
+    
     const windowCount = Object.keys(openRadioWindows).length;
     const offset = (windowCount * 25) % 150;
+    modal.style.left = `calc(50% - 210px + ${offset}px)`;
+    modal.style.top = `calc(50% - 180px + ${offset}px)`;
 
-    // Oryginalna struktura HTML i klasy CSS z oryginalnego szablonu
     modal.innerHTML = `
-        <div class="modal-window" style="left: calc(50% - 220px + ${offset}px); top: calc(50% - 200px + ${offset}px); margin:0; position:fixed;">
-            <div class="modal-header">
-                <span id="radio-title-${evId}">📻 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})</span>
-                <div>
-                    <button class="modal-min" onclick="minimizeRadioWindow(${ev.id})">_</button>
-                    <button class="modal-close" onclick="closeRadioWindow(${ev.id})">&times;</button>
+        <div style="background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); font-family: 'Segoe UI', Tahoma, sans-serif;">
+            <div class="radio-win-header" style="background: linear-gradient(90deg, #004080, #1060b0); color: #ffffff; padding: 3px 6px; font-weight: bold; font-size: 13px; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;">
+                <span id="radio-title-${evId}">🖵 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})</span>
+                <div style="display: flex; gap: 2px;">
+                    <button style="background: #c0c0c0; border: 1px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; width: 18px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="minimizeRadioWindow(${ev.id})">_</button>
+                    <button style="background: #c0c0c0; border: 1px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; width: 18px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="closeRadioWindow(${ev.id})">✕</button>
                 </div>
             </div>
-            <div class="modal-body">
-                <div id="radio-chat-${evId}" class="radio-chat-box"></div>
-                <div class="radio-quick-actions">
-                    <button class="action-btn" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, podaj stan sytuacji na miejscu.')">Stan sytuacji?</button>
-                    <button class="action-btn" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebne ZRM lub Policja?')">ZRM/Policja?</button>
-                    <button class="action-btn" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebujecie dodatkowych sił i środków?')">Dodatkowe SiS?</button>
-                </div>
-                <div class="radio-input-row">
-                    <input type="text" id="inp-radio-reply-${evId}" placeholder="Napisz wiadomość radiową..." onkeypress="if(event.key==='Enter') sendRadioReplyDynamic(${ev.id})">
-                    <button class="action-btn" onclick="sendRadioReplyDynamic(${ev.id})">Nadaj</button>
+            <div style="padding: 6px; background: #c0c0c0;">
+                <div id="radio-chat-${evId}" style="background: #000000; color: #ffcc00; font-family: 'Courier New', monospace; font-weight: bold; font-size: 12px; height: 260px; padding: 6px; overflow-y: auto; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; box-sizing: border-box; line-height: 1.3;"></div>
+                
+                <div style="display: flex; gap: 4px; margin-top: 6px; justify-content: space-between;">
+                    <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Przyjąłem.')">
+                        <span style="color: green;">✔</span> Przyjąłem
+                    </button>
+                    <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy na miejscu wymagany jest zespół ZRM?')">
+                        <span style="color: red;">🚑</span> Wymagany ZRM?
+                    </button>
+                    <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebny jest patrol Policji?')">
+                        <span style="color: blue;">🚔</span> Potrzebna Policja?
+                    </button>
+                    <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebne są dodatkowe siły i środki?')">
+                        <span style="color: darkred;">🚒</span> Dodatkowe SiS?
+                    </button>
                 </div>
             </div>
         </div>
     `;
 
     document.body.appendChild(modal);
-    makeDraggable(modal.querySelector('.modal-window'), modal.querySelector('.modal-header'));
+    makeDraggable(modal, modal.querySelector('.radio-win-header'));
 
     openRadioWindows[evId] = modal;
     updateRadioChatDynamic(evId);
@@ -728,7 +735,7 @@ function minimizeRadioWindow(evId) {
             item.id = `min-radio-${evId}`;
             item.innerHTML = `📻 Radio (ID: ${evId})`;
             item.onclick = () => {
-                if (openRadioWindows[evId]) openRadioWindows[evId].style.display = 'flex';
+                if (openRadioWindows[evId]) openRadioWindows[evId].style.display = 'block';
                 item.remove();
             };
             bar.appendChild(item);
@@ -749,7 +756,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- MELDUNEK Z DOJAZDU (TWORZY OSOBNE OKNO) ---
+// --- MELDUNEK Z DOJAZDU (NOWE OKNO) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     createRadioWindow(ev.id);
@@ -757,7 +764,7 @@ async function triggerArrivalRadioReport(ev, vehicle) {
     const sysPrompt = `Jesteś KDR (${vehicle.id}). Przybyłeś na miejsce: ${ev.city}. 
 Zdarzenie z karty: "${ev.desc}". 
 Złóż 1-zdaniowy meldunek z dojazdu. Musi pasować wyłącznie do podanego opisu zdarzenia. 
-Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Odbiór."`;
+Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
 
     let reportText = "";
     try {
@@ -768,19 +775,18 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Odbiór."`;
     const descLower = (ev.desc || "").toLowerCase();
     const textLower = (reportText || "").toLowerCase();
     if (textLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień")) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}, sytuacja potwierdzona (${ev.desc}). Przystępujemy do działań. Odbiór.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city} – ${ev.desc}; obszar ugaszony, działania w toku, brak osób uwięzionych, brak zagrożenia. Bez odbioru.`;
     }
 
     if (!reportText) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. Zdarzenie: ${ev.desc}. Odbiór.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city} – ${ev.desc}. Bez odbioru.`;
     }
-
-    reportText = reportText.replace(/bez odbioru/gi, 'Odbiór.');
 
     audioMotorola.currentTime = 0;
     audioMotorola.play().catch(e => {});
 
-    const initialMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${vehicle.id} ➔ Wejherowo 998:</b><br>"${reportText}"</div>`;
+    const timeStr = new Date().toLocaleTimeString();
+    const initialMsg = `<div style="margin-bottom: 6px;">[${timeStr}] ${vehicle.id} ➔ Wejherowo 998:<br>"${reportText}"</div>`;
     ev.radioLogs.push(initialMsg);
 
     ev.kdrVehicleId = vehicle.id;
@@ -788,9 +794,7 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Odbiór."`;
 }
 
 // --- WYSYŁANIE ODPOWIEDZI W DYNAMICZNYM OKNIE ---
-async function sendRadioReplyDynamic(evId, customText = null) {
-    const input = document.getElementById(`inp-radio-reply-${evId}`);
-    const text = customText !== null ? customText : (input ? input.value.trim() : "");
+async function sendRadioReplyDynamic(evId, text) {
     if (!text) return;
 
     const ev = events.find(e => e.id === evId);
@@ -801,26 +805,25 @@ async function sendRadioReplyDynamic(evId, customText = null) {
 
     const kdrName = ev.kdrVehicleId || (ev.vehicles[0] ? ev.vehicles[0].id : 'KDR');
     const timeStr = new Date().toLocaleTimeString();
-    const userMsg = `<div class="chat-msg chat-sk"><b>[${timeStr}] Wejherowo 998 ➔ KDR:</b><br>"${text}"</div>`;
+    const userMsg = `<div style="margin-bottom: 6px; color: #00ff00;">[${timeStr}] Wejherowo 998 ➔ ${kdrName}:<br>"${text}"</div>`;
     
     if (!ev.radioLogs) ev.radioLogs = [];
     ev.radioLogs.push(userMsg);
 
     const chatBox = document.getElementById(`radio-chat-${evId}`);
     if (chatBox) {
-        chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing-${evId}" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${kdrName} nadaje...</div>`;
+        chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing-${evId}" style="color:#aaa; font-style:italic; padding:2px;">⏳ ${kdrName} nadaje...</div>`;
         chatBox.scrollTop = chatBox.scrollHeight;
     }
-    if (input) input.value = '';
 
     const systemPrompt = `Jesteś dowódcą zastępu (${kdrName}) w miejscowości ${ev.city}. 
 Opis zdarzenia z karty: "${ev.desc}".
 
-Dyspozytor (Wejherowo 998) pyta Cię: "${text}".
-GŁÓWNA ZASADA: Odpowiedz bezpośrednio na to zadane pytanie! Np. jeśli pyta o pogotowie i policję, odpowiadasz czy potrzebne jest pogotowie i policja! Nie używaj ogólników typu "przyjąłem, realizujemy zadanie"!
+Dyspozytor (Wejherowo 998) pyta Cię/przekazuje: "${text}".
+GŁÓWNA ZASADA: Odpowiedz bezpośrednio na to zadane pytanie!
 
 Format:
-"Wejherowo 998, tu ${kdrName}. [Trafna odpowiedź na pytanie]. Odbiór."`;
+"Wejherowo 998, tu ${kdrName}. [Trafna odpowiedź]. Bez odbioru."`;
 
     let aiReply = "";
     try {
@@ -834,15 +837,10 @@ Format:
         aiReply = generateSmartKdrResponse(kdrName, text, ev);
     }
 
-    aiReply = aiReply.replace(/bez odbioru/gi, 'Odbiór.');
-    if (!/odbiór\.?$/i.test(aiReply)) {
-        aiReply = aiReply.trim() + " Odbiór.";
-    }
-
     audioMotorola.currentTime = 0;
     audioMotorola.play().catch(e => {});
 
-    const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${kdrName} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
+    const respMsg = `<div style="margin-bottom: 6px; color: #ffcc00;">[${new Date().toLocaleTimeString()}] ${kdrName} ➔ Wejherowo 998:<br>"${aiReply}"</div>`;
     
     ev.radioLogs.push(respMsg);
     updateRadioChatDynamic(evId);
