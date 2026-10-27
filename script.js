@@ -40,7 +40,7 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- SZYBKI SILNIK AI (MAX TOKENS SKRÓCONE DO 60) ---
+// --- SZYBKI SILNIK AI ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -56,7 +56,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'user', content: userPrompt }
                 ],
                 temperature: 0.5,
-                max_tokens: 60, // Błyskawiczne generowanie tekstu
+                max_tokens: 60,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
@@ -622,7 +622,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 });
 
-// --- MELDUNEK Z DOJAZDU (SZYBKI PROMPT) ---
+// --- MELDUNEK Z DOJAZDU ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
@@ -670,7 +670,6 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- INTELIGENTNA ROZMOWA RADIOWA Z AI (SKRÓCONA I SZYBKA) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     if(!input) return;
@@ -747,7 +746,6 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
-// --- GENEROWANIE CPR PRZEZ AI (SZYBKIE FORMATOWANIE) ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -1210,16 +1208,16 @@ function saveEvent() {
         if (sv.travelTime === undefined || activeEditingId === null) sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
     });
 
-    let countedOspNames = [];
-    selectedVehicles.forEach(sv => {
-        if (!sv.unitName.includes("JRG") && !sv.unitName.includes("KP PSP") && !countedOspNames.includes(sv.unitName)) {
-            countedOspNames.push(sv.unitName);
-        }
-    });
-
-    playOspAlarmRepeated(countedOspNames.length);
-
+    // Sprawdzenie czy to NOWE zdarzenie (dźwięk selektu OSP zagra tylko przy pierwszym utworzeniu)
     if (activeEditingId === null) {
+        let countedOspNames = [];
+        selectedVehicles.forEach(sv => {
+            if (!sv.unitName.includes("JRG") && !sv.unitName.includes("KP PSP") && !countedOspNames.includes(sv.unitName)) {
+                countedOspNames.push(sv.unitName);
+            }
+        });
+        playOspAlarmRepeated(countedOspNames.length);
+
         const timeInput = document.getElementById('inp-ev-time');
         const regInput = document.getElementById('inp-ev-region');
         const streetInput = document.getElementById('inp-ev-street');
@@ -1246,6 +1244,7 @@ function saveEvent() {
         events.push(newEv);
         selectEvent(newEv.id);
     } else {
+        // EDYCJA ISTNIEJĄCEGO ZDARZENIA - selekt NIE ODTWARZA SIĘ PONOWNIE
         const ev = events.find(e => e.id === activeEditingId);
         if (ev) {
             ev.city = city;
@@ -1343,7 +1342,7 @@ setInterval(() => {
                 ev.vehicles.forEach(sv => {
                     [...unitsPSP, ...unitsOSP].forEach(u => {
                         const veh = u.vehicles.find(vObj => vObj.id === sv.id);
-                        if (veh) veh.status = 'green';
+                        if (v) v.status = 'green';
                     });
                 });
                 needsRender = true;
