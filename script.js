@@ -40,7 +40,7 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- SZYBKI SILNIK AI ---
+// --- OPTYMALNY SILNIK AI (BEZ UCIĘĆ TEKSTU) ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -55,8 +55,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.5,
-                max_tokens: 60,
+                temperature: 0.6,
+                max_tokens: 100,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
@@ -74,7 +74,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 model: 'openai',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.5,
+                temperature: 0.6,
                 jsonMode: jsonMode
             })
         });
@@ -629,14 +629,16 @@ async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     openRadioForEvent(ev.id);
 
-    const sysPrompt = `Jesteś dowódcą straży (${vehicle.id}). Podaj krótki meldunek z przybycia na miejsce (${ev.city}). Dokładnie 1 zdanie. Rozpocznij: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i zakończ: "Bez odbioru."`;
+    const sysPrompt = `Jesteś dowódcą zastępu straży pożarnej (${vehicle.id}). Przybyłeś na miejsce zdarzenia w miejscowości ${ev.city}. 
+Podaj meldunek z dojazdu. Musisz bezpośrednio opisać sytuację na miejscu.
+Format wypowiedzi: "Wejherowo 998, tu ${vehicle.id}. [Opis sytuacji, np. Jesteśmy na miejscu, rozpoznanie w toku / Pożar opanowany / Brak zagrożenia]. Bez odbioru."`;
 
     let reportText = "";
     try {
         reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z dojazdu.", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu, brak widocznych zagrożeń. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu zdarzenia, przystępujemy do rozpoznania. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -670,7 +672,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- W PEŁNI UNIWERSALNA ROZMOWA RADIOWA Z AI ---
+// --- LOGICZNA ODPOWIEDŹ AI NA PYTANIA DYSPOZYTORA ---
 async function sendRadioReply(customText = null) {
     const input = document.getElementById('inp-radio-reply');
     const text = customText !== null ? customText : (input ? input.value.trim() : "");
@@ -695,17 +697,23 @@ async function sendRadioReply(customText = null) {
     }
     if(input) input.value = '';
 
-    const systemPrompt = `Jesteś KDR (${currentRadioVehicle || 'KDR'}) w miejscowości ${ev.city}. Zdarzenie: ${ev.subtype || ev.type}. 
-Odpowiedz w pełni logicznie i profesjonalnie na komunikat lub pytanie dyspozytora (Wejherowo 998). 
-Twoja wypowiedź musi być zwięzła (1 zdanie). 
-Zawsze zaczynaj od: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ: "Bez odbioru."`;
+    const systemPrompt = `Jesteś dowódcą akcji (KDR, zastęp ${currentRadioVehicle || '557[G]61'}) na miejscu zdarzenia w miejscowości ${ev.city}. 
+Rodzaj zdarzenia: ${ev.subtype || ev.type}. Opis: ${ev.desc}.
+
+DYSPOZYTOR (Wejherowo 998) zadaje Ci pytanie lub przekazuje polecenie. Odpowiedz precyzyjnie i logicznie na to co powiedział:
+- Jeśli pyta "Czy potrzebne dodatkowe siły i środki Straży?" -> odpowiedz konkretnie czy siły są wystarczające, czy potrzebujesz dodatkowego zastępu.
+- Jeśli pyta "Wymagany ZRM?" lub "Potrzebna Policja?" -> odpowiedz czy na miejscu są poszkodowani/potrzebna pomoc Policji.
+- Jeśli podaje instrukcję -> potwierdź wykonanie.
+
+Rozpoczynaj zawsze od: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}." i kończ: "Bez odbioru."
+Odpowiedź musi mieścić się w 1-2 zwięzłych zdaniach zawodowego żargonu strażackiego.`;
 
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, text, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem zgłoszenie, działamy. Bez odbioru.`;
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Na ten moment siły i środki wystarczające, brak potrzeby dodatkowych zastępów. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
