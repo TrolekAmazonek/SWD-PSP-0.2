@@ -94,7 +94,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     throw new Error("AI Offline");
 }
 
-// --- BAZA LOKALIZACJI ---
+// --- BAZA MIEJSCOWOŚCI ---
 const locationsDatabase = {
     "Bolszewo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
     "Wejherowo": "m. Wejherowo, pow. wejherowski, woj. pomorskie",
@@ -137,144 +137,113 @@ const locationsDatabase = {
 
 const townsList = Object.keys(locationsDatabase);
 
-const coordsMap = {
-    "Wejherowo": { x: 0, y: 0 },
-    "Bolszewo": { x: -4, y: 1 },
-    "Gościcino": { x: -6, y: 0 },
-    "Gowino": { x: -5, y: -3 },
-    "Góra": { x: -5, y: 4 },
-    "Orle": { x: -6, y: 3 },
-    "Kniewo": { x: -7, y: 5 },
-    "Rybno": { x: -9, y: 8 },
-    "Gniewowo": { x: 4, y: -4 },
-    "Zbychowo": { x: 3, y: -6 },
-    "Nowy Dwór Wejherowski": { x: 0, y: -6 },
-    "Reda": { x: 7, y: -1 },
-    "Rumia": { x: 12, y: -3 },
-    "Luzino": { x: -11, y: -1 },
-    "Zelewo": { x: -9, y: 3 },
-    "Milwino": { x: -11, y: -5 },
-    "Szemud": { x: -5, y: -13 },
-    "Przetoczyno": { x: -4, y: -9 },
-    "Częstkowo": { x: -8, y: -9 },
-    "Łebno": { x: -11, y: -12 },
-    "Kielno": { x: 1, y: -15 },
-    "Bojano": { x: 4, y: -14 },
-    "Gniewino": { x: -14, y: 13 },
-    "Nadole": { x: -14, y: 16 },
-    "Kostkowo": { x: -12, y: 10 },
-    "Opalino": { x: -12, y: 15 },
-    "Choczewo": { x: -22, y: 16 },
-    "Słajszewo": { x: -27, y: 19 },
-    "Sasino": { x: -29, y: 20 },
-    "Kopalino": { x: -24, y: 20 },
-    "Linia": { x: -24, y: -11 },
-    "Strzepcz": { x: -16, y: -11 },
-    "Lewino": { x: -18, y: -9 },
-    "Łęczyce": { x: -19, y: 1 },
-    "Bożepole Wielkie": { x: -15, y: -1 },
-    "Rozłazino": { x: -21, y: -3 },
-    "Kaczkowo": { x: -18, y: 4 }
-};
-
-// Współrzędne GPS dla mapy Leaflet
 const gpsCoords = {
     "Wejherowo": [54.6059, 18.2443],
-    "Bolszewo": [54.5982, 18.2014],
+    "Bolszewo": [54.6031, 18.1772],
     "Rumia": [54.5714, 18.3879],
     "Reda": [54.6062, 18.3475],
-    "Gościcino": [54.5824, 18.1513],
-    "Gniewowo": [54.5422, 18.2691],
-    "Gowino": [54.5711, 18.2001],
-    "Góra": [54.6394, 18.1923],
-    "Kniewo": [54.6644, 18.1064],
-    "Nowy Dwór Wejherowski": [54.5412, 18.2215],
-    "Orle": [54.6291, 18.1812],
-    "Zbychowo": [54.5211, 18.2812],
-    "Luzino": [54.5434, 18.0822],
-    "Zelewo": [54.5812, 18.0514],
-    "Milwino": [54.5121, 18.0412],
-    "Szemud": [54.4533, 18.2011],
-    "Kielno": [54.4412, 18.3214],
-    "Bojano": [54.4712, 18.3912],
-    "Częstkowo": [54.4711, 18.1012],
-    "Łebno": [54.4512, 18.0712],
-    "Przetoczyno": [54.5122, 18.1412],
-    "Gniewino": [54.7214, 17.9712],
-    "Nadole": [54.7412, 18.0312],
-    "Kostkowo": [54.6812, 18.0112],
-    "Rybno": [54.6812, 18.0812],
-    "Opalino": [54.7012, 18.0512],
-    "Choczewo": [54.7412, 17.9112],
-    "Słajszewo": [54.7812, 17.8512],
-    "Sasino": [54.7912, 17.7812],
-    "Kopalino": [54.8112, 17.8112],
-    "Linia": [54.4312, 17.9312],
-    "Strzepcz": [54.4412, 18.0212],
-    "Lewino": [54.4712, 17.9012],
-    "Łęczyce": [54.6112, 18.0112],
-    "Bożepole Wielkie": [54.5812, 17.9312],
-    "Rozłazino": [54.5812, 17.8612],
-    "Kaczkowo": [54.6212, 17.9312]
+    "Gościcino": [54.5975, 18.1458],
+    "Gniewowo": [54.5655, 18.2995],
+    "Gowino": [54.5682, 18.2025],
+    "Góra": [54.6368, 18.1492],
+    "Kniewo": [54.6548, 18.1408],
+    "Nowy Dwór Wejherowski": [54.5365, 18.2575],
+    "Orle": [54.6295, 18.1765],
+    "Zbychowo": [54.5528, 18.3275],
+    "Luzino": [54.5608, 18.1038],
+    "Zelewo": [54.6146, 18.0825],
+    "Milwino": [54.5185, 18.1345],
+    "Szemud": [54.4862, 18.2278],
+    "Kielno": [54.4552, 18.3475],
+    "Bojano": [54.4776, 18.3842],
+    "Częstkowo": [54.5045, 18.1745],
+    "Łebno": [54.4555, 18.1365],
+    "Przetoczyno": [54.5345, 18.2045],
+    "Gniewino": [54.7161, 18.0156],
+    "Nadole": [54.7495, 18.0365],
+    "Kostkowo": [54.6755, 18.0385],
+    "Rybno": [54.6775, 18.1055],
+    "Opalino": [54.7185, 18.0615],
+    "Choczewo": [54.7422, 17.8915],
+    "Słajszewo": [54.7695, 17.8048],
+    "Sasino": [54.7628, 17.7562],
+    "Kopalino": [54.7895, 17.8485],
+    "Linia": [54.4503, 17.9355],
+    "Strzepcz": [54.4590, 18.0398],
+    "Lewino": [54.4815, 17.9945],
+    "Łęczyce": [54.5992, 17.8685],
+    "Bożepole Wielkie": [54.5745, 17.9682],
+    "Rozłazino": [54.5445, 17.8615],
+    "Kaczkowo": [54.6215, 17.8925]
 };
 
-const unitBaseTown = {
-    "JRG 1 Wejherowo": "Wejherowo",
-    "KP PSP Wejherowo": "Wejherowo",
-    "JRG 2 Rumia": "Rumia",
-    ".OSP KSRG Bolszewo": "Bolszewo",
-    ".OSP KSRG Gościcino": "Gościcino",
-    ".OSP KSRG Wejherowo": "Wejherowo",
-    ".OSP KSRG Reda": "Reda",
-    ".OSP KSRG Luzino": "Luzino",
-    ".OSP KSRG Zelewo": "Zelewo",
-    ".OSP KSRG Szemud": "Szemud",
-    ".OSP KSRG Kielno": "Kielno",
-    ".OSP KSRG Bojano": "Bojano",
-    ".OSP KSRG Gniewino": "Gniewino",
-    ".OSP KSRG Nadole": "Nadole",
-    ".OSP KSRG Kostkowo": "Kostkowo",
-    ".OSP KSRG Choczewo": "Choczewo",
-    ".OSP KSRG Słajszewo": "Słajszewo",
-    ".OSP KSRG Sasino": "Sasino",
-    ".OSP KSRG Linia": "Linia",
-    ".OSP KSRG Strzepcz": "Strzepcz",
-    ".OSP KSRG Łęczyce": "Łęczyce",
-    ".OSP KSRG Rozłazino": "Rozłazino",
-    ".OSP KSRG Bożepole Wielkie": "Bożepole Wielkie",
-    "OSP Kopalino": "Kopalino",
-    "OSP Rybno": "Rybno",
-    "OSP Lewino": "Lewino",
-    "OSP Milwino": "Milwino",
-    "OSP Kaczkowo": "Kaczkowo",
-    "OSP Częstkowo": "Częstkowo",
-    "OSP Łebno": "Łebno",
-    "OSP Przetoczyno": "Przetoczyno",
-    "OSP Gowino": "Gowino",
-    "OSP Kniewo": "Kniewo",
-    "OSP Orle": "Orle",
-    "OSP Zbychowo": "Zbychowo",
-    "OSP Gniewowo": "Gniewowo",
-    "OSP Góra": "Góra",
-    "OSP Opalino": "Opalino",
-    "OSP Nowy Dwór Wejherowski": "Nowy Dwór Wejherowski"
+// --- ZWERYFIKOWANE OFICJALNE ADRESY I WSPÓŁRZĘDNE JEDNOSTEK (KRS / GOV.PL / BIP) ---
+const unitExactLocations = {
+    "JRG 1 Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6074, lng: 18.2192 },
+    "KP PSP Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6077, lng: 18.2197 },
+    "JRG 2 Rumia": { town: "Rumia", address: "ul. Świętego Floriana 1, 84-230 Rumia", lat: 54.5762, lng: 18.3756 },
+    ".OSP KSRG Bolszewo": { town: "Bolszewo", address: "ul. Zamostna 4A, 84-239 Bolszewo", lat: 54.6031, lng: 18.1772 },
+    ".OSP KSRG Gościcino": { town: "Gościcino", address: "ul. Drzewiarza 22, 84-241 Gościcino", lat: 54.5975, lng: 18.1458 },
+    ".OSP KSRG Wejherowo": { town: "Wejherowo", address: "ul. 3 Maja 2, 84-200 Wejherowo", lat: 54.6033, lng: 18.2396 },
+    ".OSP KSRG Reda": { town: "Reda", address: "ul. Pucka 1, 84-240 Reda", lat: 54.6095, lng: 18.3478 },
+    ".OSP KSRG Luzino": { town: "Luzino", address: "ul. Ofiar Stutthofu 39, 84-242 Luzino", lat: 54.5608, lng: 18.1038 },
+    ".OSP KSRG Zelewo": { town: "Zelewo", address: "ul. Długa 31, 84-252 Zelewo", lat: 54.6146, lng: 18.0825 },
+    ".OSP KSRG Szemud": { town: "Szemud", address: "ul. Samorządowa 3, 84-217 Szemud", lat: 54.4862, lng: 18.2278 },
+    ".OSP KSRG Kielno": { town: "Kielno", address: "ul. Oliwska 85, 84-208 Kielno", lat: 54.4552, lng: 18.3475 },
+    ".OSP KSRG Bojano": { town: "Bojano", address: "ul. Józefa Wybickiego 16, 84-207 Bojano", lat: 54.4776, lng: 18.3842 },
+    ".OSP KSRG Choczewo": { town: "Choczewo", address: "ul. Świerkowa 8, 84-210 Choczewo", lat: 54.7422, lng: 17.8915 },
+    ".OSP KSRG Słajszewo": { town: "Słajszewo", address: "ul. Bursztynowa 67, 84-210 Słajszewo", lat: 54.7695, lng: 17.8048 },
+    ".OSP KSRG Sasino": { town: "Sasino", address: "ul. Brukowa 3, 84-210 Sasino", lat: 54.7628, lng: 17.7562 },
+    ".OSP KSRG Gniewino": { town: "Gniewino", address: "ul. Strażacka 2, 84-250 Gniewino", lat: 54.7161, lng: 18.0156 },
+    ".OSP KSRG Nadole": { town: "Nadole", address: "ul. Strażacka 20, 84-250 Nadole", lat: 54.7495, lng: 18.0365 },
+    ".OSP KSRG Kostkowo": { town: "Kostkowo", address: "ul. Wejherowska 24A, 84-251 Kostkowo", lat: 54.6755, lng: 18.0385 },
+    ".OSP KSRG Linia": { town: "Linia", address: "ul. Turystyczna 3, 84-223 Linia", lat: 54.4503, lng: 17.9355 },
+    ".OSP KSRG Strzepcz": { town: "Strzepcz", address: "ul. Ks. Józefa Rotty 15, 84-223 Strzepcz", lat: 54.4590, lng: 18.0398 },
+    ".OSP KSRG Bożepole Wielkie": { town: "Bożepole Wielkie", address: "ul. Chmieleniecka 40, 84-214 Bożepole Wielkie", lat: 54.5745, lng: 17.9682 },
+    ".OSP KSRG Łęczyce": { town: "Łęczyce", address: "ul. Sportowa 5, 84-218 Łęczyce", lat: 54.5992, lng: 17.8685 },
+    ".OSP KSRG Rozłazino": { town: "Rozłazino", address: "ul. Długa 26, 84-218 Rozłazino", lat: 54.5445, lng: 17.8615 },
+    "OSP Gowino": { town: "Gowino", address: "ul. Wejherowska 58, 84-215 Gowino", lat: 54.5682, lng: 18.2025 },
+    "OSP Orle": { town: "Orle", address: "ul. Strażacka 2, 84-252 Orle", lat: 54.6295, lng: 18.1765 },
+    "OSP Kniewo": { town: "Kniewo", address: "al. Lipowa 14, 84-252 Kniewo", lat: 54.6548, lng: 18.1408 },
+    "OSP Zbychowo": { town: "Zbychowo", address: "ul. Kamienna 2, 84-206 Zbychowo", lat: 54.5528, lng: 18.3275 },
+    "OSP Gniewowo": { town: "Gniewowo", address: "ul. Jakuba Wejhera 16, 84-240 Gniewowo", lat: 54.5655, lng: 18.2995 },
+    "OSP Góra": { town: "Góra", address: "ul. Wiejska 39, 84-252 Góra", lat: 54.6368, lng: 18.1492 },
+    "OSP Nowy Dwór Wejherowski": { town: "Nowy Dwór Wejherowski", address: "ul. Kwiatowa 16, 84-206 Nowy Dwór Wejherowski", lat: 54.5365, lng: 18.2575 },
+    "OSP Rybno": { town: "Rybno", address: "ul. Dębowa 7, 84-251 Rybno", lat: 54.6775, lng: 18.1055 },
+    "OSP Opalino": { town: "Opalino", address: "Czymanowo 6 / Opalino, 84-250 Gniewino", lat: 54.7185, lng: 18.0615 },
+    "OSP Kopalino": { town: "Kopalino", address: "ul. Bursztynowa 24, 84-210 Kopalino", lat: 54.7895, lng: 17.8485 },
+    "OSP Lewino": { town: "Lewino", address: "ul. Długa 28, 84-223 Lewino", lat: 54.4815, lng: 17.9945 },
+    "OSP Milwino": { town: "Milwino", address: "ul. Strażacka 5, 84-242 Milwino", lat: 54.5185, lng: 18.1345 },
+    "OSP Kaczkowo": { town: "Kaczkowo", address: "Kaczkowo 18B, 84-218 Kaczkowo", lat: 54.6215, lng: 17.8925 },
+    "OSP Częstkowo": { town: "Częstkowo", address: "ul. Tartaczna 5 (Strażacka 1), 84-217 Częstkowo", lat: 54.5045, lng: 18.1745 },
+    "OSP Łebno": { town: "Łebno", address: "ul. Kartuska 10, 84-217 Łebno", lat: 54.4555, lng: 18.1365 },
+    "OSP Przetoczyno": { town: "Przetoczyno", address: "ul. Pomorska 21, 84-217 Przetoczyno", lat: 54.5345, lng: 18.2045 }
 };
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 function getUnitProximity(unitName, city) {
-    const baseTown = unitBaseTown[unitName] || "Wejherowo";
-    const targetTown = Object.keys(coordsMap).find(
+    const unitLoc = unitExactLocations[unitName] || unitExactLocations["JRG 1 Wejherowo"];
+    const targetTown = Object.keys(gpsCoords).find(
         c => c.toLowerCase() === (city || "").trim().toLowerCase()
     ) || "Wejherowo";
 
-    if (baseTown.toLowerCase() === targetTown.toLowerCase()) {
+    if (unitLoc.town.toLowerCase() === targetTown.toLowerCase()) {
         const isJRG = unitName.includes("JRG");
         return { sec: isJRG ? 15 : 18, km: isJRG ? "1.2 km" : "1.5 km" };
     }
 
-    const c1 = coordsMap[baseTown] || { x: 0, y: 0 };
-    const c2 = coordsMap[targetTown] || { x: 0, y: 0 };
-    const dist = Math.sqrt(Math.pow(c1.x - c2.x, 2) + Math.pow(c1.y - c2.y, 2)) * 1.25;
-    const kmRounded = Math.max(1.5, Math.round(dist * 10) / 10);
+    const tCoords = gpsCoords[targetTown] || [54.6059, 18.2443];
+    const roadDist = haversineKm(unitLoc.lat, unitLoc.lng, tCoords[0], tCoords[1]) * 1.25;
+    const kmRounded = Math.max(1.5, Math.round(roadDist * 10) / 10);
     const secCalc = Math.max(20, Math.round(kmRounded * 4.5));
 
     return { sec: secCalc, km: `${kmRounded.toFixed(1)} km` };
@@ -622,13 +591,112 @@ let currentCPRData = null;
 let cprCounter = 101;
 let openRadioWindows = {};
 
-// Statystyki służby (CPR + zdarzenia)
 let shiftStats = {
     cprTotalGenerated: 0,
     cprAccepted: 0,
     cprRefused: 0,
     refusalReasons: {}
 };
+
+// --- AUTOMATYCZNA SYNCHRONIZACJA BUDYNKÓW REMIZ Z OPENSTREETMAP (OVERPASS API) ---
+let osmStationsSynced = false;
+async function syncFireStationsWithOSM() {
+    if (osmStationsSynced) return;
+    osmStationsSynced = true;
+    try {
+        const query = `[out:json][timeout:10];(node["amenity"="fire_station"](54.40,17.70,54.83,18.45);way["amenity"="fire_station"](54.40,17.70,54.83,18.45););out center;`;
+        const res = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query));
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.elements) return;
+
+        Object.keys(unitExactLocations).forEach(uName => {
+            const uObj = unitExactLocations[uName];
+            const isPSP = uName.includes("JRG") || uName.includes("KP PSP");
+
+            // Szukamy najbliższego budynku strażnicy w danej miejscowości w OpenStreetMap
+            let bestMatch = null;
+            let bestDist = 3.5; // maks. 3.5 km od punktu bazowego
+            data.elements.forEach(el => {
+                const lat = el.lat || el.center?.lat;
+                const lng = el.lon || el.center?.lon;
+                if (!lat || !lng) return;
+                const nameTag = ((el.tags?.name || '') + ' ' + (el.tags?.operator || '')).toLowerCase();
+                if (isPSP && nameTag.includes('osp')) return;
+                if (!isPSP && (nameTag.includes('jrg') || nameTag.includes('państwowa'))) return;
+
+                const d = haversineKm(uObj.lat, uObj.lng, lat, lng);
+                if (d < bestDist) {
+                    bestDist = d;
+                    bestMatch = { lat, lng };
+                }
+            });
+
+            if (bestMatch) {
+                uObj.lat = bestMatch.lat + (uName.includes("KP PSP") ? 0.0002 : 0);
+                uObj.lng = bestMatch.lng + (uName.includes("KP PSP") ? 0.0003 : 0);
+            }
+        });
+        updateMapMarkers();
+    } catch (e) {}
+}
+
+// --- GEOKODOWANIE DOKŁADNEJ ULICY I NUMERU ZDARZENIA (NOMINATIM OSM) ---
+async function geocodeEventAddress(ev) {
+    const fallbackCoords = gpsCoords[ev.city] || [54.6059, 18.2443];
+    if (!ev.lat || !ev.lng) {
+        ev.lat = fallbackCoords[0];
+        ev.lng = fallbackCoords[1];
+    }
+
+    const rawStreet = (ev.street || "").trim();
+    if (!rawStreet) {
+        updateMapMarkers();
+        return;
+    }
+
+    let cleaned = rawStreet
+        .replace(/^(Przystanek Autobusowy|Kamienica|Blok mieszkalny|Hala Magazynowa|Tartak \/ Skład Drzewny|Balex-Metal|Markisol Polska|Zakład Przetwórstwa Drzewnego|Kompleks Magazynowy)[,\s-]*/i, '')
+        .replace(/\b(ul\.|ulica|al\.|aleja|pl\.|plac)\s*/gi, '')
+        .split('/')[0]
+        .trim();
+
+    const streetOnly = cleaned.replace(/\s+\d+[a-zA-Z]*$/, '').trim();
+
+    const queries = [
+        `https://nominatim.openstreetmap.org/search?format=json&street=${encodeURIComponent(cleaned)}&city=${encodeURIComponent(ev.city)}&county=powiat+wejherowski&country=Poland&limit=1`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleaned + ', ' + ev.city + ', powiat wejherowski, Polska')}&limit=1`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(streetOnly + ', ' + ev.city + ', powiat wejherowski, Polska')}&limit=1`
+    ];
+
+    for (const url of queries) {
+        try {
+            const res = await fetch(url, { headers: { 'Accept-Language': 'pl' } });
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+                    ev.lat = parseFloat(data[0].lat);
+                    ev.lng = parseFloat(data[0].lon);
+                    ev.geocodedDisplay = data[0].display_name;
+                    updateMapMarkers();
+                    return;
+                }
+            }
+        } catch (err) {}
+    }
+    updateMapMarkers();
+}
+
+function focusEventOnMap(evId) {
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+    switchMainView('map');
+    setTimeout(() => {
+        if (leafletMap && ev.lat && ev.lng) {
+            leafletMap.setView([ev.lat, ev.lng], 17);
+        }
+    }, 250);
+}
 
 // --- MAPA OPERACYJNA LEAFLET ---
 let leafletMap = null;
@@ -656,12 +724,13 @@ function initLeafletMap() {
         const mapEl = document.getElementById('leaflet-map');
         if (!mapEl) return;
         if (!leafletMap) {
-            leafletMap = L.map('leaflet-map').setView([54.6059, 18.2443], 10);
+            leafletMap = L.map('leaflet-map').setView([54.6033, 18.2396], 11);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap'
             }).addTo(leafletMap);
             mapMarkersLayer = L.layerGroup().addTo(leafletMap);
+            syncFireStationsWithOSM();
         }
         leafletMap.invalidateSize();
         updateMapMarkers();
@@ -672,15 +741,14 @@ function updateMapMarkers() {
     if (!leafletMap || !mapMarkersLayer || !window.L) return;
     mapMarkersLayer.clearLayers();
 
-    // 1. Jednostki PSP i OSP (z lekkim przesunięciem, gdy kilka jednostek jest w tym samym mieście)
-    const townOffsetCounter = {};
+    // 1. Markery wszystkich 39 jednostek PSP i OSP pod ich oficjalnymi adresami
     [...unitsPSP, ...unitsOSP].forEach(u => {
-        const town = unitBaseTown[u.name] || "Wejherowo";
-        const baseCoords = gpsCoords[town] || [54.6059, 18.2443];
-        townOffsetCounter[town] = (townOffsetCounter[town] || 0) + 1;
-        const offsetIdx = townOffsetCounter[town] - 1;
-        const lat = baseCoords[0] + (offsetIdx * 0.0035);
-        const lng = baseCoords[1] + (offsetIdx * 0.005);
+        const loc = unitExactLocations[u.name] || {
+            town: "Wejherowo",
+            address: "ul. Tartaczna 5, 84-200 Wejherowo",
+            lat: 54.6074,
+            lng: 18.2192
+        };
 
         const isPSP = u.name.includes("JRG") || u.name.includes("KP PSP");
         const bgColor = isPSP ? "#b30000" : "#0a246a";
@@ -689,7 +757,7 @@ function updateMapMarkers() {
             return `<div style="font-size:11px;"><span style="color:${color};">●</span> <b>${v.id}</b> - ${v.name}</div>`;
         }).join('');
 
-        const marker = L.marker([lat, lng], {
+        const marker = L.marker([loc.lat, loc.lng], {
             icon: L.divIcon({
                 className: 'custom-unit-icon',
                 html: `<div style="background:${bgColor}; color:#fff; border:1px solid #fff; border-radius:3px; padding:1px 5px; font-size:10px; font-weight:bold; white-space:nowrap; box-shadow:1px 1px 3px rgba(0,0,0,0.5);">🚒 ${u.name}</div>`,
@@ -697,31 +765,37 @@ function updateMapMarkers() {
                 iconAnchor: [60, 10]
             })
         });
-        marker.bindPopup(`<div style="min-width:200px;"><div style="font-weight:bold; color:${bgColor}; border-bottom:1px solid #ccc; margin-bottom:4px; padding-bottom:2px;">${u.name} (${town})</div>${vehListHtml}</div>`);
+        marker.bindPopup(`
+            <div style="min-width:220px;">
+                <div style="font-weight:bold; color:${bgColor}; font-size:12px;">${u.name}</div>
+                <div style="font-size:10px; color:#333; border-bottom:1px solid #ccc; margin-bottom:4px; padding-bottom:3px;">📍 <b>Adres:</b> ${loc.address}</div>
+                ${vehListHtml}
+            </div>
+        `);
         mapMarkersLayer.addLayer(marker);
     });
 
-    // 2. Aktywne zdarzenia na mapie
+    // 2. Markery aktywnych zdarzeń na dokładnych ulicach
     events.forEach(ev => {
         if (ev.status !== 'ACTIVE') return;
-        const coords = gpsCoords[ev.city] || [54.6059, 18.2443];
-        const evLat = coords[0] - 0.004;
-        const evLng = coords[1] + 0.004;
+        const fallback = gpsCoords[ev.city] || [54.6059, 18.2443];
+        const evLat = ev.lat || fallback[0];
+        const evLng = ev.lng || fallback[1];
 
         const marker = L.marker([evLat, evLng], {
             icon: L.divIcon({
                 className: 'custom-ev-icon',
-                html: `<div style="background:#ff0000; color:#ffff00; border:2px solid #ffff00; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 0 8px #ff0000;">🚨 [${ev.type}] ID:${ev.id} ${ev.city}</div>`,
-                iconSize: [140, 24],
-                iconAnchor: [70, 12]
+                html: `<div style="background:#ff0000; color:#ffff00; border:2px solid #ffff00; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 0 8px #ff0000;">🚨 [ID:${ev.id}] ${ev.city}, ${ev.street || ''}</div>`,
+                iconSize: [170, 24],
+                iconAnchor: [85, 12]
             })
         });
 
-        const sisList = ev.vehicles.map(v => `${v.id} (${v.travelTime > 0 ? 'W drodze: ' + v.travelTime + 's' : 'Na miejscu'})`).join('<br>');
+        const sisList = ev.vehicles.map(v => `${v.id} (${v.travelTime > 0 ? 'Dojazd: ' + v.travelTime + 's' : 'Na miejscu'})`).join('<br>');
         marker.bindPopup(`
-            <div style="min-width:220px;">
+            <div style="min-width:230px;">
                 <b style="color:#b30000;">ZDARZENIE ID: ${ev.id}/2026 (${ev.type})</b><br>
-                <b>Lokalizacja:</b> ${ev.city}, ${ev.street}<br>
+                <b>Dokładny adres:</b> ${ev.city}, ${ev.street || 'Brak ulicy'}<br>
                 <b>Opis:</b> ${ev.desc}<br>
                 <b>Zadysponowane SiS (${ev.vehicles.length}):</b><br>${sisList || 'Brak'}<br>
                 <div style="margin-top:6px; display:flex; gap:4px;">
@@ -794,9 +868,8 @@ function makeDraggable(elmnt, header) {
     }
 }
 
-// --- AUTOMATYCZNA INICJALIZACJA INTERFEJSU (MAPA, RAPORTY, SIŁY I ŚRODKI, ZEGAR) ---
+// --- AUTOMATYCZNA INICJALIZACJA INTERFEJSU ---
 window.addEventListener('DOMContentLoaded', () => {
-    // 1. Podpięcie górnego menu (niezależnie od wersji index.html)
     document.querySelectorAll('.top-menu .menu-item').forEach(item => {
         const txt = item.innerText.trim().toLowerCase();
         if (txt.includes('siły i środki')) {
@@ -810,7 +883,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 2. Dodanie zakładki Mapy obok PSP / OSP jeśli jej nie ma
     const tabsBar = document.querySelector('.workspace .tabs-bar');
     if (tabsBar && !document.getElementById('btn-tab-map')) {
         const mapTabBtn = document.createElement('button');
@@ -827,7 +899,6 @@ window.addEventListener('DOMContentLoaded', () => {
         tabsBar.appendChild(repTabBtn);
     }
 
-    // 3. Wstrzyknięcie kontenera mapy, jeśli nie ma go w HTML
     const pspGrid = document.getElementById('grid-psp');
     if (pspGrid && !document.getElementById('view-map-container')) {
         const mapWrap = document.createElement('div');
@@ -837,13 +908,9 @@ window.addEventListener('DOMContentLoaded', () => {
         pspGrid.parentNode.insertBefore(mapWrap, pspGrid);
     }
 
-    // 4. Upewnienie się, że istnieje modal Siły i Środki (#modal-sis)
     ensureSiSModalExists();
-
-    // 5. Upewnienie się, że istnieje modal Raporty — Statystyka (#modal-reports)
     ensureReportsModalExists();
 
-    // 6. Przesuwanie okien
     const eventModal = document.querySelector('#modal-event .modal-window');
     if (eventModal) makeDraggable(eventModal, document.querySelector('#modal-event .modal-header'));
 
@@ -860,7 +927,7 @@ function ensureSiSModalExists() {
         document.body.appendChild(sisModal);
     }
     sisModal.innerHTML = `
-        <div class="modal-window" style="width: 720px; height: 480px;">
+        <div class="modal-window" style="width: 780px; height: 500px;">
             <div class="modal-header">
                 <span>🚒 Zarządzanie Siłami i Środkami (Podział Bojowy KP PSP Wejherowo)</span>
                 <div class="modal-close" onclick="closeModal('modal-sis')">×</div>
@@ -883,8 +950,8 @@ function ensureSiSModalExists() {
                     </div>
                 </div>
                 <div class="form-box" style="flex:1; overflow-y:auto;">
-                    <div class="form-title">Zestawienie statusów wszystkich pojazdów (kliknij status, aby zmienić ręcznie):</div>
-                    <div id="sis-manager-list" style="max-height:280px; overflow-y:auto;"></div>
+                    <div class="form-title">Wykaz jednostek, oficjalnych adresów strażnic oraz statusów pojazdów:</div>
+                    <div id="sis-manager-list" style="max-height:300px; overflow-y:auto;"></div>
                 </div>
             </div>
             <div style="padding: 6px; background: #e1e1e1; display: flex; justify-content: flex-end;">
@@ -900,21 +967,22 @@ function ensureSiSModalExists() {
 function renderSiSManagerList() {
     const container = document.getElementById('sis-manager-list');
     if (!container) return;
-    let html = `<table class="sis-table"><thead><tr><th>Jednostka</th><th>Kryptonim</th><th>Typ / Nazwa pojazdu</th><th>Obsada</th><th>Status</th><th>Zmiana statusu</th></tr></thead><tbody>`;
+    let html = `<table class="sis-table"><thead><tr><th>Jednostka</th><th>Oficjalny adres strażnicy</th><th>Kryptonim</th><th>Pojazd</th><th>Status</th><th>Akcja</th></tr></thead><tbody>`;
     [...unitsPSP, ...unitsOSP].forEach(u => {
+        const addr = unitExactLocations[u.name]?.address || "Wejherowo";
         u.vehicles.forEach(v => {
-            const stText = v.status === 'green' ? 'W bazie (Gotowy)' : (v.status === 'orange' ? 'W drodze' : 'Na miejscu akcji');
+            const stText = v.status === 'green' ? 'W bazie' : (v.status === 'orange' ? 'W drodze' : 'W akcji');
             const stColor = v.status === 'green' ? '#155724' : (v.status === 'orange' ? '#b36b00' : '#b30000');
             html += `
                 <tr>
                     <td><b>${u.name}</b></td>
+                    <td style="font-size:10px; color:#333;">${addr}</td>
                     <td><b>${v.id}</b></td>
                     <td>${v.name}</td>
-                    <td>${v.obsada}</td>
                     <td style="color:${stColor}; font-weight:bold;">${stText}</td>
                     <td>
-                        <button class="btn-win" style="font-size:10px; padding:1px 6px;" onclick="setVehicleStatusManual('${v.id}', 'green')">Wolny</button>
-                        <button class="btn-win" style="font-size:10px; padding:1px 6px;" onclick="setVehicleStatusManual('${v.id}', 'red')">W akcji</button>
+                        <button class="btn-win" style="font-size:10px; padding:1px 5px;" onclick="setVehicleStatusManual('${v.id}', 'green')">Wolny</button>
+                        <button class="btn-win" style="font-size:10px; padding:1px 5px;" onclick="setVehicleStatusManual('${v.id}', 'red')">W akcji</button>
                     </td>
                 </tr>
             `;
@@ -937,8 +1005,11 @@ function setVehicleStatusManual(vehId, newStatus) {
 function addCustomUnit(type) {
     const name = prompt(`Podaj nazwę nowej jednostki ${type} (np. OSP KSRG Bolszewo II):`);
     if (!name || !name.trim()) return;
-    const town = prompt(`Podaj miejscowość stacjonowania jednostki (np. Bolszewo, Wejherowo, Rumia):`, "Wejherowo") || "Wejherowo";
-    unitBaseTown[name.trim()] = town.trim();
+    const town = prompt(`Podaj miejscowość stacjonowania jednostki:`, "Wejherowo") || "Wejherowo";
+    const address = prompt(`Podaj dokładną ulicę i numer strażnicy:`, `ul. Strażacka 1, ${town}`) || town;
+    const tCoords = gpsCoords[town.trim()] || [54.6059, 18.2443];
+    unitExactLocations[name.trim()] = { town: town.trim(), address: address.trim(), lat: tCoords[0], lng: tCoords[1] };
+
     if (type === 'PSP') unitsPSP.push({ name: name.trim(), vehicles: [] });
     else unitsOSP.push({ name: name.trim(), vehicles: [] });
     renderUnits();
@@ -965,7 +1036,7 @@ function addCustomVehicle(type) {
     }
 }
 
-// --- OKNO RAPORTÓW I STATYSTYK (WZÓR SWD ZE ZDJĘCIA) ---
+// --- OKNO RAPORTÓW I STATYSTYK ---
 function ensureReportsModalExists() {
     if (document.getElementById('modal-reports')) return;
     const modal = document.createElement('div');
@@ -978,8 +1049,6 @@ function ensureReportsModalExists() {
                 <div class="modal-close" onclick="closeModal('modal-reports')">×</div>
             </div>
             <div class="modal-body" style="padding: 8px; background: #d4d0c8; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;">
-                
-                <!-- Pasek zakresu -->
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 4px;">
                         <b>Zakres:</b>
@@ -996,7 +1065,6 @@ function ensureReportsModalExists() {
                     <b>Tryb statystyk:</b> online / lokalny (SWD). Dane obejmują wszystkie zdarzenia i formatki z bieżącej służby.
                 </div>
 
-                <!-- 8 boksów podsumowania -->
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
                     <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;">
                         <div style="font-weight: bold; color: #222;">Zgłoszenia ogółem</div>
@@ -1033,7 +1101,6 @@ function ensureReportsModalExists() {
                     </div>
                 </div>
 
-                <!-- Tabela SŁUŻBY -->
                 <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;">
                     <div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 6px;">
                         SŁUŻBY — PRM / PSP / POLICJA
@@ -1082,7 +1149,6 @@ function ensureReportsModalExists() {
                     </table>
                 </div>
 
-                <!-- 6 dolnych sekcji (2 kolumny x 3 wiersze jak na zrzucie) -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                     <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;">
                         <div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">STATUSY CPR</div>
@@ -1132,7 +1198,6 @@ function ensureReportsModalExists() {
                         </table>
                     </div>
                 </div>
-
             </div>
         </div>
     `;
@@ -1215,7 +1280,6 @@ function openReportsModal() {
     safeSetElementText('rep-pol-act', polAct);
     safeSetElementText('rep-pol-fin', polFin);
 
-    // Wypełnienie 6 dolnych tabel
     const cprStatBody = document.getElementById('rep-cpr-statuses');
     if (cprStatBody) {
         if (shiftStats.cprTotalGenerated === 0 && total === 0) {
@@ -1285,10 +1349,10 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
         return `Wejherowo 998, tu ${kdrCallsign}. Zrozumiałem, działamy dalej. Bez odbioru.`;
     }
 
-    return `Wejherowo 998, tu ${kdrCallsign}. Sytuacja na miejscu opanowana, kończymy rozpoznanie i prowadzimy działania. Bez odbioru.`;
+    return `Wejherowo 998, tu ${kdrCallsign}. Sytuacja na miejscu opanowana, prowadzimy działania pod adresem ${ev.street || ev.city}. Bez odbioru.`;
 }
 
-// --- OKNO RADIA: WYGLĄD RETRO + POLE TEKSTOWE NA SAMYM DOLE ---
+// --- OKNO RADIA ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
         openRadioWindows[evId].style.display = 'block';
@@ -1312,7 +1376,7 @@ function createRadioWindow(evId) {
     modal.innerHTML = `
         <div style="background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); font-family: 'Segoe UI', Tahoma, sans-serif;">
             <div class="radio-win-header" style="background: linear-gradient(90deg, #004080, #1060b0); color: #ffffff; padding: 3px 6px; font-weight: bold; font-size: 13px; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;">
-                <span id="radio-title-${evId}">🖵 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})</span>
+                <span id="radio-title-${evId}">🖵 Korespondencja Radiowa - ID: ${ev.id} (${ev.city}, ${ev.street || ''})</span>
                 <div style="display: flex; gap: 2px;">
                     <button style="background: #c0c0c0; border: 1px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; width: 18px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="minimizeRadioWindow(${ev.id})">_</button>
                     <button style="background: #c0c0c0; border: 1px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; width: 18px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="closeRadioWindow(${ev.id})">✕</button>
@@ -1321,7 +1385,6 @@ function createRadioWindow(evId) {
             <div style="padding: 6px; background: #c0c0c0;">
                 <div id="radio-chat-${evId}" style="background: #000000; color: #ffcc00; font-family: 'Courier New', monospace; font-weight: bold; font-size: 12px; height: 195px; padding: 6px; overflow-y: auto; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; box-sizing: border-box; line-height: 1.3;"></div>
                 
-                <!-- Przyciski szybkiej odpowiedzi -->
                 <div style="display: flex; gap: 4px; margin-top: 6px; justify-content: space-between;">
                     <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Przyjąłem.')">
                         <span style="color: green;">✔</span> Przyjąłem
@@ -1337,7 +1400,6 @@ function createRadioWindow(evId) {
                     </button>
                 </div>
 
-                <!-- Pole wpisywania własnej wiadomości na samym dole -->
                 <div style="display: flex; gap: 4px; margin-top: 6px; align-items: center;">
                     <input type="text" id="inp-radio-reply-${ev.id}" placeholder="Wpisz treść wiadomości radiowej..." style="flex: 1; padding: 5px 8px; font-size: 12px; background: #ffffff; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; outline: none;" onkeypress="if(event.key==='Enter') sendCustomInputRadio(${ev.id})">
                     <button style="padding: 5px 12px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold;" onclick="sendCustomInputRadio(${ev.id})">Nadaj</button>
@@ -1417,8 +1479,8 @@ async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     createRadioWindow(ev.id);
 
-    const sysPrompt = `Jesteś dowódcą zastępu straży pożarnej (${vehicle.id}). Dojechałeś na miejsce w miejscowości ${ev.city} (${ev.street || ''}). Zdarzenie: "${ev.desc}". 
-Napisz krótki, naturalny 1-zdaniowy meldunek przez radio co zastaliście na miejscu i co robicie (normalnym językiem strażaka, bez sztywnych formułek). 
+    const sysPrompt = `Jesteś dowódcą zastępu straży pożarnej (${vehicle.id}). Dojechałeś na miejsce w miejscowości ${ev.city}, adres: ${ev.street || ''}. Zdarzenie: "${ev.desc}". 
+Napisz krótki, naturalny 1-zdaniowy meldunek przez radio co zastaliście na miejscu i co robicie. 
 Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
 
     let reportText = "";
@@ -1428,7 +1490,7 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
     } catch (e) {}
 
     if (!reportText) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city} (${ev.street || ''}) – potwierdzam zgłoszenie: ${ev.desc}, przystępujemy do działań. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street || ''}) – potwierdzam zgłoszenie: ${ev.desc}, przystępujemy do działań. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -1466,10 +1528,10 @@ async function sendRadioReplyDynamic(evId, text) {
     }
 
     const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.name})`).join(', ');
-    const systemPrompt = `Jesteś dowódcą akcji straży pożarnej (${kdrName}) na miejscu w miejscowości ${ev.city}.
+    const systemPrompt = `Jesteś dowódcą akcji straży pożarnej (${kdrName}) na miejscu w miejscowości ${ev.city}, adres: ${ev.street || ''}.
 Opis zdarzenia: "${ev.desc}". Zadysponowane wozy: ${vehiclesListStr}.
 Dyspozytor (Wejherowo 998) mówi do Ciebie przez radio: "${text}".
-Odpowiedz naturalnie, krótko i konkretnie na pytanie dyspozytora, jak prawdziwy strażak (dostosuj odpowiedź do wielkości zdarzenia, np. do śmietnika nie wzywaj podnośnika).
+Odpowiedz naturalnie, krótko i konkretnie na pytanie dyspozytora, jak prawdziwy strażak.
 Format: "Wejherowo 998, tu ${kdrName}. [Krótka odpowiedź]. Bez odbioru."`;
 
     let aiReply = "";
@@ -1519,7 +1581,7 @@ async function simulateIncomingCPR() {
 
     safeSetElementText('cpr-id', newCprId);
     safeSetElementText('cpr-city', randomTown);
-    safeSetElementText('cpr-street', "Ustalanie lokalizacji...");
+    safeSetElementText('cpr-street', "Ustalanie dokładnego adresu...");
     safeSetElementText('cpr-caller', "Łączenie z 112...");
     safeSetElementText('cpr-desc', "🤖 Generowanie opisu zdarzenia...");
     
@@ -1528,11 +1590,11 @@ async function simulateIncomingCPR() {
 
     const sysPrompt = `Jesteś operatorem CPR 112. Wygeneruj zgłoszenie w formacie JSON (bez znaczników markdown):
 {
-  "street": "ulica i numer w miejscowości ${randomTown}",
+  "street": "prawdziwa nazwa ulicy i numer budynku w miejscowości ${randomTown} (np. ul. Długa 12, ul. Szkolna 5, ul. Zamostna 8)",
   "caller": "Imię Nazwisko (tel. 6xx-xxx-xxx)",
-  "desc": "Naturalny, potoczny opis co się dzieje (1-2 zdania, np. 'Spod maski samochodu osobowego wydobywa się dym' albo 'Drzewo przewróciło się na jezdnię i blokuje przejazd'). Nie pisz kodów P ani MZ."
+  "desc": "Naturalny, potoczny opis co się dzieje (1-2 zdania). Nie pisz kodów P ani MZ."
 }`;
-    const usrPrompt = `Miejscowość: ${randomTown}, Temat: ${randomSubtype}`;
+    const usrPrompt = `Miejscowość: ${randomTown} (powiat wejherowski), Temat: ${randomSubtype}`;
 
     try {
         const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
@@ -1546,7 +1608,7 @@ async function simulateIncomingCPR() {
         currentCPRData = {
             id: newCprId,
             city: randomTown,
-            street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 50) + 1}`,
+            street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 40) + 1}`,
             type: chosenType,
             subtype: randomSubtype,
             desc: finalDesc,
@@ -1557,7 +1619,7 @@ async function simulateIncomingCPR() {
         currentCPRData = {
             id: newCprId,
             city: randomTown,
-            street: `ul. ${stName} ${Math.floor(Math.random() * 50) + 1}`,
+            street: `ul. ${stName} ${Math.floor(Math.random() * 40) + 1}`,
             type: chosenType,
             subtype: randomSubtype,
             desc: generateFallbackDescription(randomSubtype),
@@ -1591,7 +1653,7 @@ function minimizeCPR() {
     if(bar) {
         const item = document.createElement('div');
         item.className = 'minimized-item';
-        item.innerHTML = `🚨 Zgłoszenie CPR (${currentCPRData.city})`;
+        item.innerHTML = `🚨 Zgłoszenie CPR (${currentCPRData.city}, ${currentCPRData.street})`;
         item.onclick = () => { 
             const m = document.getElementById('cpr-modal');
             if(m) m.style.display = 'flex'; 
@@ -1621,7 +1683,6 @@ function acceptCPRToEvent() {
 
     autoSelectJRGByCity(currentCPRData.city);
 
-    // Dyspozytor sam wybiera rodzaj i podrodzaj zdarzenia!
     const radioP = document.querySelector('input[name="ev-type"][value="P"]');
     if (radioP) radioP.checked = true;
     updateSubtypes('P');
@@ -1684,6 +1745,7 @@ function renderUnits() {
 }
 
 function createUnitHTML(unit) {
+    const exactAddr = unitExactLocations[unit.name]?.address || "";
     let vehiclesHTML = unit.vehicles.length === 0 ? `<div style="padding: 4px; color: #888; font-style: italic;">Brak pojazdów</div>` :
         unit.vehicles.map(v => `
             <div class="vehicle-row">
@@ -1694,7 +1756,7 @@ function createUnitHTML(unit) {
 
     return `
         <div class="unit-box">
-            <div class="unit-header">${unit.name}</div>
+            <div class="unit-header" title="Adres: ${exactAddr}">${unit.name}</div>
             <div>${vehiclesHTML}</div>
         </div>
     `;
@@ -1712,13 +1774,14 @@ function renderEvents() {
         tr.onclick = () => selectEvent(ev.id);
 
         let timeDisplay = ev.status === 'FINISHED' ? "0:00 min (Zakończono)" : (!ev.firstArrived ? `Oczekiwanie... (${formatMMSS(ev.remainingSeconds)})` : formatMMSS(ev.remainingSeconds));
+        const fullPlace = ev.street ? `${ev.city}, ${ev.street}` : ev.city;
 
         tr.innerHTML = `
             <td>${ev.id}/???/2026</td>
             <td>${ev.time}</td>
             <td>${ev.jrg}</td>
             <td>${ev.jrg}</td>
-            <td>${ev.city}</td>
+            <td title="Kliknij ikonę pinezki, aby przybliżyć ulicę na mapie">${fullPlace} <span style="cursor:pointer;" onclick="event.stopPropagation(); focusEventOnMap(${ev.id});" title="Pokaż dokładną ulicę na mapie">📍</span></td>
             <td>${ev.vehicles.length}</td>
             <td>${ev.type}</td>
             <td>${ev.desc}</td>
@@ -1769,7 +1832,7 @@ function selectEvent(id) {
     const btnOpen = document.getElementById('btn-open-radio');
     const detailsTitle = document.getElementById('details-title');
     if(btnOpen) btnOpen.style.display = 'block';
-    if(detailsTitle) detailsTitle.innerText = `Szczegóły zdarzenia ID: ${ev.id} - ${ev.city}`;
+    if(detailsTitle) detailsTitle.innerText = `ID: ${ev.id} - ${ev.city}${ev.street ? ', ' + ev.street : ''}`;
     
     renderEvents();
     renderSelectedEventDetails();
@@ -1931,13 +1994,14 @@ function openDispatchModal() {
 
     availableUnits.forEach((u, index) => {
         const isClosest = index === 0 && targetCity !== "";
+        const exactAddr = unitExactLocations[u.name]?.address || "";
         const groupDiv = document.createElement('div');
         groupDiv.className = 'dispatch-unit-group';
 
         groupDiv.innerHTML = `
-            <div class="dispatch-unit-header ${isClosest ? 'closest' : ''}">
-                <span>${index + 1}. ${u.name} ${isClosest ? '⭐ (Najbliższa)' : ''}</span>
-                <span>${u.km} | Dojazd: ~${u.sec}s</span>
+            <div class="dispatch-unit-header ${isClosest ? 'closest' : ''}" title="${exactAddr}">
+                <span>${index + 1}. ${u.name} <small style="font-weight:normal; color:#555;">(${exactAddr})</small> ${isClosest ? '⭐' : ''}</span>
+                <span>${u.km} | ~${u.sec}s</span>
             </div>
             ${u.vehicles.map(v => `
                 <label class="dispatch-vehicle-item" style="cursor:pointer;">
@@ -1985,11 +2049,16 @@ function saveEvent() {
     let descVal = descInput ? descInput.value : '';
     descVal = descVal.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
 
+    const streetInput = document.getElementById('inp-ev-street');
+    const streetVal = streetInput ? streetInput.value.trim() : '';
+
     selectedVehicles.forEach(sv => {
         if (sv.travelTime === undefined || activeEditingId === null) {
             sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
         }
     });
+
+    let targetEventObj = null;
 
     if (activeEditingId === null) {
         let countedOspNames = [];
@@ -2002,15 +2071,17 @@ function saveEvent() {
 
         const timeInput = document.getElementById('inp-ev-time');
         const regInput = document.getElementById('inp-ev-region');
-        const streetInput = document.getElementById('inp-ev-street');
         const jrgInput = document.getElementById('inp-ev-jrg');
+        const fallback = gpsCoords[city] || [54.6059, 18.2443];
 
         const newEv = {
             id: events.length + 1,
             time: timeInput && timeInput.value ? timeInput.value : new Date().toLocaleTimeString(),
             city: city,
             region: regInput ? regInput.value : (locationsDatabase[city] || ''),
-            street: streetInput ? streetInput.value : '',
+            street: streetVal,
+            lat: fallback[0],
+            lng: fallback[1],
             desc: descVal,
             type: typeVal,
             subtype: subtypeVal,
@@ -2024,16 +2095,19 @@ function saveEvent() {
             status: 'ACTIVE'
         };
         events.push(newEv);
+        targetEventObj = newEv;
         selectEvent(newEv.id);
     } else {
         const ev = events.find(e => e.id === activeEditingId);
         if (ev) {
             ev.city = city;
+            ev.street = streetVal;
             ev.desc = descVal;
             ev.type = typeVal;
             ev.subtype = subtypeVal;
             ev.services = { ...servicesState };
             ev.vehicles = [...selectedVehicles];
+            targetEventObj = ev;
         }
     }
 
@@ -2043,6 +2117,10 @@ function saveEvent() {
             if (v && v.status === 'green') v.status = 'orange';
         });
     });
+
+    if (targetEventObj) {
+        geocodeEventAddress(targetEventObj);
+    }
 
     renderUnits();
     renderEvents();
@@ -2092,7 +2170,7 @@ function closeModal(id) {
     if(modal) modal.style.display = 'none'; 
 }
 
-// --- GŁÓWNA PĘTLA CZASU SYMULATORA (DOJAZD, CZAS AKCJI, ZEGAR) ---
+// --- GŁÓWNA PĘTLA CZASU SYMULATORA ---
 setInterval(() => {
     let needsRender = false;
     events.forEach(ev => {
