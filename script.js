@@ -40,7 +40,7 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- INTELIGENTNY SILNIK AI (DLA RADIA I CPR) ---
+// --- SZYBKI SILNIK AI (MAX TOKENS SKRÓCONE DO 60) ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -55,8 +55,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.7,
-                max_tokens: 150,
+                temperature: 0.5,
+                max_tokens: 60, // Błyskawiczne generowanie tekstu
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
@@ -74,7 +74,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 model: 'openai',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.7,
+                temperature: 0.5,
                 jsonMode: jsonMode
             })
         });
@@ -558,7 +558,7 @@ let unitsOSP = [
     }
 ];
 
-// --- LOSOWANIE OBSADY DLA OSP (OD 3 DO 6 OSÓB) ---
+// --- LOSOWANIE OBSADY DLA OSP ---
 unitsOSP.forEach(u => {
     u.vehicles.forEach(v => {
         v.obsada = Math.floor(Math.random() * 4) + 3;
@@ -622,29 +622,21 @@ window.addEventListener('DOMContentLoaded', () => {
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 });
 
-// --- MELDUNEK Z DOJAZDU ---
+// --- MELDUNEK Z DOJAZDU (SZYBKI PROMPT) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
     if (!ev.radioLogs) ev.radioLogs = [];
     openRadioForEvent(ev.id);
 
-    const sysPrompt = `Jesteś dowódcą zastępu strażackiego (${vehicle.id}) na miejscu zdarzenia. 
-Szczegóły zdarzenia:
-- Miejscowość: ${ev.city}
-- Adres: ${ev.street}
-- Rodzaj zdarzenia: ${ev.subtype || ev.type}
-- Opis: ${ev.desc}
-
-Napisz krótki, profesjonalny meldunek po dotarciu na miejsce (max 1-2 zdania). 
-Zacznij obowiązkowo od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i zakończ "Bez odbioru."`;
+    const sysPrompt = `Jesteś dowódcą straży (${vehicle.id}). Podaj krótki meldunek z przybycia na miejsce (${ev.city}). Dokładnie 1 zdanie. Rozpocznij: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i zakończ: "Bez odbioru."`;
 
     let reportText = "";
     try {
         reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z dojazdu.", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu, sytuacja potwierdzona, przystępujemy do działań. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu, brak widocznych zagrożeń. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -678,7 +670,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- INTELIGENTNA ROZMOWA RADIOWA Z AI ---
+// --- INTELIGENTNA ROZMOWA RADIOWA Z AI (SKRÓCONA I SZYBKA) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     if(!input) return;
@@ -704,24 +696,14 @@ async function sendRadioReply() {
     }
     input.value = '';
 
-    const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}) na miejscu zdarzenia strażackiego. 
-Szczegóły zdarzenia:
-- Miejscowość: ${ev.city}
-- Adres: ${ev.street}
-- Rodzaj: ${ev.subtype || ev.type}
-- Opis zgłoszenia: ${ev.desc}
-
-Zadanie: Odpowiadaj w sposób w pełni logiczny, spójny i adekwatny na komunikaty lub pytania dyspozytora (Wejherowo 998). 
-Jeśli dyspozytor pyta o siły i środki, potrzebę Policji/ZRM, stan działań lub podaje dyspozycje, odnieś się do tego bezpośrednio w swojej odpowiedzi, używając profesjonalnego żargonu strażackiego. 
-Twoja wypowiedź musi być zwięzła (1-2 zdania). 
-Zawsze zaczynaj od: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ: "Bez odbioru."`;
+    const systemPrompt = `Jesteś KDR (${currentRadioVehicle || 'KDR'}) w ${ev.city}. Zdarzenie: ${ev.subtype || ev.type}. Odpowiedz zwięźle (1 zdanie). Zaczynaj: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ: "Bez odbioru."`;
 
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, text, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, działamy zgodnie z wytycznymi. Bez odbioru.`;
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem zgłoszenie. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -760,13 +742,12 @@ function minimizeRadio() {
     }
 }
 
-// Pomocnicza funkcja bezpiecznie wpisująca tekst do elementów formatki CPR
 function safeSetElementText(id, text) {
     const el = document.getElementById(id);
     if (el) el.innerText = text;
 }
 
-// --- DYNAMICZNE GENEROWANIE CPR PRZEZ AI (Z zachowaniem ID, Miejscowości, Adresu i Zgłaszającego, bez pola Rodzaj) ---
+// --- GENEROWANIE CPR PRZEZ AI (SZYBKIE FORMATOWANIE) ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -779,20 +760,20 @@ async function simulateIncomingCPR() {
 
     safeSetElementText('cpr-id', newCprId);
     safeSetElementText('cpr-city', randomTown);
-    safeSetElementText('cpr-street', "Trwa ustalanie lokalizacji przez AI...");
-    safeSetElementText('cpr-caller', "Łączenie z operatorem 112...");
-    safeSetElementText('cpr-desc', "🤖 AI generuje unikalną misję ratowniczą...");
+    safeSetElementText('cpr-street', "Ustalanie lokalizacji...");
+    safeSetElementText('cpr-caller', "Łączenie z 112...");
+    safeSetElementText('cpr-desc', "🤖 AI generuje treść zgłoszenia...");
     
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) cprModal.style.display = 'flex';
 
-    const sysPrompt = `Jesteś systemem dyspozytorskim CPR 112. Wygeneruj realistyczne, unikalne zgłoszenie strażackie w formacie JSON (bez żadnych znaczników markdown typu \`\`\`json):
+    const sysPrompt = `Wygeneruj zwięzłe zgłoszenie ratownicze 112 w JSON (bez markdown):
 {
-  "street": "dokładna nazwa ulicy z numerem lub obiekt w podanym mieście",
-  "caller": "Imię Nazwisko (tel. XXX-XXX-XXX)",
-  "desc": "Realistyczny, dynamiczny opis zgłoszenia od świadka (2-3 zdania)"
+  "street": "ulica i numer w mieście ${randomTown}",
+  "caller": "Imię Nazwisko (tel. 6xx-xxx-xxx)",
+  "desc": "Krótki opis zdarzenia (1-2 zdania)"
 }`;
-    const usrPrompt = `Miejscowość: ${randomTown}, Kategoria: ${chosenType}, Podrodzaj: ${randomSubtype}`;
+    const usrPrompt = `Miejscowość: ${randomTown}, Zdarzenie: ${randomSubtype}`;
 
     try {
         const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
@@ -806,7 +787,7 @@ async function simulateIncomingCPR() {
             street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 50) + 1}`,
             type: chosenType,
             subtype: randomSubtype,
-            desc: aiEvent.desc || "Zgłoszenie alarmowe przekazane z CPR.",
+            desc: aiEvent.desc || "Zgłoszenie przekazane z CPR.",
             caller: aiEvent.caller || "Jan Kowalski (tel. 601-234-567)"
         };
     } catch (e) {
@@ -817,7 +798,7 @@ async function simulateIncomingCPR() {
             street: `ul. ${stName} ${Math.floor(Math.random() * 50) + 1}`,
             type: chosenType,
             subtype: randomSubtype,
-            desc: `Zgłoszenie dotyczące zdarzenia typu ${randomSubtype} w miejscowości ${randomTown}. Wymagany natychmiastowy wyjazd służb.`,
+            desc: `Zgłoszenie dotyczące zdarzenia w miejscowości ${randomTown}. Wymagany wyjazd służb.`,
             caller: "Jan Kowalski (tel. 601-234-567)"
         };
     }
@@ -976,7 +957,6 @@ function renderEvents() {
     });
 }
 
-// Funkcja pomocnicza aktualizująca tabelę SiS w panelu szczegółów na bieżąco co sekundę
 function renderSelectedEventDetails() {
     if (selectedEvIdForRadio === null) return;
     const ev = events.find(e => e.id === selectedEvIdForRadio);
@@ -1375,7 +1355,6 @@ setInterval(() => {
         renderEvents();
     }
     
-    // Odświeżanie statusów i odliczania na żywo w panelu szczegółów SiS co sekundę
     renderSelectedEventDetails();
 }, 1000);
 
