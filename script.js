@@ -40,194 +40,14 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- BŁYSKAWICZNY SILNIK AI (DLA RADIA) ---
+// --- BŁYSKAWICZNY SILNIK AI (DLA RADIA I CPR) ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${decodeKey(_k.g)}`
-            },
-            body: JSON.stringify({
-                model: 'llama-3.1-8b-instant',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 75
-            })
-        });
-        const data = await res.json();
-        if (data.choices && data.choices[0]?.message?.content) {
-            return data.choices[0].message.content.trim();
-        }
-    } catch (e) {}
-    
-    // Awaryjnie Pollinations
-    try {
-        const response = await fetch('https://text.pollinations.ai/openai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'openai',
-                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.7
-            })
-        });
-        if (response.ok) {
-            const data = await response.json();
-            if (data.choices && data.choices[0]?.message?.content) {
-                return data.choices[0].message.content.trim();
-            }
-        }
-    } catch (err) {}
-
-    throw new Error("Brak połączenia z AI.");
-}
-
-const locationsDatabase = {
-    "Bolszewo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Wejherowo": "m. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Rumia": "m. Rumia, pow. wejherowski, woj. pomorskie",
-    "Reda": "m. Reda, pow. wejherowski, woj. pomorskie",
-    "Gościcino": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Gniewowo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Gowino": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Góra": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Kniewo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Nowy Dwór Wejherowski": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Orle": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Zbychowo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Luzino": "gm. Luzino, pow. wejherowski, woj. pomorskie",
-    "Zelewo": "gm. Luzino, pow. wejherowski, woj. pomorskie",
-    "Milwino": "gm. Luzino, pow. wejherowski, woj. pomorskie",
-    "Szemud": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Kielno": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Bojano": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Częstkowo": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Łebno": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Przetoczyno": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Gniewino": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Nadole": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Kostkowo": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Rybno": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Opalino": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Choczewo": "gm. Choczewo, pow. wejherowski, woj. pomorskie",
-    "Słajszewo": "gm. Choczewo, pow. wejherowski, woj. pomorskie",
-    "Sasino": "gm. Choczewo, pow. wejherowski, woj. pomorskie",
-    "Kopalino": "gm. Choczewo, pow. wejherowski, woj. pomorskie",
-    "Linia": "gm. Linia, pow. wejherowski, woj. pomorskie",
-    "Strzepcz": "gm. Linia, pow. wejherowski, woj. pomorskie",
-    "Lewino": "gm. Linia, pow. wejherowski, woj. pomorskie",
-    "Łęczyce": "gm. Łęczyce, pow. wejherowski, woj. pomorskie",
-    "Bożepole Wielkie": "gm. Łęczyce, pow. wejherowski, woj. pomorskie",
-    "Rozłazino": "gm. Łęczyce, pow. wejherowski, woj. pomorskie",
-    "Kaczkowo": "gm. Łęczyce, pow. wejherowski, woj. pomorskie"
-};
-
-const townsList = Object.keys(locationsDatabase);
-
-const coordsMap = {
-    "Wejherowo": { x: 0, y: 0 },
-    "Bolszewo": { x: -4, y: 1 },
-    "Gościcino": { x: -6, y: 0 },
-    "Gowino": { x: -5, y: -3 },
-    "Góra": { x: -5, y: 4 },
-    "Orle": { x: -6, y: 3 },
-    "Kniewo": { x: -7, y: 5 },
-    "Rybno": { x: -9, y: 8 },
-    "Gniewowo": { x: 4, y: -4 },
-    "Zbychowo": { x: 3, y: -6 },
-    "Nowy Dwór Wejherowski": { x: 0, y: -6 },
-    "Reda": { x: 7, y: -1 },
-    "Rumia": { x: 12, y: -3 },
-    "Luzino": { x: -11, y: -1 },
-    "Zelewo": { x: -9, y: 3 },
-    "Milwino": { x: -11, y: -5 },
-    "Szemud": { x: -5, y: -13 },
-    "Przetoczyno": { x: -4, y: -9 },
-    "Częstkowo": { x: -8, y: -9 },
-    "Łebno": { x: -11, y: -12 },
-    "Kielno": { x: 1, y: -15 },
-    "Bojano": { x: 4, y: -14 },
-    "Gniewino": { x: -14, y: 13 },
-    "Nadole": { x: -14, y: 16 },
-    "Kostkowo": { x: -12, y: 10 },
-    "Opalino": { x: -12, y: 15 },
-    "Choczewo": { x: -22, y: 16 },
-    "Słajszewo": { x: -27, y: 19 },
-    "Sasino": { x: -29, y: 20 },
-    "Kopalino": { x: -24, y: 20 },
-    "Linia": { x: -24, y: -11 },
-    "Strzepcz": { x: -16, y: -11 },
-    "Lewino": { x: -18, y: -9 },
-    "Łęczyce": { x: -19, y: 1 },
-    "Bożepole Wielkie": { x: -15, y: -1 },
-    "Rozłazino": { x: -21, y: -3 },
-    "Kaczkowo": { x: -18, y: 4 }
-};
-
-const unitBaseTown = {
-    "JRG 1 Wejherowo": "Wejherowo",
-    "KP PSP Wejherowo": "Wejherowo",
-    "JRG 2 Rumia": "Rumia",
-    ".OSP KSRG Bolszewo": "Bolszewo",
-    ".OSP KSRG Gościcino": "Gościcino",
-    ".OSP KSRG Wejherowo": "Wejherowo",
-    ".OSP KSRG Reda": "Reda",
-    ".OSP KSRG Luzino": "Luzino",
-    ".OSP KSRG Zelewo": "Zelewo",
-    ".OSP KSRG Szemud": "Szemud",
-    ".OSP KSRG Kielno": "Kielno",
-    ".OSP KSRG Bojano": "Bojano",
-    ".OSP KSRG Gniewino": "Gniewino",
-    ".OSP KSRG Nadole": "Nadole",
-    ".OSP KSRG Kostkowo": "Kostkowo",
-    ".OSP KSRG Choczewo": "Choczewo",
-    ".OSP KSRG Słajszewo": "Słajszewo",
-    ".OSP KSRG Sasino": "Sasino",
-    ".OSP KSRG Linia": "Linia",
-    ".OSP KSRG Strzepcz": "Strzepcz",
-    ".OSP KSRG Łęczyce": "Łęczyce",
-    ".OSP KSRG Rozłazino": "Rozłazino",
-    "OSP Kopalino": "Kopalino",
-    "OSP Rybno": "Rybno",
-    "OSP Lewino": "Lewino",
-    "OSP Milwino": "Milwino",
-    "OSP Kaczkowo": "Kaczkowo",
-    "OSP Częstkowo": "Częstkowo",
-    "OSP Łebno": "Łebno",
-    "OSP Przetoczyno": "Przetoczyno",
-    "OSP Gowino": "Gowino",
-    "OSP Kniewo": "Kniewo",
-    "OSP Orle": "Orle",
-    "OSP Zbychowo": "Zbychowo",
-    "OSP Gniewowo": "Gniewowo",
-    "OSP Góra": "Góra",
-    "OSP Opalino": "Opalino",
-    "OSP Nowy Dwór Wejherowski": "Nowy Dwór Wejherowski"
-};
-
-function getUnitProximity(unitName, city) {
-    const baseTown = unitBaseTown[unitName] || "Wejherowo";
-    const targetTown = Object.keys(coordsMap).find(
-        c => c.toLowerCase() === (city || "").trim().toLowerCase()
-    ) || "Wejherowo";
-
-    if (baseTown.toLowerCase() === targetTown.toLowerCase()) {
-        const isJRG = unitName.includes("JRG");
-        return { sec: isJRG ? 15 : 18, km: isJRG ? "1.2 km" : "1.5 km" };
-    }
-
-    const c1 = coordsMap[baseTown] || { x: 0, y: 0 };
-    const c2 = coordsMap[targetTown] || { x: 0, y: 0 };
-    const dist = Math.sqrt(Math.pow(c1.x - c2.x, 2) + Math.pow(c1.y - c2.y, 2)) * 1.25;
-    const kmRounded = Math.max(1.5, Math.round(dist * 10) / 10);
-    const secCalc = Math.max(20, Math.round(kmRounded * 4.5));
-
-    return { sec: secCalc, km: `${kmRounded.toFixed(1)} km` };
+                'Authorization': `Bearer ${decodeKey(_k.g)}` }, body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt } ], temperature: 0.7, max_tokens: 150, ...(jsonMode ? { response_format: { type: "json_object" } } : {}) }) }); const data = await res.json(); if (data.choices && data.choices[0]?.message?.content) { return data.choices[0].message.content.trim(); } } catch (e) {}  // Awaryjnie Pollinations try { const response = await fetch('https://text.pollinations.ai/openai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'openai', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }], temperature: 0.7, jsonMode: jsonMode }) }); if (response.ok) { const data = await response.json(); if (data.choices && data.choices[0]?.message?.content) { return data.choices[0].message.content.trim(); } } } catch (err) {}  throw new Error("Brak połączenia z AI."); }  const locationsDatabase = { "Bolszewo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Wejherowo": "m. Wejherowo, pow. wejherowski, woj. pomorskie", "Rumia": "m. Rumia, pow. wejherowski, woj. pomorskie", "Reda": "m. Reda, pow. wejherowski, woj. pomorskie", "Gościcino": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Gniewowo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Gowino": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Góra": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Kniewo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Nowy Dwór Wejherowski": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Orle": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Zbychowo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie", "Luzino": "gm. Luzino, pow. wejherowski, woj. pomorskie", "Zelewo": "gm. Luzino, pow. wejherowski, woj. pomorskie", "Milwino": "gm. Luzino, pow. wejherowski, woj. pomorskie", "Szemud": "gm. Szemud, pow. wejherowski, woj. pomorskie", "Kielno": "gm. Szemud, pow. wejherowski, woj. pomorskie", "Bojano": "gm. Szemud, pow. wejherowski, woj. pomorskie", "Częstkowo": "gm. Szemud, pow. wejherowski, woj. pomorskie", "Łebno": "gm. Szemud, pow. wejherowski, woj. pomorskie", "Przetoczyno": "gm. Szemud, pow. wejherowski, woj. pomorskie", "Gniewino": "gm. Gniewino, pow. wejherowski, woj. pomorskie", "Nadole": "gm. Gniewino, pow. wejherowski, woj. pomorskie", "Kostkowo": "gm. Gniewino, pow. wejherowski, woj. pomorskie", "Rybno": "gm. Gniewino, pow. wejherowski, woj. pomorskie", "Opalino": "gm. Gniewino, pow. wejherowski, woj. pomorskie", "Choczewo": "gm. Choczewo, pow. wejherowski, woj. pomorskie", "Słajszewo": "gm. Choczewo, pow. wejherowski, woj. pomorskie", "Sasino": "gm. Choczewo, pow. wejherowski, woj. pomorskie", "Kopalino": "gm. Choczewo, pow. wejherowski, woj. pomorskie", "Linia": "gm. Linia, pow. wejherowski, woj. pomorskie", "Strzepcz": "gm. Linia, pow. wejherowski, woj. pomorskie", "Lewino": "gm. Linia, pow. wejherowski, woj. pomorskie", "Łęczyce": "gm. Łęczyce, pow. wejherowski, woj. pomorskie", "Bożepole Wielkie": "gm. Łęczyce, pow. wejherowski, woj. pomorskie", "Rozłazino": "gm. Łęczyce, pow. wejherowski, woj. pomorskie", "Kaczkowo": "gm. Łęczyce, pow. wejherowski, woj. pomorskie" };  const townsList = Object.keys(locationsDatabase);  const coordsMap = { "Wejherowo": { x: 0, y: 0 }, "Bolszewo": { x: -4, y: 1 }, "Gościcino": { x: -6, y: 0 }, "Gowino": { x: -5, y: -3 }, "Góra": { x: -5, y: 4 }, "Orle": { x: -6, y: 3 }, "Kniewo": { x: -7, y: 5 }, "Rybno": { x: -9, y: 8 }, "Gniewowo": { x: 4, y: -4 }, "Zbychowo": { x: 3, y: -6 }, "Nowy Dwór Wejherowski": { x: 0, y: -6 }, "Reda": { x: 7, y: -1 }, "Rumia": { x: 12, y: -3 }, "Luzino": { x: -11, y: -1 }, "Zelewo": { x: -9, y: 3 }, "Milwino": { x: -11, y: -5 }, "Szemud": { x: -5, y: -13 }, "Przetoczyno": { x: -4, y: -9 }, "Częstkowo": { x: -8, y: -9 }, "Łebno": { x: -11, y: -12 }, "Kielno": { x: 1, y: -15 }, "Bojano": { x: 4, y: -14 }, "Gniewino": { x: -14, y: 13 }, "Nadole": { x: -14, y: 16 }, "Kostkowo": { x: -12, y: 10 }, "Opalino": { x: -12, y: 15 }, "Choczewo": { x: -22, y: 16 }, "Słajszewo": { x: -27, y: 19 }, "Sasino": { x: -29, y: 20 }, "Kopalino": { x: -24, y: 20 }, "Linia": { x: -24, y: -11 }, "Strzepcz": { x: -16, y: -11 }, "Lewino": { x: -18, y: -9 }, "Łęczyce": { x: -19, y: 1 }, "Bożepole Wielkie": { x: -15, y: -1 }, "Rozłazino": { x: -21, y: -3 }, "Kaczkowo": { x: -18, y: 4 } };  const unitBaseTown = { "JRG 1 Wejherowo": "Wejherowo", "KP PSP Wejherowo": "Wejherowo", "JRG 2 Rumia": "Rumia", ".OSP KSRG Bolszewo": "Bolszewo", ".OSP KSRG Gościcino": "Gościcino", ".OSP KSRG Wejherowo": "Wejherowo", ".OSP KSRG Reda": "Reda", ".OSP KSRG Luzino": "Luzino", ".OSP KSRG Zelewo": "Zelewo", ".OSP KSRG Szemud": "Szemud", ".OSP KSRG Kielno": "Kielno", ".OSP KSRG Bojano": "Bojano", ".OSP KSRG Gniewino": "Gniewino", ".OSP KSRG Nadole": "Nadole", ".OSP KSRG Kostkowo": "Kostkowo", ".OSP KSRG Choczewo": "Choczewo", ".OSP KSRG Słajszewo": "Słajszewo", ".OSP KSRG Sasino": "Sasino", ".OSP KSRG Linia": "Linia", ".OSP KSRG Strzepcz": "Strzepcz", ".OSP KSRG Łęczyce": "Łęczyce", ".OSP KSRG Rozłazino": "Rozłazino", "OSP Kopalino": "Kopalino", "OSP Rybno": "Rybno", "OSP Lewino": "Lewino", "OSP Milwino": "Milwino", "OSP Kaczkowo": "Kaczkowo", "OSP Częstkowo": "Częstkowo", "OSP Łebno": "Łebno", "OSP Przetoczyno": "Przetoczyno", "OSP Gowino": "Gowino", "OSP Kniewo": "Kniewo", "OSP Orle": "Orle", "OSP Zbychowo": "Zbychowo", "OSP Gniewowo": "Gniewowo", "OSP Góra": "Góra", "OSP Opalino": "Opalino", "OSP Nowy Dwór Wejherowski": "Nowy Dwór Wejherowski" };  function getUnitProximity(unitName, city) { const baseTown = unitBaseTown[unitName] \vert{}\vert{} "Wejherowo"; const targetTown = Object.keys(coordsMap).find( c => c.toLowerCase() === (city \vert{}\vert{} "").trim().toLowerCase() ) \vert{}\vert{} "Wejherowo";  if (baseTown.toLowerCase() === targetTown.toLowerCase()) { const isJRG = unitName.includes("JRG"); return { sec: isJRG ? 15 : 18, km: isJRG ? "1.2 km" : "1.5 km" }; }  const c1 = coordsMap[baseTown] \vert{}\vert{} { x: 0, y: 0 }; const c2 = coordsMap[targetTown] \vert{}\vert{} { x: 0, y: 0 }; const dist = Math.sqrt(Math.pow(c1.x - c2.x, 2) + Math.pow(c1.y - c2.y, 2)) * 1.25; const kmRounded = Math.max(1.5, Math.round(dist * 10) / 10); const secCalc = Math.max(20, Math.round(kmRounded * 4.5));  return { sec: secCalc, km: `${kmRounded.toFixed(1)} km` };
 }
 
 function calculateTravelTimeSeconds(unitName, city) {
@@ -243,29 +63,6 @@ function autoSelectJRGByCity(city) {
 }
 
 const streetNames = ["Gdańska", "Sobieskiego", "Zamkowa", "Leśna", "Szkolna", "Przemysłowa", "Długa", "Kwiatowa", "Słoneczna", "Łąkowa", "Krótka", "Mickiewicza", "Polna", "Ogrodowa", "Kaszubska", "Morska", "Kolejowa", "Parkowa", "Lipowa", "Brzozowa"];
-
-const eventTemplatesPool = [
-    { category: "bus_stop", type: "P", subtype: "P - Śmietniska, wysypiska", desc: "Zgłoszenie pożaru śmietnika w wiacie przystankowej. Zagrożenie dla oczekujących pasażerów." },
-    { category: "residential", type: "P", subtype: "P - Obiekty mieszkalne", desc: "Ogień na balkonie w budynku wielorodzinnym. Widoczne płomienie i duże zadymienie." },
-    { category: "industry", type: "P", subtype: "P - Obiekty produkcyjne, instalacje technologiczne", desc: "Alarm pożarowy z systemu SSP w zakładzie przemysłowym. Widoczny dym z dachu hali." },
-    { category: "industry", type: "P", subtype: "P - Obiekty magazynowe, place składowe", desc: "Pożar składowiska palet i materiałów izolacyjnych na placu zewnętrznym zakładu." },
-    { category: "residential", type: "P", subtype: "P - Obiekty mieszkalne", desc: "Zgłoszenie zadymienia na klatce schodowej w budynku mieszkalnym. Domownicy ewakuowani na zewnątrz." },
-    { category: "residential", type: "P", subtype: "P - Inne pożary", desc: "Pożar sadzy w przewodzie kominowym w budynku jednorodzinnym. Iskry wydobywające się z komina." },
-    { category: "industry", type: "P", subtype: "P - Obiekty gospodarcze i inne rolnicze", desc: "Pożar w budynku gospodarczym – zapłon składowanej słomy i sprzętu rolniczego." },
-    { category: "bus_stop", type: "P", subtype: "P - Środki transportu drogowego (np. autobus)", desc: "Pożar w komorze silnika samochodu osobowego podczas jazdy. Kierowca ewakuowany." },
-    { category: "residential", type: "P", subtype: "P - Trawy, torfowiska, lasy, pola, stogi", desc: "Szybko rozprzestrzeniający się pożar nieużytków rolnych i suchej trawy blisko lasu." },
-    { category: "industry", type: "P", subtype: "P - Instytucje, obiekty użyteczności publicznej", desc: "Zgłoszenie zadymienia w piwnicy budynku użyteczności publicznej (szkoła/urząd)." },
-    { category: "bus_stop", type: "MZ", subtype: "MZ - Zwierzęta", desc: "Niebezpieczne gniazdo os / szerszeni pod dachem budynku użyteczności publicznej." },
-    { category: "road", type: "MZ", subtype: "MZ - Wypadek", desc: "Zderzenie czołowe dwóch samochodów osobowych. Zablokowany jeden pas ruchu, wyciek płynów." },
-    { category: "road", type: "MZ", subtype: "MZ - Chemiczne", desc: "Duża plama oleju napędowego na jezdni na odcinku kilkudziesięciu metrów." },
-    { category: "residential", type: "MZ", subtype: "MZ - Pomoc w otwarciu mieszkania, podejrzenie zgonu", desc: "Brak kontaktu ze starszą osobą w mieszkaniu. Wezwanie od sąsiadów i ZRM." },
-    { category: "road", type: "MZ", subtype: "MZ - Kolizja", desc: "Kolizja trzech aut na skrzyżowaniu. Uszkodzone barierki ochronne, brak rannych." },
-    { category: "residential", type: "MZ", subtype: "MZ - Budowlane", desc: "Zagrożenie oderwaniem się elementów blachy z dachu kamienicy po silnym wietrze." },
-    { category: "road", type: "MZ", subtype: "MZ - Atmosferyczne", desc: "Drzewo powalone na pas jezdni tamujące całkowicie ruch w obu kierunkach." },
-    { category: "residential", type: "MZ", subtype: "MZ - Pomoc innym służbom", desc: "Pomoc zespołowi ratownictwa medycznego w zniesieniu ciężkiego pacjenta z mieszkania." },
-    { category: "residential", type: "MZ", subtype: "MZ - Poszukiwanie osób zaginionych", desc: "Zgłoszenie zaginięcia starszej osoby z zaburzeniami pamięci w rejonie kompleksu leśnego." },
-    { category: "road", type: "MZ", subtype: "MZ - Wodne", desc: "Zgłoszenie podtopienia piwnic w budynku mieszkalnym po intensywnych opadach deszczu." }
-];
 
 const callersList = [
     "Jan Kowalski (tel. 601-234-567)",
@@ -587,7 +384,7 @@ let unitsOSP = [
 // --- LOSOWANIE OBSADY DLA OSP (OD 3 DO 6 OSÓB) ---
 unitsOSP.forEach(u => {
     u.vehicles.forEach(v => {
-        v.obsada = Math.floor(Math.random() * 4) + 3; // Generuje losowo 3, 4, 5 lub 6
+        v.obsada = Math.floor(Math.random() * 4) + 3; // 3 do 6 osób
     });
 });
 
@@ -648,22 +445,30 @@ window.addEventListener('DOMContentLoaded', () => {
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 });
 
-// --- MELDUNEK Z DOJAZDU (SZYBKI) ---
+// --- MELDUNEK Z DOJAZDU (INTELIGENTNY I KONTEKSTOWY) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
     if (!ev.radioLogs) ev.radioLogs = [];
     openRadioForEvent(ev.id);
 
-    const sysPrompt = `Jesteś dowódcą (${vehicle.id}). Odpowiedz ultra-krótko (max 1 zdanie), żargonem strażackim.`;
-    const usrPrompt = `Dojechaliście do: ${ev.city}, ${ev.street}. Zgł.: "${ev.desc}". Napisz meldunek zaczynając od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ "Bez odbioru."`;
+    const sysPrompt = `Jesteś dowódcą zastępu strażackiego (${vehicle.id}), który właśnie dojechał na miejsce zdarzenia. 
+Szczegóły zdarzenia:
+- Miejscowość: ${ev.city}
+- Adres: ${ev.street}
+- Rodzaj: ${ev.subtype || ev.type}
+- Opis: ${ev.desc}
+
+Napisz pierwszy meldunek po dotarciu na miejsce. Opisz krótko co widzisz i jakie podejmujecie działania. 
+Używaj profesjonalnego żargonu strażackiego. Odpowiedź max 1 zdanie. 
+Zacznij od: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu..." i skończ "Bez odbioru."`;
 
     let reportText = "";
     try {
-        reportText = await callUniversalAI(sysPrompt, usrPrompt, false);
+        reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z dojazdu.", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu. Działamy. Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu, sytuacja potwierdzona, przystępujemy do działań. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -692,7 +497,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- ROZMOWA RADIOWA (SZYBKA) ---
+// --- ROZMOWA RADIOWA (LOGICZNA I KONTEKSTOWA) ---
 async function sendRadioReply() {
     const input = document.getElementById('inp-radio-reply');
     const text = input.value.trim();
@@ -711,24 +516,29 @@ async function sendRadioReply() {
     ev.radioLogs.push(userMsg);
 
     const chatBox = document.getElementById('radio-chat');
-    chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${currentRadioVehicle || 'KDR'} nadaje...</div>`;
-    input.value = '';
-    chatBox.scrollTop = chatBox.scrollHeight;
+    chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing" style="color:#aaa; font-style:italic; padding:4px;">⏳ ${currentRadioVehicle \vert{}\vert{} 'KDR'} nadaje...</div>`; input.value = ''; chatBox.scrollTop = chatBox.scrollHeight;  const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}) na miejscu zdarzenia strażackiego. 
+Szczegóły zdarzenia:
+- Miejscowość: ${ev.city}
+- Adres: ${ev.street}
+- Rodzaj: ${ev.subtype || ev.type}
+- Opis: ${ev.desc}
 
-    const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}). Odpowiadaj ultra-krótko (1 zdanie), profesjonalnym żargonem strażackim. Zacznij od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i skończ "Bez odbioru."`;
+Odpowiadaj logicznie na pytania dyspozytora (Wejherowo 998), odnosząc się bezpośrednio do sytuacji na miejscu, stanu działań, zagrożeń lub potrzeb. 
+Używaj profesjonalnego żargonu strażackiego. Odpowiedź ma być zwięzła (maksymalnie 1-2 zdania). 
+Zawsze zaczynaj od "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..." i kończ "Bez odbioru."`;
 
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, text, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, działamy. Bez odbioru.`;
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, działamy zgodnie z wytycznymi. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
     audioMotorola.play().catch(e => {});
 
-    const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle || 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
+    const respMsg = `<div class="chat-msg chat-kdr"><b>[${new Date().toLocaleTimeString()}] ${currentRadioVehicle \vert{}\vert{} 'KDR'} ➔ Wejherowo 998:</b><br>"${aiReply}"</div>`;
     
     ev.radioLogs.push(respMsg);
     chatBox.innerHTML = ev.radioLogs.join('');
@@ -747,30 +557,55 @@ function minimizeRadio() {
     const bar = document.getElementById('minimized-bar');
     const item = document.createElement('div');
     item.className = 'minimized-item';
-    item.innerHTML = `📻 Radio (ID: ${selectedEvIdForRadio})`;
-    item.onclick = () => { openRadioForEvent(selectedEvIdForRadio); item.remove(); };
-    bar.appendChild(item);
-}
+    item.innerHTML = `📻 Radio (ID: ${selectedEvIdForRadio})`; item.onclick = () => { openRadioForEvent(selectedEvIdForRadio); item.remove(); }; bar.appendChild(item); }  // --- GENEROWANIE MISJI PRZEZ AI (CPR 112) --- async function simulateIncomingCPR() { audioCpr.currentTime = 0; audioCpr.play().catch(e => {});  const newCprId = `WCPR-2026-${cprCounter++}`;
+    const randomTown = townsList[Math.floor(Math.random() * townsList.length)];
+    const chosenType = Math.random() < 0.5 ? "P" : "MZ";
+    const possibleSubtypes = subtypesData[chosenType];
+    const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
 
-// --- BŁYSKAWICZNE GENEROWANIE CPR (LOKALNE - 0 SEKUND OPÓŹNIENIA) ---
-function simulateIncomingCPR() {
-    audioCpr.currentTime = 0;
-    audioCpr.play().catch(e => {});
+    document.getElementById('cpr-id').innerText = newCprId;
+    document.getElementById('cpr-city').innerText = randomTown;
+    document.getElementById('cpr-street').innerText = "Trwa ustalanie lokalizacji przez AI...";
+    document.getElementById('cpr-type').innerText = `${chosenType} -${randomSubtype}`;
+    document.getElementById('cpr-caller').innerText = "Łączenie z operatorem 112...";
+    document.getElementById('cpr-desc').innerText = "🤖 AI generuje nową misję ratowniczą...";
+    document.getElementById('cpr-modal').style.display = 'flex';
 
-    const newCprId = `WCPR-2026-${cprCounter++}`;
-    const randomTpl = eventTemplatesPool[Math.floor(Math.random() * eventTemplatesPool.length)];
-    const chosenLoc = getRandomStreet(randomTpl.category);
-    const chosenCaller = callersList[Math.floor(Math.random() * callersList.length)];
+    const sysPrompt = `Jesteś systemem dyspozytorskim CPR 112. Wygeneruj realistyczne, unikalne zgłoszenie strażackie w formacie JSON (bez markdownu ```json):
+{
+  "street": "nazwa ulicy z nr lub dokładny obiekt w podanym mieście",
+  "caller": "Imię Nazwisko (tel. XXX-XXX-XXX)",
+  "desc": "Realistyczny, dynamiczny opis zgłoszenia od świadka/zgłaszającego (2-3 zdania)"
+}`;
+    const usrPrompt = `Miejscowość: ${randomTown}, Kategoria: ${chosenType}, Podrodzaj: ${randomSubtype}`;
 
-    currentCPRData = {
-        id: newCprId,
-        city: chosenLoc.city,
-        street: chosenLoc.street,
-        type: randomTpl.type,
-        subtype: randomTpl.subtype,
-        desc: randomTpl.desc,
-        caller: chosenCaller
-    };
+    try {
+        const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
+        const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
+        const cleaned = jsonMatch ? jsonMatch[0] : rawJson.replace(/```json|```/g, '').trim();
+        const aiEvent = JSON.parse(cleaned);
+
+        currentCPRData = {
+            id: newCprId,
+            city: randomTown,
+            street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 50) + 1}`,
+            type: chosenType,
+            subtype: randomSubtype,
+            desc: aiEvent.desc || "Zgłoszenie alarmowe przekazane z CPR.",
+            caller: aiEvent.caller || "Jan Kowalski (tel. 601-234-567)"
+        };
+    } catch (e) {
+        const stName = streetNames[Math.floor(Math.random() * streetNames.length)];
+        currentCPRData = {
+            id: newCprId,
+            city: randomTown,
+            street: `ul. ${stName} ${Math.floor(Math.random() * 50) + 1}`,
+            type: chosenType,
+            subtype: randomSubtype,
+            desc: `Zgłoszenie dotyczące zdarzenia typu ${randomSubtype} w miejscowości ${randomTown}. Wymagany pilny wyjazd służb ratunkowych.`,
+            caller: "Jan Kowalski (tel. 601-234-567)"
+        };
+    }
 
     document.getElementById('cpr-id').innerText = currentCPRData.id;
     document.getElementById('cpr-city').innerText = currentCPRData.city;
@@ -778,28 +613,6 @@ function simulateIncomingCPR() {
     document.getElementById('cpr-type').innerText = `${currentCPRData.type} - ${currentCPRData.subtype}`;
     document.getElementById('cpr-caller').innerText = currentCPRData.caller;
     document.getElementById('cpr-desc').innerText = currentCPRData.desc;
-    document.getElementById('cpr-modal').style.display = 'flex';
-}
-
-function getRandomStreet(category) {
-    const town = townsList[Math.floor(Math.random() * townsList.length)];
-    const stName = streetNames[Math.floor(Math.random() * streetNames.length)];
-    const num = Math.floor(Math.random() * 80) + 1;
-
-    if (category === "bus_stop") {
-        return { city: town, street: `Przystanek Autobusowy ul. ${stName}` };
-    } else if (category === "industry") {
-        const industries = [
-            { city: "Bolszewo", street: `Balex-Metal, ul. Wejherowska ${num}` },
-            { city: "Wejherowo", street: `Markisol Polska, ul. Fabryczna ${num}` },
-            { city: "Rumia", street: `Hala Magazynowa, ul. Przemysłowa ${num}` }
-        ];
-        return industries[Math.floor(Math.random() * industries.length)];
-    } else if (category === "residential") {
-        return { city: town, street: `ul. ${stName} ${num}` };
-    } else {
-        return { city: town, street: `ul. ${stName} ${num}` };
-    }
 }
 
 function closeCPR() { document.getElementById('cpr-modal').style.display = 'none'; }
@@ -827,9 +640,10 @@ function acceptCPRToEvent() {
 
     autoSelectJRGByCity(currentCPRData.city);
 
-    const radioP = document.querySelector('input[name="ev-type"][value="P"]');
+    const radioP = document.querySelector(`input[name="ev-type"][value="${currentCPRData.type}"]`);
     if (radioP) radioP.checked = true;
-    updateSubtypes('P');
+    updateSubtypes(currentCPRData.type);
+    document.getElementById('inp-ev-subtype').value = currentCPRData.subtype;
 
     document.getElementById('inp-caller-name').value = currentCPRData.caller.split(' ')[0] || '';
     document.getElementById('inp-caller-surname').value = currentCPRData.caller.split(' ')[1] || '';
