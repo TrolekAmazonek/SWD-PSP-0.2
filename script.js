@@ -584,6 +584,13 @@ let unitsOSP = [
     }
 ];
 
+// --- LOSOWANIE OBSADY DLA OSP (OD 3 DO 6 OSÓB) ---
+unitsOSP.forEach(u => {
+    u.vehicles.forEach(v => {
+        v.obsada = Math.floor(Math.random() * 4) + 3; // Generuje losowo 3, 4, 5 lub 6
+    });
+});
+
 let events = [];
 let activeEditingId = null;
 let selectedEvIdForRadio = null;
