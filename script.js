@@ -40,11 +40,15 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- SILNIK AI ---
+// --- BEZPIECZNY SILNIK AI ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
+            signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${decodeKey(_k.g)}`
@@ -55,11 +59,12 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.3,
-                max_tokens: 120,
+                temperature: 0.4,
+                max_tokens: 150,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
+        clearTimeout(timeoutId);
         const data = await res.json();
         if (data.choices && data.choices[0]?.message?.content) {
             return data.choices[0].message.content.trim();
@@ -74,7 +79,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 model: 'openai',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.3,
+                temperature: 0.4,
                 jsonMode: jsonMode
             })
         });
@@ -86,7 +91,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
         }
     } catch (err) {}
 
-    throw new Error("Brak połączenia z AI.");
+    throw new Error("AI Offline");
 }
 
 const locationsDatabase = {
@@ -622,44 +627,45 @@ window.addEventListener('DOMContentLoaded', () => {
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 });
 
-// --- DYNAMICZNY GENERATOR ODPOWIEDZI ZAPASOWYCH DLA RADIA ---
-function generateFallbackRadioReply(kdrCallsign, userQuestion, ev) {
+// --- LOKALNY SILNIK INTELIGENTNYCH ODPOWIEDZI KDR (FALLBACK) ---
+function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     const q = userQuestion.toLowerCase();
-    
-    if (q.includes("policj") || q.includes("policje") || q.includes("policja")) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Patrolu Policji brak na miejscu, proszę o zadysponowanie wsparcia. Bez odbioru.`;
+    const hasPrm = q.includes("pogotow") || q.includes("zrm") || q.includes("karetk") || q.includes("medyczn");
+    const hasPol = q.includes("policj") || q.includes("patrol");
+    const hasSis = q.includes("dodatkow") || q.includes("siły") || q.includes("srodki") || q.includes("zastęp");
+
+    if (hasPrm && hasPol) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Tak, proszę o zadysponowanie na miejsce zarówno zespołu ZRM, jak i patrolu Policji. Bez odbioru.`;
+    } else if (hasPrm) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Tak, na miejscu jest osoba wymagająca pomocy medycznej. Proszę o zadysponowanie ZRM. Bez odbioru.`;
+    } else if (hasPol) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Policja nie przybyła jeszcze na miejsce, proszę wysłać patrol do zabezpieczenia terenu. Bez odbioru.`;
+    } else if (hasSis) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Siły i środki na miejscu są obecnie wystarczające, nie potrzebuję dodatkowych zastępów. Bez odbioru.`;
     }
-    if (q.includes("zrm") || q.includes("prm") || q.includes("pogotowi") || q.includes("karetk")) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Potwierdzam zapotrzebowanie na ZRM do poszkodowanych na miejscu. Bez odbioru.`;
-    }
-    if (q.includes("dodatkow") || q.includes("sis") || q.includes("siły") || q.includes("zastęp")) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Na ten moment siły i środki na miejscu są wystarczające. Bez odbioru.`;
-    }
+
     if (q.includes("przyjąłem") || q.includes("zrozumiałem")) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Działamy zgodnie z wytycznymi. Bez odbioru.`;
+        return `Wejherowo 998, tu ${kdrCallsign}. Działamy zgodnie z procedurą. Bez odbioru.`;
     }
-    
-    return `Wejherowo 998, tu ${kdrCallsign}. W kwestii "${userQuestion}" – na miejscu sytuacja jest opanowana, kontynuujemy działania. Bez odbioru.`;
+
+    return `Wejherowo 998, tu ${kdrCallsign}. W odpowiedzi na "${userQuestion}" – sytuacja jest pod naszą kontrolą, realizujemy zadania na miejscu zdarzenia. Bez odbioru.`;
 }
 
-// --- MELDUNEK Z DOJAZDU (BLOKADA HALUCYNACJI) ---
+// --- MELDUNEK Z DOJAZDU ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
     if (!ev.radioLogs) ev.radioLogs = [];
     openRadioForEvent(ev.id);
 
-    const sysPrompt = `Jesteś dowódcą zastępu (${vehicle.id}). Dotarłeś na miejsce. 
-KRYTYCZNA ZASADA: Musisz opisać dokładnie to zdarzenie, które jest w karcie!
-- Miejscowość: ${ev.city}
-- Typ/Podrodzaj: ${ev.subtype || ev.type}
-- Opis: "${ev.desc}"
-Zabrania się wymyślania pożaru, jeśli zgłoszenie dotyczy czegoś innego (np. wypadku lotniczego, otwarcia mieszkania, plamy oleju, zwierząt itp.).
-Format: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. [Opis sytuacji wynikający wyłącznie z: ${ev.desc}]. Rozpoznanie w toku. Bez odbioru."`;
+    const sysPrompt = `Jesteś KDR (${vehicle.id}). Przybyłeś na miejsce: ${ev.city}. 
+Zdarzenie z karty: "${ev.desc}". 
+Złóż 1-zdaniowy meldunek z dojazdu. Musi pasować wyłącznie do podanego opisu zdarzenia. 
+Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
 
     let reportText = "";
     try {
-        reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z dojazdu.", false);
+        reportText = await callUniversalAI(sysPrompt, "Meldunek z dojazdu", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {}
 
@@ -670,7 +676,7 @@ Format: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. [Op
     }
 
     if (!reportText) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}, zdarzenie potwierdzone (${ev.desc}). Bez odbioru.`;
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. Zdarzenie: ${ev.desc}. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -704,7 +710,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- ODPOWIEDŹ AI LOGICZNIE POWIĄZANA Z PYTANIEM DYSPOZYTORA ---
+// --- ODPOWIEDŹ NA KAŻDE PYTANIE I PRZYCISK RADIOWY ---
 async function sendRadioReply(customText = null) {
     const input = document.getElementById('inp-radio-reply');
     const text = customText !== null ? customText : (input ? input.value.trim() : "");
@@ -730,28 +736,14 @@ async function sendRadioReply(customText = null) {
     }
     if(input) input.value = '';
 
-    // Pobieramy czysty tekst z historii rozmowy dla kontekstu AI
-    const rawHistory = ev.radioLogs.map(item => item.replace(/<[^>]*>?/gm, '')).slice(-4).join("\n");
+    const systemPrompt = `Jesteś dowódcą zastępu (${kdrName}) w miejscowości ${ev.city}. 
+Opis zdarzenia z karty: "${ev.desc}".
 
-    const systemPrompt = `Jesteś dowódcą akcji (${kdrName}) na miejscu zdarzenia.
-DANE ZDARZENIA:
-- Miejscowość: ${ev.city}
-- Opis ze zgłoszenia: "${ev.desc}"
+Dyspozytor (Wejherowo 998) pyta Cię: "${text}".
+GŁÓWNA ZASADA: Odpowiedz bezpośrednio na to zadane pytanie! Np. jeśli pyta o pogotowie i policję, odpowiadasz czy potrzebne jest pogotowie i policja! Nie używaj ogólników typu "przyjąłem, realizujemy zadanie"!
 
-HISTORIA DOTYCHCZASOWEJ ROZMOWY:
-${rawHistory}
-
-WYMAGANIE BEZWZGLĘDNE:
-Dyspozytor (Wejherowo 998) pyta Cię właśnie: "${text}".
-Musisz ODPOWIEDZIEĆ WPROST I LOGICZNIE na to konkretne pytanie!
-Przykłady:
-- Jeśli pyta: "a policje masz na miejscu?" -> Odpowiedz czy Policja jest na miejscu, czy trzeba ją wezwać. Nie używaj ogólnej formułki "Przyjąłem, realizujemy zadanie"!
-- Jeśli pyta: "potrzebujesz ZRM?" -> Odpowiedz czy potrzebujesz karetki pogotowia.
-
-Zasady komunikatu:
-1. Zawsze rozpoczynaj od: "Wejherowo 998, tu ${kdrName}."
-2. Zawsze kończ na: "Bez odbioru."
-3. Maksymalnie 1-2 zwięzłe zdania w żargonie strażackim.`;
+Format:
+"Wejherowo 998, tu ${kdrName}. [Trafna odpowiedź na pytanie]. Bez odbioru."`;
 
     let aiReply = "";
     try {
@@ -759,12 +751,11 @@ Zasady komunikatu:
         aiReply = aiReply.replace(/^["']|["']$/g, '');
     } catch (err) {}
 
-    // Weryfikacja czy odpowiedź nie jest generyczną formułką ani halucynacją pożaru
-    const descLower = (ev.desc || "").toLowerCase();
     const replyLower = (aiReply || "").toLowerCase();
 
-    if (!aiReply || replyLower.includes("przyjąłem, realizujemy zadanie") || (replyLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień"))) {
-        aiReply = generateFallbackRadioReply(kdrName, text, ev);
+    // Jeśli AI zawiodło lub zwróciło sztywny zwrot, używamy dynamicznego silnika logiki
+    if (!aiReply || replyLower.includes("realizujemy zadanie") || replyLower.includes("przyjąłem zgłoszenie")) {
+        aiReply = generateSmartKdrResponse(kdrName, text, ev);
     }
 
     audioMotorola.currentTime = 0;
