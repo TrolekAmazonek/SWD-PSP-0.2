@@ -95,86 +95,46 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
 }
 
 const locationsDatabase = {
-    "Bolszewo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Wejherowo": "m. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Rumia": "m. Rumia, pow. wejherowski, woj. pomorskie",
-    "Reda": "m. Reda, pow. wejherowski, woj. pomorskie",
-    "Gościcino": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Gniewowo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Gowino": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Góra": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Kniewo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Nowy Dwór Wejherowski": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Orle": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Zbychowo": "gm. Wejherowo, pow. wejherowski, woj. pomorskie",
-    "Luzino": "gm. Luzino, pow. wejherowski, woj. pomorskie",
-    "Zelewo": "gm. Luzino, pow. wejherowski, woj. pomorskie",
-    "Milwino": "gm. Luzino, pow. wejherowski, woj. pomorskie",
-    "Szemud": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Kielno": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Bojano": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Częstkowo": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Łebno": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Przetoczyno": "gm. Szemud, pow. wejherowski, woj. pomorskie",
-    "Gniewino": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Nadole": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Kostkowo": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Rybno": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Opalino": "gm. Gniewino, pow. wejherowski, woj. pomorskie",
-    "Choczewo": "gm. Choczewo, pow. wejherowski, woj. pomorskie",
-    "Słajszewo": "gm. Choczewo, pow. wejherowski, woj. pomorskie",
-    "Sasino": "gm. Choczewo, pow. wejherowski, woj. pomorskie",
-    "Kopalino": "gm. Choczewo, pow. wejherowski, woj. pomorskie",
-    "Linia": "gm. Linia, pow. wejherowski, woj. pomorskie",
-    "Strzepcz": "gm. Linia, pow. wejherowski, woj. pomorskie",
-    "Lewino": "gm. Linia, pow. wejherowski, woj. pomorskie",
-    "Łęczyce": "gm. Łęczyce, pow. wejherowski, woj. pomorskie",
-    "Bożepole Wielkie": "gm. Łęczyce, pow. wejherowski, woj. pomorskie",
-    "Rozłazino": "gm. Łęczyce, pow. wejherowski, woj. pomorskie",
-    "Kaczkowo": "gm. Łęczyce, pow. wejherowski, woj. pomorskie"
+    "Wejherowo": { desc: "m. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.6059, lng: 18.2443 },
+    "Bolszewo": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.5982, lng: 18.2014 },
+    "Rumia": { desc: "m. Rumia, pow. wejherowski, woj. pomorskie", lat: 54.5714, lng: 18.3879 },
+    "Reda": { desc: "m. Reda, pow. wejherowski, woj. pomorskie", lat: 54.6062, lng: 18.3475 },
+    "Gościcino": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.5824, lng: 18.1513 },
+    "Gniewowo": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.5422, lng: 18.2691 },
+    "Gowino": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.5711, lng: 18.2001 },
+    "Góra": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.6394, lng: 18.1923 },
+    "Kniewo": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.6644, lng: 18.1064 },
+    "Nowy Dwór Wejherowski": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.5412, lng: 18.2215 },
+    "Orle": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.6291, lng: 18.1812 },
+    "Zbychowo": { desc: "gm. Wejherowo, pow. wejherowski, woj. pomorskie", lat: 54.5211, lng: 18.2812 },
+    "Luzino": { desc: "gm. Luzino, pow. wejherowski, woj. pomorskie", lat: 54.5434, lng: 18.0822 },
+    "Zelewo": { desc: "gm. Luzino, pow. wejherowski, woj. pomorskie", lat: 54.5812, lng: 18.0514 },
+    "Milwino": { desc: "gm. Luzino, pow. wejherowski, woj. pomorskie", lat: 54.5121, lng: 18.0412 },
+    "Szemud": { desc: "gm. Szemud, pow. wejherowski, woj. pomorskie", lat: 54.4533, lng: 18.2011 },
+    "Kielno": { desc: "gm. Szemud, pow. wejherowski, woj. pomorskie", lat: 54.4412, lng: 18.3214 },
+    "Bojano": { desc: "gm. Szemud, pow. wejherowski, woj. pomorskie", lat: 54.4712, lng: 18.3912 },
+    "Częstkowo": { desc: "gm. Szemud, pow. wejherowski, woj. pomorskie", lat: 54.4711, lng: 18.1012 },
+    "Łebno": { desc: "gm. Szemud, pow. wejherowski, woj. pomorskie", lat: 54.4512, lng: 18.0712 },
+    "Przetoczyno": { desc: "gm. Szemud, pow. wejherowski, woj. pomorskie", lat: 54.5122, lng: 18.1412 },
+    "Gniewino": { desc: "gm. Gniewino, pow. wejherowski, woj. pomorskie", lat: 54.7214, lng: 17.9712 },
+    "Nadole": { desc: "gm. Gniewino, pow. wejherowski, woj. pomorskie", lat: 54.7412, lng: 18.0312 },
+    "Kostkowo": { desc: "gm. Gniewino, pow. wejherowski, woj. pomorskie", lat: 54.6812, lng: 18.0112 },
+    "Rybno": { desc: "gm. Gniewino, pow. wejherowski, woj. pomorskie", lat: 54.6812, lng: 18.0812 },
+    "Opalino": { desc: "gm. Gniewino, pow. wejherowski, woj. pomorskie", lat: 54.7012, lng: 18.0512 },
+    "Choczewo": { desc: "gm. Choczewo, pow. wejherowski, woj. pomorskie", lat: 54.7412, lng: 17.9112 },
+    "Słajszewo": { desc: "gm. Choczewo, pow. wejherowski, woj. pomorskie", lat: 54.7812, lng: 17.8512 },
+    "Sasino": { desc: "gm. Choczewo, pow. wejherowski, woj. pomorskie", lat: 54.7912, lng: 17.7812 },
+    "Kopalino": { desc: "gm. Choczewo, pow. wejherowski, woj. pomorskie", lat: 54.8112, lng: 17.8112 },
+    "Linia": { desc: "gm. Linia, pow. wejherowski, woj. pomorskie", lat: 54.4312, lng: 17.9312 },
+    "Strzepcz": { desc: "gm. Linia, pow. wejherowski, woj. pomorskie", lat: 54.4412, lng: 18.0212 },
+    "Lewino": { desc: "gm. Linia, pow. wejherowski, woj. pomorskie", lat: 54.4712, lng: 17.9012 },
+    "Łęczyce": { desc: "gm. Łęczyce, pow. wejherowski, woj. pomorskie", lat: 54.6112, lng: 18.0112 },
+    "Bożepole Wielkie": { desc: "gm. Łęczyce, pow. wejherowski, woj. pomorskie", lat: 54.5812, lng: 17.9312 },
+    "Rozłazino": { desc: "gm. Łęczyce, pow. wejherowski, woj. pomorskie", lat: 54.5812, lng: 17.8612 },
+    "Kaczkowo": { desc: "gm. Łęczyce, pow. wejherowski, woj. pomorskie", lat: 54.6212, lng: 17.9312 }
 };
 
 const townsList = Object.keys(locationsDatabase);
-
-const coordsMap = {
-    "Wejherowo": { x: 0, y: 0 },
-    "Bolszewo": { x: -4, y: 1 },
-    "Gościcino": { x: -6, y: 0 },
-    "Gowino": { x: -5, y: -3 },
-    "Góra": { x: -5, y: 4 },
-    "Orle": { x: -6, y: 3 },
-    "Kniewo": { x: -7, y: 5 },
-    "Rybno": { x: -9, y: 8 },
-    "Gniewowo": { x: 4, y: -4 },
-    "Zbychowo": { x: 3, y: -6 },
-    "Nowy Dwór Wejherowski": { x: 0, y: -6 },
-    "Reda": { x: 7, y: -1 },
-    "Rumia": { x: 12, y: -3 },
-    "Luzino": { x: -11, y: -1 },
-    "Zelewo": { x: -9, y: 3 },
-    "Milwino": { x: -11, y: -5 },
-    "Szemud": { x: -5, y: -13 },
-    "Przetoczyno": { x: -4, y: -9 },
-    "Częstkowo": { x: -8, y: -9 },
-    "Łebno": { x: -11, y: -12 },
-    "Kielno": { x: 1, y: -15 },
-    "Bojano": { x: 4, y: -14 },
-    "Gniewino": { x: -14, y: 13 },
-    "Nadole": { x: -14, y: 16 },
-    "Kostkowo": { x: -12, y: 10 },
-    "Opalino": { x: -12, y: 15 },
-    "Choczewo": { x: -22, y: 16 },
-    "Słajszewo": { x: -27, y: 19 },
-    "Sasino": { x: -29, y: 20 },
-    "Kopalino": { x: -24, y: 20 },
-    "Linia": { x: -24, y: -11 },
-    "Strzepcz": { x: -16, y: -11 },
-    "Lewino": { x: -18, y: -9 },
-    "Łęczyce": { x: -19, y: 1 },
-    "Bożepole Wielkie": { x: -15, y: -1 },
-    "Rozłazino": { x: -21, y: -3 },
-    "Kaczkowo": { x: -18, y: 4 }
-};
 
 const unitBaseTown = {
     "JRG 1 Wejherowo": "Wejherowo",
@@ -219,7 +179,7 @@ const unitBaseTown = {
 
 function getUnitProximity(unitName, city) {
     const baseTown = unitBaseTown[unitName] || "Wejherowo";
-    const targetTown = Object.keys(coordsMap).find(
+    const targetTown = Object.keys(locationsDatabase).find(
         c => c.toLowerCase() === (city || "").trim().toLowerCase()
     ) || "Wejherowo";
 
@@ -228,11 +188,11 @@ function getUnitProximity(unitName, city) {
         return { sec: isJRG ? 15 : 18, km: isJRG ? "1.2 km" : "1.5 km" };
     }
 
-    const c1 = coordsMap[baseTown] || { x: 0, y: 0 };
-    const c2 = coordsMap[targetTown] || { x: 0, y: 0 };
-    const dist = Math.sqrt(Math.pow(c1.x - c2.x, 2) + Math.pow(c1.y - c2.y, 2)) * 1.25;
+    const c1 = locationsDatabase[baseTown];
+    const c2 = locationsDatabase[targetTown];
+    const dist = Math.sqrt(Math.pow(c1.lat - c2.lat, 2) + Math.pow(c1.lng - c2.lng, 2)) * 111;
     const kmRounded = Math.max(1.5, Math.round(dist * 10) / 10);
-    const secCalc = Math.max(20, Math.round(kmRounded * 4.5));
+    const secCalc = Math.max(20, Math.round(kmRounded * 45));
 
     return { sec: secCalc, km: `${kmRounded.toFixed(1)} km` };
 }
@@ -563,7 +523,6 @@ let unitsOSP = [
     }
 ];
 
-// --- LOSOWANIE OBSADY DLA OSP ---
 unitsOSP.forEach(u => {
     u.vehicles.forEach(v => {
         v.obsada = Math.floor(Math.random() * 4) + 3;
@@ -577,9 +536,142 @@ let selectedVehicles = [];
 let servicesState = { prm: false, police: false };
 let currentCPRData = null;
 let cprCounter = 101;
-let openRadioWindows = {}; // Przechowuje aktywne okienka radia wg id zdarzenia
+let openRadioWindows = {};
 
-// --- MECHANIZM PRZESUWANIA (POSITION: FIXED) ---
+// --- MAPA LEAFLET ---
+let leafletMap = null;
+let mapMarkersLayer = null;
+
+function initLeafletMap() {
+    if (leafletMap) return;
+    leafletMap = L.map('leaflet-map').setView([54.6059, 18.2443], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(leafletMap);
+    mapMarkersLayer = L.layerGroup().addTo(leafletMap);
+    updateMapMarkers();
+}
+
+function updateMapMarkers() {
+    if (!mapMarkersLayer) return;
+    mapMarkersLayer.clearLayers();
+
+    Object.keys(unitBaseTown).forEach(unitName => {
+        const town = unitBaseTown[unitName];
+        const loc = locationsDatabase[town];
+        if (loc) {
+            const marker = L.marker([loc.lat, loc.lng], {
+                icon: L.divIcon({
+                    className: 'map-unit-marker',
+                    html: `<div style="background:#0a246a; color:#fff; border:1px solid #fff; border-radius:3px; padding:1px 4px; font-size:9px; font-weight:bold; white-space:nowrap;">🚒 ${unitName}</div>`
+                })
+            });
+            marker.bindPopup(`<b>Jednostka:</b> ${unitName}<br><b>Lokalizacja:</b> ${town}`);
+            mapMarkersLayer.addLayer(marker);
+        }
+    });
+
+    events.forEach(ev => {
+        const loc = locationsDatabase[ev.city];
+        if (loc) {
+            const marker = L.marker([loc.lat, loc.lng], {
+                icon: L.divIcon({
+                    className: 'map-event-marker',
+                    html: `<div style="background:#b30000; color:#fff; border:2px solid #ffcc00; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:bold; box-shadow:0 0 5px rgba(0,0,0,0.5);">🔥</div>`
+                })
+            });
+            marker.bindPopup(`<b>Zdarzenie ID: ${ev.id}</b><br><b>Miasto:</b> ${ev.city}, ${ev.street}<br><b>Opis:</b> ${ev.desc}<br><b>Status:</b> ${ev.status}`);
+            mapMarkersLayer.addLayer(marker);
+        }
+    });
+}
+
+function switchMainView(viewType) {
+    const unitsContainer = document.getElementById('view-units-container');
+    const mapContainer = document.getElementById('view-map-container');
+    const btnMap = document.getElementById('btn-tab-map');
+
+    if (viewType === 'map') {
+        if(unitsContainer) unitsContainer.style.display = 'none';
+        if(mapContainer) mapContainer.style.display = 'block';
+        if(btnMap) btnMap.classList.add('active');
+        setTimeout(() => { initLeafletMap(); leafletMap.invalidateSize(); }, 200);
+    } else {
+        if(unitsContainer) unitsContainer.style.display = 'flex';
+        if(mapContainer) mapContainer.style.display = 'none';
+        if(btnMap) btnMap.classList.remove('active');
+    }
+}
+
+// --- OKNO RAPORTÓW I STATYSTYK ---
+function openReportsModal() {
+    const total = events.length;
+    const active = events.filter(e => e.status === 'ACTIVE').length;
+    const finished = events.filter(e => e.status === 'FINISHED').length;
+
+    let prmCount = 0, prmActive = 0, prmFin = 0;
+    let pspCount = 0, pspActive = 0, pspFin = 0;
+    let polCount = 0, polActive = 0, polFin = 0;
+
+    const catCounts = {};
+    const townCounts = {};
+
+    events.forEach(ev => {
+        if (ev.services && ev.services.prm) {
+            prmCount++;
+            if (ev.status === 'ACTIVE') prmActive++; else prmFin++;
+        }
+        if (ev.services && ev.services.police) {
+            polCount++;
+            if (ev.status === 'ACTIVE') polActive++; else polFin++;
+        }
+        pspCount++;
+        if (ev.status === 'ACTIVE') pspActive++; else pspFin++;
+
+        const cat = ev.type || 'Inne';
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+
+        const town = ev.city || 'Nieznana';
+        townCounts[town] = (townCounts[town] || 0) + 1;
+    });
+
+    safeSetElementText('stat-total', total);
+    safeSetElementText('stat-active', active);
+    safeSetElementText('stat-finished', finished);
+
+    safeSetElementText('stat-prm-count', prmCount);
+    safeSetElementText('stat-prm-active', prmActive);
+    safeSetElementText('stat-prm-fin', prmFin);
+
+    safeSetElementText('stat-psp-count', pspCount);
+    safeSetElementText('stat-psp-active', pspActive);
+    safeSetElementText('stat-psp-fin', pspFin);
+
+    safeSetElementText('stat-pol-count', polCount);
+    safeSetElementText('stat-pol-active', polActive);
+    safeSetElementText('stat-pol-fin', polFin);
+
+    const catBody = document.getElementById('stat-cat-body');
+    if (catBody) {
+        if (Object.keys(catCounts).length === 0) {
+            catBody.innerHTML = '<tr><td>Brak danych</td><td>0</td></tr>';
+        } else {
+            catBody.innerHTML = Object.entries(catCounts).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+        }
+    }
+
+    const townBody = document.getElementById('stat-town-body');
+    if (townBody) {
+        if (Object.keys(townCounts).length === 0) {
+            townBody.innerHTML = '<tr><td>Brak danych</td><td>0</td></tr>';
+        } else {
+            townBody.innerHTML = Object.entries(townCounts).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+        }
+    }
+
+    const modal = document.getElementById('modal-reports');
+    if (modal) modal.style.display = 'flex';
+}
+
+// --- DRAGGABLE WINDOWS ---
 function makeDraggable(elmnt, header) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     if (header) header.onmousedown = dragMouseDown;
@@ -622,39 +714,23 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
+
+    const repModal = document.querySelector('#modal-reports .modal-window');
+    if (repModal) makeDraggable(repModal, document.querySelector('#modal-reports .modal-header'));
 });
 
-// --- LOKALNY SILNIK INTELIGENTNYCH ODPOWIEDZI KDR (FALLBACK) ---
 function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     const q = userQuestion.toLowerCase();
-    const hasPrm = q.includes("pogotow") || q.includes("zrm") || q.includes("karetk") || q.includes("medyczn");
-    const hasPol = q.includes("policj") || q.includes("patrol");
-    const hasSis = q.includes("dodatkow") || q.includes("siły") || q.includes("srodki") || q.includes("zastęp");
-
-    if (hasPrm && hasPol) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Tak, proszę o zadysponowanie na miejsce zarówno zespołu ZRM, jak i patrolu Policji. Bez odbioru.`;
-    } else if (hasPrm) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Tak, na miejscu jest osoba wymagająca pomocy medycznej. Proszę o zadysponowanie ZRM. Bez odbioru.`;
-    } else if (hasPol) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Policja nie przybyła jeszcze na miejsce, proszę wysłać patrol do zabezpieczenia terenu. Bez odbioru.`;
-    } else if (hasSis) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Siły i środki na miejscu są obecnie wystarczające, nie potrzebuję dodatkowych zastępów. Bez odbioru.`;
-    }
-
-    if (q.includes("przyjąłem") || q.includes("zrozumiałem")) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Działamy zgodnie z procedurą. Bez odbioru.`;
-    }
-
-    return `Wejherowo 998, tu ${kdrCallsign}. W odpowiedzi na "${userQuestion}" – sytuacja jest pod naszą kontrolą, realizujemy zadania na miejscu zdarzenia. Bez odbioru.`;
+    if (q.includes("pogotow") || q.includes("zrm")) return `Wejherowo 998, tu ${kdrCallsign}. Tak, proszę zadysponować ZRM na miejsce. Bez odbioru.`;
+    if (q.includes("policj")) return `Wejherowo 998, tu ${kdrCallsign}. Proszę o patrol Policji do kierowania ruchem. Bez odbioru.`;
+    return `Wejherowo 998, tu ${kdrCallsign}. Działamy zgodnie z procedurą. Bez odbioru.`;
 }
 
-// --- OKNO RADIA: WYGLĄD RETRO + POLE TEKSTOWE NA SAMYM DOLE ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
         openRadioWindows[evId].style.display = 'block';
         return openRadioWindows[evId];
     }
-
     const ev = events.find(e => e.id === evId);
     if (!ev) return null;
 
@@ -663,55 +739,30 @@ function createRadioWindow(evId) {
     modal.style.position = 'fixed';
     modal.style.zIndex = '1050';
     modal.style.width = '440px';
-    
-    const windowCount = Object.keys(openRadioWindows).length;
-    const offset = (windowCount * 25) % 150;
-    modal.style.left = `calc(50% - 220px + ${offset}px)`;
-    modal.style.top = `calc(50% - 210px + ${offset}px)`;
+    modal.style.left = 'calc(50% - 220px)';
+    modal.style.top = 'calc(50% - 210px)';
 
     modal.innerHTML = `
-        <div style="background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); font-family: 'Segoe UI', Tahoma, sans-serif;">
-            <div class="radio-win-header" style="background: linear-gradient(90deg, #004080, #1060b0); color: #ffffff; padding: 3px 6px; font-weight: bold; font-size: 13px; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;">
-                <span id="radio-title-${evId}">🖵 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})</span>
+        <div style="background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; box-shadow: 2px 2px 5px rgba(0,0,0,0.5);">
+            <div class="radio-win-header" style="background: linear-gradient(90deg, #004080, #1060b0); color: #ffffff; padding: 3px 6px; font-weight: bold; font-size: 13px; display: flex; justify-content: space-between; align-items: center; cursor: move;">
+                <span>🖵 Korespondencja Radiowa - Zdarzenie ID: ${ev.id} (${ev.city})</span>
                 <div style="display: flex; gap: 2px;">
-                    <button style="background: #c0c0c0; border: 1px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; width: 18px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="minimizeRadioWindow(${ev.id})">_</button>
-                    <button style="background: #c0c0c0; border: 1px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; width: 18px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;" onclick="closeRadioWindow(${ev.id})">✕</button>
+                    <button onclick="closeRadioWindow(${ev.id})">✕</button>
                 </div>
             </div>
             <div style="padding: 6px; background: #c0c0c0;">
-                <div id="radio-chat-${evId}" style="background: #000000; color: #ffcc00; font-family: 'Courier New', monospace; font-weight: bold; font-size: 12px; height: 195px; padding: 6px; overflow-y: auto; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; box-sizing: border-box; line-height: 1.3;"></div>
-                
-                <!-- Przyciski szybkiej odpowiedzi -->
-                <div style="display: flex; gap: 4px; margin-top: 6px; justify-content: space-between;">
-                    <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Przyjąłem.')">
-                        <span style="color: green;">✔</span> Przyjąłem
-                    </button>
-                    <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy na miejscu wymagany jest zespół ZRM?')">
-                        <span style="color: red;">🚑</span> Wymagany ZRM?
-                    </button>
-                    <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebny jest patrol Policji?')">
-                        <span style="color: blue;">🚔</span> Potrzebna Policja?
-                    </button>
-                    <button style="flex: 1; padding: 4px 2px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color: #000; text-align: center;" onclick="sendRadioReplyDynamic(${ev.id}, 'Wejherowo 998, czy potrzebne są dodatkowe siły i środki?')">
-                        <span style="color: darkred;">🚒</span> Dodatkowe SiS?
-                    </button>
-                </div>
-
-                <!-- Pole wpisywania własnej wiadomości na samym dole -->
-                <div style="display: flex; gap: 4px; margin-top: 6px; align-items: center;">
-                    <input type="text" id="inp-radio-reply-${ev.id}" placeholder="Wpisz treść wiadomości radiowej..." style="flex: 1; padding: 5px 8px; font-size: 12px; background: #ffffff; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; outline: none;" onkeypress="if(event.key==='Enter') sendCustomInputRadio(${ev.id})">
-                    <button style="padding: 5px 12px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold;" onclick="sendCustomInputRadio(${ev.id})">Nadaj</button>
+                <div id="radio-chat-${evId}" style="background: #000000; color: #ffcc00; font-family: 'Courier New', monospace; font-weight: bold; font-size: 12px; height: 195px; padding: 6px; overflow-y: auto; border: 2px solid #808080;"></div>
+                <div style="display: flex; gap: 4px; margin-top: 6px;">
+                    <input type="text" id="inp-radio-reply-${evId}" placeholder="Wpisz treść..." style="flex: 1; padding: 4px;" onkeypress="if(event.key==='Enter') sendCustomInputRadio(${ev.id})">
+                    <button onclick="sendCustomInputRadio(${ev.id})" style="font-weight: bold;">Nadaj</button>
                 </div>
             </div>
         </div>
     `;
-
     document.body.appendChild(modal);
     makeDraggable(modal, modal.querySelector('.radio-win-header'));
-
     openRadioWindows[evId] = modal;
     updateRadioChatDynamic(evId);
-
     return modal;
 }
 
@@ -732,151 +783,68 @@ function closeRadioWindow(evId) {
     }
 }
 
-function minimizeRadioWindow(evId) {
-    if (openRadioWindows[evId]) {
-        openRadioWindows[evId].style.display = 'none';
-        const bar = document.getElementById('minimized-bar');
-        if (bar) {
-            const item = document.createElement('div');
-            item.className = 'minimized-item';
-            item.id = `min-radio-${evId}`;
-            item.innerHTML = `📻 Radio (ID: ${evId})`;
-            item.onclick = () => {
-                if (openRadioWindows[evId]) openRadioWindows[evId].style.display = 'block';
-                item.remove();
-            };
-            bar.appendChild(item);
-        }
-    }
-}
-
 function openRadioForEvent(evId) {
     selectedEvIdForRadio = evId;
     createRadioWindow(evId);
-    const btnOpen = document.getElementById('btn-open-radio');
-    if (btnOpen) btnOpen.style.display = 'block';
+    document.getElementById('btn-open-radio').style.display = 'block';
 }
 
 function openRadioForSelectedEvent() {
     if (selectedEvIdForRadio !== null) openRadioForEvent(selectedEvIdForRadio);
     else if (events.length > 0) openRadioForEvent(events[0].id);
-    else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- WYSYŁANIE WŁASNEJ WIADOMOŚCI Z INPUTA ---
 function sendCustomInputRadio(evId) {
     const input = document.getElementById(`inp-radio-reply-${evId}`);
-    if (!input) return;
+    if (!input || !input.value.trim()) return;
     const val = input.value.trim();
-    if (!val) return;
     input.value = '';
     sendRadioReplyDynamic(evId, val);
 }
 
-// --- MELDUNEK Z DOJAZDU (NOWE OKNO) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     createRadioWindow(ev.id);
 
-    const sysPrompt = `Jesteś KDR (${vehicle.id}). Przybyłeś na miejsce: ${ev.city}. 
-Zdarzenie z karty: "${ev.desc}". 
-Złóż 1-zdaniowy meldunek z dojazdu. Musi pasować wyłącznie do podanego opisu zdarzenia. 
-Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
-
+    const sysPrompt = `Jesteś KDR (${vehicle.id}). Przybyłeś na miejsce w ${ev.city}. Zdarzenie: "${ev.desc}". Podaj krótki meldunek z dojazdu. Zacznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ "Bez odbioru."`;
     let reportText = "";
     try {
         reportText = await callUniversalAI(sysPrompt, "Meldunek z dojazdu", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
-    } catch (e) {}
-
-    const descLower = (ev.desc || "").toLowerCase();
-    const textLower = (reportText || "").toLowerCase();
-    if (textLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień")) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city} – ${ev.desc}; obszar ugaszony, działania w toku, brak osób uwięzionych, brak zagrożenia. Bez odbioru.`;
+    } catch (e) {
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street}). Działamy. Bez odbioru.`;
     }
-
-    if (!reportText) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city} – ${ev.desc}. Bez odbioru.`;
-    }
-
-    audioMotorola.currentTime = 0;
-    audioMotorola.play().catch(e => {});
 
     const timeStr = new Date().toLocaleTimeString();
-    const initialMsg = `<div style="margin-bottom: 6px;">[${timeStr}] ${vehicle.id} ➔ Wejherowo 998:<br>"${reportText}"</div>`;
-    ev.radioLogs.push(initialMsg);
-
+    ev.radioLogs.push(`<div style="margin-bottom: 6px;">[${timeStr}] ${vehicle.id} ➔ Wejherowo 998:<br>"${reportText}"</div>`);
     ev.kdrVehicleId = vehicle.id;
     updateRadioChatDynamic(ev.id);
 }
 
-// --- WYSYŁANIE ODPOWIEDZI W DYNAMICZNYM OKNIE ---
 async function sendRadioReplyDynamic(evId, text) {
-    if (!text) return;
-
     const ev = events.find(e => e.id === evId);
     if (!ev) return;
 
-    audioMotorola.currentTime = 0;
-    audioMotorola.play().catch(e => {});
-
     const kdrName = ev.kdrVehicleId || (ev.vehicles[0] ? ev.vehicles[0].id : 'KDR');
     const timeStr = new Date().toLocaleTimeString();
-    const userMsg = `<div style="margin-bottom: 6px; color: #00ff00;">[${timeStr}] Wejherowo 998 ➔ ${kdrName}:<br>"${text}"</div>`;
+    ev.radioLogs.push(`<div style="margin-bottom: 6px; color: #00ff00;">[${timeStr}] Wejherowo 998 ➔ ${kdrName}:<br>"${text}"</div>`);
+    updateRadioChatDynamic(evId);
+
+    const systemPrompt = `Jesteś dowódcą (${kdrName}) w ${ev.city}. Opis: "${ev.desc}". Dyspozytor pyta: "${text}". Odpowiedz krótko w żargonie strażackim, zaczynając od "Wejherowo 998, tu ${kdrName}..." i kończąc "Bez odbioru."`;
     
-    if (!ev.radioLogs) ev.radioLogs = [];
-    ev.radioLogs.push(userMsg);
-
-    const chatBox = document.getElementById(`radio-chat-${evId}`);
-    if (chatBox) {
-        chatBox.innerHTML = ev.radioLogs.join('') + `<div id="ai-typing-${evId}" style="color:#aaa; font-style:italic; padding:2px;">⏳ ${kdrName} nadaje...</div>`;
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    const systemPrompt = `Jesteś dowódcą zastępu (${kdrName}) w miejscowości ${ev.city}. 
-Opis zdarzenia z karty: "${ev.desc}".
-
-Dyspozytor (Wejherowo 998) pyta Cię/przekazuje: "${text}".
-GŁÓWNA ZASADA: Odpowiedz bezpośrednio na to zadane pytanie!
-
-Format:
-"Wejherowo 998, tu ${kdrName}. [Trafna odpowiedź]. Bez odbioru."`;
-
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, text, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
-    } catch (err) {}
-
-    const replyLower = (aiReply || "").toLowerCase();
-
-    if (!aiReply || replyLower.includes("realizujemy zadanie") || replyLower.includes("przyjąłem zgłoszenie")) {
+    } catch (e) {
         aiReply = generateSmartKdrResponse(kdrName, text, ev);
     }
 
-    audioMotorola.currentTime = 0;
-    audioMotorola.play().catch(e => {});
-
-    const respMsg = `<div style="margin-bottom: 6px; color: #ffcc00;">[${new Date().toLocaleTimeString()}] ${kdrName} ➔ Wejherowo 998:<br>"${aiReply}"</div>`;
-    
-    ev.radioLogs.push(respMsg);
+    ev.radioLogs.push(`<div style="margin-bottom: 6px; color: #ffcc00;">[${new Date().toLocaleTimeString()}] ${kdrName} ➔ Wejherowo 998:<br>"${aiReply}"</div>`);
     updateRadioChatDynamic(evId);
 }
 
-function safeSetElementText(id, text) {
-    const el = document.getElementById(id);
-    if (el) el.innerText = text;
-}
-
-// Generator konkretnych opisów ratowniczych bez prefiksów typu "MZ - "
-function generateFallbackDescription(subtype) {
-    let cleanSub = (subtype || "").replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
-    if (!cleanSub || cleanSub.toLowerCase().includes("inne")) {
-        cleanSub = "Zdarzenie miejscowe wymagające interwencji służb ratowniczych";
-    }
-    return cleanSub.charAt(0).toUpperCase() + cleanSub.slice(1);
-}
-
+// CPR & Event Management
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -884,150 +852,49 @@ async function simulateIncomingCPR() {
     const newCprId = `WCPR-2026-${cprCounter++}`;
     const randomTown = townsList[Math.floor(Math.random() * townsList.length)];
     const chosenType = Math.random() < 0.5 ? "P" : "MZ";
-    const possibleSubtypes = subtypesData[chosenType];
-    const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
+    const randomSubtype = subtypesData[chosenType][Math.floor(Math.random() * subtypesData[chosenType].length)];
 
-    safeSetElementText('cpr-id', newCprId);
-    safeSetElementText('cpr-city', randomTown);
-    safeSetElementText('cpr-street', "Ustalanie lokalizacji...");
-    safeSetElementText('cpr-caller', "Łączenie z 112...");
-    safeSetElementText('cpr-desc', "🤖 Generowanie opisu zdarzenia...");
-    
-    const cprModal = document.getElementById('cpr-modal');
-    if (cprModal) cprModal.style.display = 'flex';
-
-    const sysPrompt = `Jesteś operatorem CPR 112. Wygeneruj zgłoszenie w formacie JSON (bez kodu markdown):
-{
-  "street": "ulica i numer w mieście ${randomTown}",
-  "caller": "Imię Nazwisko (tel. 6xx-xxx-xxx)",
-  "desc": "Naturalny opis tego co się stało (1-2 zdania). BEZWZGLĘDNY ZAKAZ używania prefiksów typu 'MZ -', 'P -' lub formułek 'Zgłoszenie dotyczące...'. Napisz sam sens, np. 'Podejrzenie podłożenia ładunku wybuchowego w budynku dworca' albo 'Pożar sadzy w kominie'."
-}`;
-    const usrPrompt = `Miejscowość: ${randomTown}, Zdarzenie: ${randomSubtype}`;
-
-    try {
-        const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
-        const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
-        const cleaned = jsonMatch ? jsonMatch[0] : rawJson.replace(/```json|```/g, '').trim();
-        const aiEvent = JSON.parse(cleaned);
-
-        let finalDesc = aiEvent.desc || generateFallbackDescription(randomSubtype);
-        finalDesc = finalDesc.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
-        if (finalDesc.toLowerCase().includes("zgłoszenie dotycząc")) {
-            finalDesc = generateFallbackDescription(randomSubtype);
-        }
-
-        currentCPRData = {
-            id: newCprId,
-            city: randomTown,
-            street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 50) + 1}`,
-            type: chosenType,
-            subtype: randomSubtype,
-            desc: finalDesc,
-            caller: aiEvent.caller || "Jan Kowalski (tel. 601-234-567)"
-        };
-    } catch (e) {
-        const stName = streetNames[Math.floor(Math.random() * streetNames.length)];
-        currentCPRData = {
-            id: newCprId,
-            city: randomTown,
-            street: `ul. ${stName} ${Math.floor(Math.random() * 50) + 1}`,
-            type: chosenType,
-            subtype: randomSubtype,
-            desc: generateFallbackDescription(randomSubtype),
-            caller: "Jan Kowalski (tel. 601-234-567)"
-        };
-    }
+    currentCPRData = {
+        id: newCprId,
+        city: randomTown,
+        street: `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 50) + 1}`,
+        type: chosenType,
+        subtype: randomSubtype,
+        desc: `Zgłoszenie zdarzenia typu ${randomSubtype}`,
+        caller: "Jan Kowalski (tel. 601-234-567)"
+    };
 
     safeSetElementText('cpr-id', currentCPRData.id);
     safeSetElementText('cpr-city', currentCPRData.city);
     safeSetElementText('cpr-street', currentCPRData.street);
     safeSetElementText('cpr-caller', currentCPRData.caller);
     safeSetElementText('cpr-desc', currentCPRData.desc);
+    document.getElementById('cpr-modal').style.display = 'flex';
 }
 
-function closeCPR() { 
-    const modal = document.getElementById('cpr-modal');
-    if(modal) modal.style.display = 'none'; 
-}
-
-function minimizeCPR() {
-    if (!currentCPRData) return;
-    closeCPR();
-    const bar = document.getElementById('minimized-bar');
-    if(bar) {
-        const item = document.createElement('div');
-        item.className = 'minimized-item';
-        item.innerHTML = `🚨 Zgłoszenie CPR (${currentCPRData.city})`;
-        item.onclick = () => { 
-            const modal = document.getElementById('cpr-modal');
-            if(modal) modal.style.display = 'flex'; 
-            item.remove(); 
-        };
-        bar.appendChild(item);
-    }
-}
+function closeCPR() { document.getElementById('cpr-modal').style.display = 'none'; }
+function minimizeCPR() { closeCPR(); }
 
 function acceptCPRToEvent() {
     if (!currentCPRData) return;
     openNewEventModal();
-
-    const inpRec = document.getElementById('inp-ev-received');
-    const inpCity = document.getElementById('inp-ev-city');
-    const inpReg = document.getElementById('inp-ev-region');
-    const inpStreet = document.getElementById('inp-ev-street');
-    const inpDesc = document.getElementById('inp-ev-desc');
-    if(inpRec) inpRec.value = 'CPR';
-    if(inpCity) inpCity.value = currentCPRData.city;
-    if(inpReg) inpReg.value = locationsDatabase[currentCPRData.city] || '';
-    if(inpStreet) inpStreet.value = currentCPRData.street;
-    
-    let cleanDesc = (currentCPRData.desc || "").replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
-    if (inpDesc) inpDesc.value = cleanDesc;
-
+    document.getElementById('inp-ev-received').value = 'CPR';
+    document.getElementById('inp-ev-city').value = currentCPRData.city;
+    document.getElementById('inp-ev-region').value = locationsDatabase[currentCPRData.city].desc;
+    document.getElementById('inp-ev-street').value = currentCPRData.street;
+    document.getElementById('inp-ev-desc').value = currentCPRData.desc;
     autoSelectJRGByCity(currentCPRData.city);
-
-    const radioP = document.querySelector(`input[name="ev-type"][value="${currentCPRData.type}"]`);
-    if (radioP) radioP.checked = true;
     updateSubtypes(currentCPRData.type);
-    const subSel = document.getElementById('inp-ev-subtype');
-    if(subSel) subSel.value = currentCPRData.subtype;
-
-    const callerParts = currentCPRData.caller.split(' ');
-    const nameInp = document.getElementById('inp-caller-name');
-    const surInp = document.getElementById('inp-caller-surname');
-    if(nameInp) nameInp.value = callerParts[0] || '';
-    if(surInp) surInp.value = callerParts[1] || '';
-
     closeCPR();
-}
-
-function formatMMSS(sec) {
-    if (sec < 0) return "Zabezpieczenie rejonu";
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s} min`;
 }
 
 function updateSubtypes(type) {
     const select = document.getElementById('inp-ev-subtype');
-    const group = document.getElementById('subtype-group');
     if(!select) return;
     select.innerHTML = '';
-    
-    if (group) {
-        if (type === 'PZR') {
-            group.style.display = 'none';
-            return;
-        } else {
-            group.style.display = 'flex';
-        }
-    }
-
-    const list = subtypesData[type] || ["Brak"];
-    list.forEach(sub => {
+    (subtypesData[type] || ["Brak"]).forEach(sub => {
         const opt = document.createElement('option');
-        opt.value = sub;
-        opt.innerText = sub;
+        opt.value = sub; opt.innerText = sub;
         select.appendChild(opt);
     });
 }
@@ -1035,32 +902,19 @@ function updateSubtypes(type) {
 function toggleService(service) {
     servicesState[service] = !servicesState[service];
     const btn = document.getElementById(service === 'prm' ? 'btn-service-prm' : 'btn-service-police');
-    if (btn) {
-        if (servicesState[service]) btn.classList.add('active');
-        else btn.classList.remove('active');
-    }
+    if (btn) btn.classList.toggle('active', servicesState[service]);
 }
 
 function renderUnits() {
-    const pspGrid = document.getElementById('grid-psp');
-    const ospGrid = document.getElementById('grid-osp');
-    if(pspGrid) pspGrid.innerHTML = unitsPSP.map(u => createUnitHTML(u)).join('');
-    if(ospGrid) ospGrid.innerHTML = unitsOSP.map(u => createUnitHTML(u)).join('');
+    document.getElementById('grid-psp').innerHTML = unitsPSP.map(createUnitHTML).join('');
+    document.getElementById('grid-osp').innerHTML = unitsOSP.map(createUnitHTML).join('');
 }
 
 function createUnitHTML(unit) {
-    let vehiclesHTML = unit.vehicles.length === 0 ? `<div style="padding: 4px; color: #888; font-style: italic;">Brak pojazdów</div>` :
-        unit.vehicles.map(v => `
-            <div class="vehicle-row">
-                <span class="status-dot ${v.status}"></span>
-                <span><b>${v.id}</b> - ${v.name}</span>
-            </div>
-        `).join('');
-
     return `
         <div class="unit-box">
             <div class="unit-header">${unit.name}</div>
-            <div>${vehiclesHTML}</div>
+            <div>${unit.vehicles.map(v => `<div class="vehicle-row"><span class="status-dot ${v.status}"></span><span><b>${v.id}</b> - ${v.name}</span></div>`).join('')}</div>
         </div>
     `;
 }
@@ -1069,444 +923,123 @@ function renderEvents() {
     const tbody = document.getElementById('events-body');
     if(!tbody) return;
     tbody.innerHTML = '';
-
     events.forEach(ev => {
         const tr = document.createElement('tr');
         tr.className = (ev.status === 'ACTIVE' ? 'active-ev' : 'finished-ev') + (selectedEvIdForRadio === ev.id ? ' selected-ev' : '');
-        tr.ondblclick = () => openEditEventModal(ev.id);
         tr.onclick = () => selectEvent(ev.id);
-
-        let timeDisplay = ev.status === 'FINISHED' ? "0:00 min (Zakończono)" : (!ev.firstArrived ? `Oczekiwanie... (${formatMMSS(ev.remainingSeconds)})` : formatMMSS(ev.remainingSeconds));
-
         tr.innerHTML = `
-            <td>${ev.id}/???/2026</td>
+            <td>${ev.id}/2026</td>
             <td>${ev.time}</td>
-            <td>${ev.jrg}</td>
+            <td>KP PSP</td>
             <td>${ev.jrg}</td>
             <td>${ev.city}</td>
             <td>${ev.vehicles.length}</td>
             <td>${ev.type}</td>
             <td>${ev.desc}</td>
-            <td><b>${timeDisplay}</b></td>
-            <td>???-0000${ev.id}</td>
+            <td><b>${ev.status === 'FINISHED' ? 'Zakończono' : formatMMSS(ev.remainingSeconds)}</b></td>
+            <td>MELD-${ev.id}</td>
         `;
         tbody.appendChild(tr);
     });
-}
-
-function renderSelectedEventDetails() {
-    if (selectedEvIdForRadio === null) return;
-    const ev = events.find(e => e.id === selectedEvIdForRadio);
-    if (!ev) return;
-
-    const sisBody = document.getElementById('details-sis-body');
-    if (!sisBody) return;
-
-    if (ev.vehicles.length === 0) {
-        sisBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Brak zadysponowanych SiS</td></tr>';
-        return;
-    }
-
-    sisBody.innerHTML = ev.vehicles.map(v => {
-        let statusText = v.travelTime > 0 
-            ? `<span style="color: #f39c12; font-weight: bold;">Dojazd (${v.travelTime}s)</span>` 
-            : (ev.status === 'ACTIVE' 
-                ? `<span style="color: #ff3333; font-weight: bold;">Na miejscu</span>` 
-                : `<span style="color: #00ff00;">Wolny</span>`);
-                
-        return `
-            <tr>
-                <td><b>${v.id}</b> - ${v.name}</td>
-                <td>${v.obsada}</td>
-                <td>${v.unitName}</td>
-                <td>${statusText}</td>
-            </tr>
-        `;
-    }).join('');
+    updateMapMarkers();
 }
 
 function selectEvent(id) {
+    selectedEvIdForRadio = id;
     const ev = events.find(e => e.id === id);
     if (!ev) return;
-
-    selectedEvIdForRadio = ev.id;
-    const btnOpen = document.getElementById('btn-open-radio');
-    const detailsTitle = document.getElementById('details-title');
-    if(btnOpen) btnOpen.style.display = 'block';
-    if(detailsTitle) detailsTitle.innerText = `Szczegóły zdarzenia ID: ${ev.id} - ${ev.city}`;
-    
+    document.getElementById('btn-open-radio').style.display = 'block';
+    document.getElementById('details-title').innerText = `Szczegóły zdarzenia ID: ${ev.id} - ${ev.city}`;
     renderEvents();
-    renderSelectedEventDetails();
-}
-
-function switchTab(tab) {
-    const pspGrid = document.getElementById('grid-psp');
-    const ospGrid = document.getElementById('grid-osp');
-    const btnPsp = document.getElementById('btn-tab-psp');
-    const btnOsp = document.getElementById('btn-tab-osp');
-
-    if(pspGrid) pspGrid.style.display = tab === 'PSP' ? 'grid' : 'none';
-    if(ospGrid) ospGrid.style.display = tab === 'OSP' ? 'grid' : 'none';
-    if(btnPsp) btnPsp.className = 'tab-btn ' + (tab === 'PSP' ? 'active' : '');
-    if(btnOsp) btnOsp.className = 'tab-btn ' + (tab === 'OSP' ? 'active' : '');
-}
-
-function handleCityInput(input) {
-    if(!input) return;
-    const val = input.value.trim().toLowerCase();
-    const suggestionsBox = document.getElementById('city-suggestions');
-    if(!suggestionsBox) return;
-    suggestionsBox.innerHTML = '';
-
-    if (!val) { suggestionsBox.style.display = 'none'; return; }
-
-    const matches = Object.keys(locationsDatabase).filter(c => c.toLowerCase().startsWith(val));
-    if (matches.length > 0) {
-        matches.forEach(c => {
-            const div = document.createElement('div');
-            div.className = 'suggestion-item';
-            div.innerText = c;
-            div.onclick = () => {
-                const cityInp = document.getElementById('inp-ev-city');
-                const regInp = document.getElementById('inp-ev-region');
-                if(cityInp) cityInp.value = c;
-                if(regInp) regInp.value = locationsDatabase[c];
-                autoSelectJRGByCity(c);
-                suggestionsBox.style.display = 'none';
-            };
-            suggestionsBox.appendChild(div);
-        });
-        suggestionsBox.style.display = 'block';
-    } else {
-        suggestionsBox.style.display = 'none';
-    }
 }
 
 function openNewEventModal() {
     activeEditingId = null;
     selectedVehicles = [];
     servicesState = { prm: false, police: false };
-    
     const btnPrm = document.getElementById('btn-service-prm');
     const btnPol = document.getElementById('btn-service-police');
     if(btnPrm) btnPrm.classList.remove('active');
     if(btnPol) btnPol.classList.remove('active');
 
-    const titleEl = document.getElementById('modal-event-title');
-    const timeEl = document.getElementById('inp-ev-time');
-    const cityEl = document.getElementById('inp-ev-city');
-    const regEl = document.getElementById('inp-ev-region');
-    const streetEl = document.getElementById('inp-ev-street');
-    const descEl = document.getElementById('inp-ev-desc');
-    const nameEl = document.getElementById('inp-caller-name');
-    const surEl = document.getElementById('inp-caller-surname');
-    const phoneEl = document.getElementById('inp-caller-phone');
-    const countEl = document.getElementById('lbl-selected-count');
-    const modalEl = document.getElementById('modal-event');
-
-    if(titleEl) titleEl.innerText = "Nowa Karta Zdarzenia";
-    if(timeEl) timeEl.value = new Date().toLocaleTimeString();
-    if(cityEl) cityEl.value = '';
-    if(regEl) regEl.value = '';
-    if(streetEl) streetEl.value = '';
-    if(descEl) descEl.value = '';
-    if(nameEl) nameEl.value = '';
-    if(surEl) surEl.value = '';
-    if(phoneEl) phoneEl.value = '';
-    if(countEl) countEl.innerText = "Wybrano pojazdów: 0";
-
-    const radioP = document.querySelector('input[name="ev-type"][value="P"]');
-    if (radioP) radioP.checked = true;
-    updateSubtypes('P');
-
-    switchModalTab('dane');
-    if(modalEl) modalEl.style.display = 'flex';
-}
-
-function openEditEventModal(id) {
-    const ev = events.find(e => e.id === id);
-    if (!ev) return;
-
-    activeEditingId = id;
-    selectedVehicles = [...ev.vehicles];
-
-    const titleEl = document.getElementById('modal-event-title');
-    const timeEl = document.getElementById('inp-ev-time');
-    const cityEl = document.getElementById('inp-ev-city');
-    const regEl = document.getElementById('inp-ev-region');
-    const streetEl = document.getElementById('inp-ev-street');
-    const descEl = document.getElementById('inp-ev-desc');
-    const countEl = document.getElementById('lbl-selected-count');
-    const modalEl = document.getElementById('modal-event');
-
-    if(titleEl) titleEl.innerText = `Edycja zdarzenia ID: ${ev.id}`;
-    if(timeEl) timeEl.value = ev.time;
-    if(cityEl) cityEl.value = ev.city;
-    if(regEl) regEl.value = ev.region;
-    if(streetEl) streetEl.value = ev.street;
-    if(descEl) descEl.value = ev.desc;
-    if(countEl) countEl.innerText = "Wybrano pojazdów: " + selectedVehicles.length;
-
-    const radio = document.querySelector(`input[name="ev-type"][value="${ev.type}"]`);
-    if (radio) radio.checked = true;
-    updateSubtypes(ev.type);
-    const subSel = document.getElementById('inp-ev-subtype');
-    if (ev.type !== 'PZR' && subSel) subSel.value = ev.subtype || "";
-
-    servicesState = { ...ev.services };
-    const btnPrm = document.getElementById('btn-service-prm');
-    const btnPol = document.getElementById('btn-service-police');
-    if (btnPrm) {
-        if (servicesState.prm) btnPrm.classList.add('active');
-        else btnPrm.classList.remove('active');
-    }
-    if (btnPol) {
-        if (servicesState.police) btnPol.classList.add('active');
-        else btnPol.classList.remove('active');
-    }
-
-    switchModalTab('dane');
-    if(modalEl) modalEl.style.display = 'flex';
+    document.getElementById('inp-ev-time').value = new Date().toLocaleTimeString();
+    document.getElementById('inp-ev-city').value = '';
+    document.getElementById('inp-ev-street').value = '';
+    document.getElementById('inp-ev-desc').value = '';
+    document.getElementById('lbl-selected-count').innerText = "Wybrano pojazdów: 0";
+    document.getElementById('modal-event').style.display = 'flex';
 }
 
 function openDispatchModal() {
     const container = document.getElementById('dispatch-list');
-    const infoBar = document.getElementById('dispatch-info-bar');
     const cityInput = document.getElementById('inp-ev-city');
-    const modalDisp = document.getElementById('modal-dispatch');
-    
-    if(!container) return;
     const targetCity = cityInput ? cityInput.value.trim() : "";
     container.innerHTML = '';
 
-    if(infoBar) {
-        infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span>` : `⚠️ Brak miejscowości`;
-    }
-
-    const availableUnits = [...unitsPSP, ...unitsOSP]
-        .filter(u => u.vehicles.length > 0)
-        .map(u => ({ ...u, ...getUnitProximity(u.name, targetCity) }))
-        .sort((a, b) => a.sec - b.sec);
-
+    const availableUnits = [...unitsPSP, ...unitsOSP].map(u => ({ ...u, ...getUnitProximity(u.name, targetCity) })).sort((a, b) => a.sec - b.sec);
     availableUnits.forEach((u, index) => {
-        const isClosest = index === 0 && targetCity !== "";
-        const groupDiv = document.createElement('div');
-        groupDiv.className = 'dispatch-unit-group';
-
-        groupDiv.innerHTML = `
-            <div class="dispatch-unit-header ${isClosest ? 'closest' : ''}">
-                <span>${index + 1}. ${u.name} ${isClosest ? '⭐ (Najbliższa)' : ''}</span>
-                <span>${u.km} | Dojazd: ~${u.sec}s</span>
+        container.innerHTML += `
+            <div class="dispatch-unit-group">
+                <div class="dispatch-unit-header">${index + 1}. ${u.name} (~${u.sec}s)</div>
+                ${u.vehicles.map(v => `<label class="dispatch-vehicle-item"><input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}><b>${v.id}</b> - ${v.name}</label>`).join('')}
             </div>
-            ${u.vehicles.map(v => `
-                <label class="dispatch-vehicle-item" style="cursor:pointer;">
-                    <input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}>
-                    <span class="status-dot ${v.status}"></span>
-                    <span><b>${v.id}</b> - ${v.name}</span>
-                </label>
-            `).join('')}
         `;
-        container.appendChild(groupDiv);
     });
-
-    if(modalDisp) modalDisp.style.display = 'flex';
+    document.getElementById('modal-dispatch').style.display = 'flex';
 }
 
 function confirmDispatch() {
-    const checkboxes = document.querySelectorAll('#dispatch-list input:checked');
-    const cityInput = document.getElementById('inp-ev-city');
-    const targetCity = (cityInput && cityInput.value.trim()) ? cityInput.value.trim() : "Bolszewo";
     selectedVehicles = [];
-
-    checkboxes.forEach(cb => {
+    document.querySelectorAll('#dispatch-list input:checked').forEach(cb => {
         [...unitsPSP, ...unitsOSP].forEach(u => {
             const v = u.vehicles.find(veh => veh.id === cb.value);
-            if (v) selectedVehicles.push({ ...v, unitName: u.name, travelTime: calculateTravelTimeSeconds(u.name, targetCity) });
+            if (v) selectedVehicles.push({ ...v, unitName: u.name, travelTime: 20 });
         });
     });
-
-    const countLbl = document.getElementById('lbl-selected-count');
-    if(countLbl) countLbl.innerText = "Wybrano pojazdów: " + selectedVehicles.length;
+    document.getElementById('lbl-selected-count').innerText = "Wybrano pojazdów: " + selectedVehicles.length;
     closeModal('modal-dispatch');
 }
 
 function saveEvent() {
-    const cityInput = document.getElementById('inp-ev-city');
-    const city = cityInput ? cityInput.value : "";
-    if (!city) { alert('Proszę podać miejscowość!'); return; }
-
-    const typeChecked = document.querySelector('input[name="ev-type"]:checked');
-    const typeVal = typeChecked ? typeChecked.value : 'P';
-    const subSel = document.getElementById('inp-ev-subtype');
-    const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : (subSel ? subSel.value : '');
+    const city = document.getElementById('inp-ev-city').value;
+    if (!city) { alert('Podaj miejscowość!'); return; }
     
-    const descInput = document.getElementById('inp-ev-desc');
-    let descVal = descInput ? descInput.value : '';
-    
-    descVal = descVal.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
-
-    selectedVehicles.forEach(sv => {
-        if (sv.travelTime === undefined || activeEditingId === null) sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
-    });
-
-    if (activeEditingId === null) {
-        let countedOspNames = [];
-        selectedVehicles.forEach(sv => {
-            if (!sv.unitName.includes("JRG") && !sv.unitName.includes("KP PSP") && !countedOspNames.includes(sv.unitName)) {
-                countedOspNames.push(sv.unitName);
-            }
-        });
-        playOspAlarmRepeated(countedOspNames.length);
-
-        const timeInput = document.getElementById('inp-ev-time');
-        const regInput = document.getElementById('inp-ev-region');
-        const streetInput = document.getElementById('inp-ev-street');
-        const jrgInput = document.getElementById('inp-ev-jrg');
-
-        const newEv = {
-            id: events.length + 1,
-            time: timeInput ? timeInput.value : new Date().toLocaleTimeString(),
-            city: city,
-            region: regInput ? regInput.value : '',
-            street: streetInput ? streetInput.value : '',
-            desc: descVal,
-            type: typeVal,
-            subtype: subtypeVal,
-            remainingSeconds: 180,
-            firstArrived: false,
-            radioReported: false,
-            radioLogs: [],
-            jrg: jrgInput ? jrgInput.value : 'JRG 1 Wejherowo',
-            services: { ...servicesState },
-            vehicles: [...selectedVehicles],
-            status: 'ACTIVE'
-        };
-        events.push(newEv);
-        selectEvent(newEv.id);
-    } else {
-        const ev = events.find(e => e.id === activeEditingId);
-        if (ev) {
-            ev.city = city;
-            ev.desc = descVal;
-            ev.type = typeVal;
-            ev.subtype = subtypeVal;
-            ev.services = { ...servicesState };
-            ev.vehicles = [...selectedVehicles];
-        }
-    }
-
-    selectedVehicles.forEach(sv => {
-        [...unitsPSP, ...unitsOSP].forEach(u => {
-            const v = u.vehicles.find(veh => veh.id === sv.id);
-            if (v && v.status === 'green') v.status = 'orange';
-        });
-    });
-
-    renderUnits();
+    const newEv = {
+        id: events.length + 1,
+        time: document.getElementById('inp-ev-time').value,
+        city: city,
+        street: document.getElementById('inp-ev-street').value,
+        desc: document.getElementById('inp-ev-desc').value,
+        type: document.querySelector('input[name="ev-type"]:checked').value,
+        subtype: document.getElementById('inp-ev-subtype').value,
+        remainingSeconds: 180,
+        firstArrived: true,
+        radioLogs: [],
+        jrg: document.getElementById('inp-ev-jrg').value,
+        services: { ...servicesState },
+        vehicles: [...selectedVehicles],
+        status: 'ACTIVE'
+    };
+    events.push(newEv);
     renderEvents();
     closeModal('modal-event');
 }
 
 function finishCurrentEvent() {
-    if (activeEditingId === null) return;
+    if (activeEditingId === null && selectedEvIdForRadio !== null) activeEditingId = selectedEvIdForRadio;
     const ev = events.find(e => e.id === activeEditingId);
-    if (ev) {
-        ev.status = 'FINISHED';
-        ev.remainingSeconds = 0;
-        ev.vehicles.forEach(sv => {
-            [...unitsPSP, ...unitsOSP].forEach(u => {
-                const v = u.vehicles.find(veh => veh.id === sv.id);
-                if (v) v.status = 'green';
-            });
-        });
-    }
-    renderUnits();
+    if (ev) ev.status = 'FINISHED';
     renderEvents();
     closeModal('modal-event');
 }
 
-function switchModalTab(tab) {
-    const daneContent = document.getElementById('modal-tab-dane-content');
-    const czasyContent = document.getElementById('modal-tab-czasy-content');
-    const tabDane = document.getElementById('tab-modal-dane');
-    const tabCzasy = document.getElementById('tab-modal-czasy');
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function switchModalTab(tab) {}
+function openSiSModal() { alert('Panel SiS'); }
 
-    if(daneContent) daneContent.style.display = tab === 'dane' ? 'block' : 'none';
-    if(czasyContent) czasyContent.style.display = tab === 'czasy' ? 'block' : 'none';
-    if(tabDane) tabDane.className = 'tab-btn ' + (tab === 'dane' ? 'active' : '');
-    if(tabCzasy) tabCzasy.className = 'tab-btn ' + (tab === 'czasy' ? 'active' : '');
+function safeSetElementText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = text;
 }
 
-function openSiSModal() { 
-    const modal = document.getElementById('modal-sis');
-    if(modal) modal.style.display = 'flex'; 
-}
-
-function closeModal(id) { 
-    const modal = document.getElementById(id);
-    if(modal) modal.style.display = 'none'; 
-}
-
-setInterval(() => {
-    let needsRender = false;
-    events.forEach(ev => {
-        if (ev.status === 'ACTIVE') {
-            ev.vehicles.forEach(v => {
-                if (v.travelTime > 0) {
-                    v.travelTime--;
-                    needsRender = true;
-                } else {
-                    [...unitsPSP, ...unitsOSP].forEach(u => {
-                        const veh = u.vehicles.find(vObj => vObj.id === v.id);
-                        if (veh && veh.status === 'orange') {
-                            veh.status = 'red';
-                            if (!ev.firstArrived) {
-                                ev.firstArrived = true;
-                                if (!ev.radioReported) {
-                                    ev.radioReported = true;
-                                    triggerArrivalRadioReport(ev, v);
-                                }
-                            }
-                            needsRender = true;
-                        }
-                    });
-                }
-            });
-
-            if (ev.firstArrived && ev.remainingSeconds > 0) {
-                ev.remainingSeconds--;
-                needsRender = true;
-            } else if (ev.firstArrived && ev.remainingSeconds === 0) {
-                ev.status = 'FINISHED';
-                ev.vehicles.forEach(sv => {
-                    [...unitsPSP, ...unitsOSP].forEach(u => {
-                        const veh = u.vehicles.find(vObj => vObj.id === sv.id);
-                        if (veh) veh.status = 'green';
-                    });
-                });
-                needsRender = true;
-            }
-        }
-    });
-    if (needsRender) {
-        renderUnits();
-        renderEvents();
-    }
-    
-    renderSelectedEventDetails();
-}, 1000);
-
-// --- AUTOMATYCZNE GENEROWANIE ZGŁOSZEŃ ---
-function scheduleNextAutoCPR() {
-    const randomTime = Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000;
-    setTimeout(() => {
-        const cprModal = document.getElementById('cpr-modal');
-        if (!cprModal || cprModal.style.display !== 'flex') {
-            simulateIncomingCPR();
-        }
-        scheduleNextAutoCPR();
-    }, randomTime);
-}
-
-scheduleNextAutoCPR();
 renderUnits();
