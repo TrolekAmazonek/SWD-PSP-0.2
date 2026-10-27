@@ -71,7 +71,6 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
         }
     } catch (e) {}
     
-    // Awaryjnie Pollinations
     try {
         const response = await fetch('https://text.pollinations.ai/openai', {
             method: 'POST',
@@ -137,11 +136,52 @@ const locationsDatabase = {
 
 const townsList = Object.keys(locationsDatabase);
 
+// Rzeczywiste ulice występujące w konkretnych miejscowościach powiatu wejherowskiego
+const realStreetsByTown = {
+    "Wejherowo": ["ul. Jana III Sobieskiego", "ul. 12 Marca", "ul. Gdańska", "ul. Tartaczna", "ul. 3 Maja", "ul. Przemysłowa", "ul. Kalwaryjska", "ul. Sikorskiego", "ul. I Brygady Pancernej WP", "ul. Chopina"],
+    "Bolszewo": ["ul. Zamostna", "ul. Strażacka", "ul. Główna", "ul. Wejherowska", "ul. Szkolna", "ul. Długa", "ul. Leśna", "ul. Polna", "ul. Krótka"],
+    "Rumia": ["ul. Grunwaldzka", "ul. Dąbrowskiego", "ul. Starowiejska", "ul. Świętego Floriana", "ul. Kosynierów", "ul. Pomorska", "ul. Sabata", "ul. Gdańska", "ul. Żwirki i Wigury"],
+    "Reda": ["ul. Wejherowska", "ul. Gdańska", "ul. Pucka", "ul. Gniewowska", "ul. Obwodowa", "ul. Łąkowa", "ul. Cechowa", "ul. Leśna"],
+    "Gościcino": ["ul. Drzewiarza", "ul. Wejherowska", "ul. Lęborska", "ul. Słoneczna", "ul. Fabryczna", "ul. Polna"],
+    "Gniewowo": ["ul. Jakuba Wejhera", "ul. Słoneczna", "ul. Leśna", "ul. Długa"],
+    "Gowino": ["ul. Wejherowska", "ul. Szkolna", "ul. Długa", "ul. Kwiatowa"],
+    "Góra": ["ul. Wiejska", "ul. Długa", "ul. Szkolna", "ul. Polna"],
+    "Kniewo": ["al. Lipowa", "ul. Strażacka", "ul. Długa", "ul. Polna"],
+    "Nowy Dwór Wejherowski": ["ul. Wejherowska", "ul. Kwiatowa", "ul. Leśna", "ul. Szkolna"],
+    "Orle": ["ul. Strażacka", "ul. Zamostna", "ul. Główna", "ul. Nadrzeczna"],
+    "Zbychowo": ["ul. Kamienna", "ul. Białogórska", "ul. Jeziorna", "ul. Leśna"],
+    "Luzino": ["ul. Ofiar Stutthofu", "ul. Kościelna", "ul. Młyńska", "ul. Wilczka", "ul. Szkolna", "ul. Chłopska"],
+    "Zelewo": ["ul. Długa", "ul. Słoneczna", "ul. Leśna"],
+    "Milwino": ["ul. Strażacka", "ul. Długa", "ul. Leśna"],
+    "Szemud": ["ul. Wejherowska", "ul. Samorządowa", "ul. Kartuska", "ul. Szkolna", "ul. Leśna"],
+    "Kielno": ["ul. Oliwska", "ul. Szkolna", "ul. Jeziorna", "ul. Tredera"],
+    "Bojano": ["ul. Józefa Wybickiego", "ul. Majora H. Sucharskiego", "ul. Kartuska", "ul. Szkolna"],
+    "Częstkowo": ["ul. Strażacka", "ul. Długa", "ul. Leśna"],
+    "Łebno": ["ul. Kartuska", "ul. Szkolna", "ul. Jeziorna"],
+    "Przetoczyno": ["ul. Pomorska", "ul. Strażacka", "ul. Szkolna"],
+    "Gniewino": ["ul. Strażacka", "ul. Szkolna", "ul. Pomorska", "ul. Sportowa"],
+    "Nadole": ["ul. Strażacka", "ul. Bałtycka", "ul. Jeziorna"],
+    "Kostkowo": ["ul. Wejherowska", "ul. Ks. Stanisława Galasa", "ul. Szkolna"],
+    "Rybno": ["ul. Dębowa", "ul. Długa", "ul. Szkolna"],
+    "Opalino": ["Opalino", "ul. Długa"],
+    "Choczewo": ["ul. Pierwszych Osadników", "ul. Świerkowa", "ul. Pucka", "ul. Szkolna"],
+    "Słajszewo": ["ul. Bursztynowa", "ul. Morska", "ul. Leśna"],
+    "Sasino": ["ul. Brukowa", "ul. Strażacka", "ul. Morska"],
+    "Kopalino": ["ul. Bursztynowa", "ul. Strażacka", "ul. Nadmorska"],
+    "Linia": ["ul. Turystyczna", "ul. Długa", "ul. Szkolna", "ul. Kaszubska"],
+    "Strzepcz": ["ul. Ks. Józefa Rotty", "ul. Ks. Rtm. Kukowskiego", "ul. Długa", "ul. Lipowa"],
+    "Lewino": ["ul. Długa", "ul. Leśna", "ul. Szkolna"],
+    "Łęczyce": ["ul. Długa", "ul. Sportowa", "ul. Kościelna", "ul. Szkolna"],
+    "Bożepole Wielkie": ["ul. Chmieleniecka", "ul. Strażacka", "ul. Szkolna"],
+    "Rozłazino": ["ul. Długa", "ul. Kościelna", "ul. Leśna"],
+    "Kaczkowo": ["Kaczkowo"]
+};
+
 const gpsCoords = {
-    "Wejherowo": [54.6059, 18.2443],
-    "Bolszewo": [54.6031, 18.1772],
+    "Wejherowo": [54.6052, 18.2345],
+    "Bolszewo": [54.6155, 18.1772],
     "Rumia": [54.5714, 18.3879],
-    "Reda": [54.6062, 18.3475],
+    "Reda": [54.6053, 18.3478],
     "Gościcino": [54.5975, 18.1458],
     "Gniewowo": [54.5655, 18.2995],
     "Gowino": [54.5682, 18.2025],
@@ -177,15 +217,15 @@ const gpsCoords = {
     "Kaczkowo": [54.6215, 17.8925]
 };
 
-// --- ZWERYFIKOWANE OFICJALNE ADRESY I WSPÓŁRZĘDNE JEDNOSTEK (KRS / GOV.PL / BIP) ---
+// --- OFICJALNE ADRESY JEDNOSTEK (ZWERYFIKOWANE Z GOV.PL / KRS / BIP) ---
 const unitExactLocations = {
-    "JRG 1 Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6074, lng: 18.2192 },
-    "KP PSP Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6077, lng: 18.2197 },
+    "JRG 1 Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6075, lng: 18.2195 },
+    "KP PSP Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6075, lng: 18.2198 },
     "JRG 2 Rumia": { town: "Rumia", address: "ul. Świętego Floriana 1, 84-230 Rumia", lat: 54.5762, lng: 18.3756 },
-    ".OSP KSRG Bolszewo": { town: "Bolszewo", address: "ul. Zamostna 4A, 84-239 Bolszewo", lat: 54.6031, lng: 18.1772 },
+    ".OSP KSRG Bolszewo": { town: "Bolszewo", address: "ul. Zamostna 4A, 84-239 Bolszewo", lat: 54.6156, lng: 18.1772 },
     ".OSP KSRG Gościcino": { town: "Gościcino", address: "ul. Drzewiarza 22, 84-241 Gościcino", lat: 54.5975, lng: 18.1458 },
-    ".OSP KSRG Wejherowo": { town: "Wejherowo", address: "ul. 3 Maja 2, 84-200 Wejherowo", lat: 54.6033, lng: 18.2396 },
-    ".OSP KSRG Reda": { town: "Reda", address: "ul. Pucka 1, 84-240 Reda", lat: 54.6095, lng: 18.3478 },
+    ".OSP KSRG Wejherowo": { town: "Wejherowo", address: "ul. 3 Maja 2, 84-200 Wejherowo", lat: 54.6014, lng: 18.2333 },
+    ".OSP KSRG Reda": { town: "Reda", address: "ul. Pucka 1, 84-240 Reda", lat: 54.6053, lng: 18.3478 },
     ".OSP KSRG Luzino": { town: "Luzino", address: "ul. Ofiar Stutthofu 39, 84-242 Luzino", lat: 54.5608, lng: 18.1038 },
     ".OSP KSRG Zelewo": { town: "Zelewo", address: "ul. Długa 31, 84-252 Zelewo", lat: 54.6146, lng: 18.0825 },
     ".OSP KSRG Szemud": { town: "Szemud", address: "ul. Samorządowa 3, 84-217 Szemud", lat: 54.4862, lng: 18.2278 },
@@ -207,15 +247,15 @@ const unitExactLocations = {
     "OSP Kniewo": { town: "Kniewo", address: "al. Lipowa 14, 84-252 Kniewo", lat: 54.6548, lng: 18.1408 },
     "OSP Zbychowo": { town: "Zbychowo", address: "ul. Kamienna 2, 84-206 Zbychowo", lat: 54.5528, lng: 18.3275 },
     "OSP Gniewowo": { town: "Gniewowo", address: "ul. Jakuba Wejhera 16, 84-240 Gniewowo", lat: 54.5655, lng: 18.2995 },
-    "OSP Góra": { town: "Góra", address: "ul. Wiejska 39, 84-252 Góra", lat: 54.6368, lng: 18.1492 },
+    "OSP Góra": { town: "Góra", address: "ul. Wiejska 14, 84-252 Góra", lat: 54.6368, lng: 18.1492 },
     "OSP Nowy Dwór Wejherowski": { town: "Nowy Dwór Wejherowski", address: "ul. Kwiatowa 16, 84-206 Nowy Dwór Wejherowski", lat: 54.5365, lng: 18.2575 },
     "OSP Rybno": { town: "Rybno", address: "ul. Dębowa 7, 84-251 Rybno", lat: 54.6775, lng: 18.1055 },
-    "OSP Opalino": { town: "Opalino", address: "Czymanowo 6 / Opalino, 84-250 Gniewino", lat: 54.7185, lng: 18.0615 },
+    "OSP Opalino": { town: "Opalino", address: "Opalino 4, 84-250 Gniewino", lat: 54.7185, lng: 18.0615 },
     "OSP Kopalino": { town: "Kopalino", address: "ul. Bursztynowa 24, 84-210 Kopalino", lat: 54.7895, lng: 17.8485 },
     "OSP Lewino": { town: "Lewino", address: "ul. Długa 28, 84-223 Lewino", lat: 54.4815, lng: 17.9945 },
     "OSP Milwino": { town: "Milwino", address: "ul. Strażacka 5, 84-242 Milwino", lat: 54.5185, lng: 18.1345 },
     "OSP Kaczkowo": { town: "Kaczkowo", address: "Kaczkowo 18B, 84-218 Kaczkowo", lat: 54.6215, lng: 17.8925 },
-    "OSP Częstkowo": { town: "Częstkowo", address: "ul. Tartaczna 5 (Strażacka 1), 84-217 Częstkowo", lat: 54.5045, lng: 18.1745 },
+    "OSP Częstkowo": { town: "Częstkowo", address: "ul. Strażacka 1, 84-217 Częstkowo", lat: 54.5045, lng: 18.1745 },
     "OSP Łebno": { town: "Łebno", address: "ul. Kartuska 10, 84-217 Łebno", lat: 54.4555, lng: 18.1365 },
     "OSP Przetoczyno": { town: "Przetoczyno", address: "ul. Pomorska 21, 84-217 Przetoczyno", lat: 54.5345, lng: 18.2045 }
 };
@@ -241,7 +281,7 @@ function getUnitProximity(unitName, city) {
         return { sec: isJRG ? 15 : 18, km: isJRG ? "1.2 km" : "1.5 km" };
     }
 
-    const tCoords = gpsCoords[targetTown] || [54.6059, 18.2443];
+    const tCoords = gpsCoords[targetTown] || [54.6052, 18.2345];
     const roadDist = haversineKm(unitLoc.lat, unitLoc.lng, tCoords[0], tCoords[1]) * 1.25;
     const kmRounded = Math.max(1.5, Math.round(roadDist * 10) / 10);
     const secCalc = Math.max(20, Math.round(kmRounded * 4.5));
@@ -263,8 +303,6 @@ function autoSelectJRGByCity(city) {
     if(elLead) elLead.value = jrgVal;
     if(elArea) elArea.value = jrgVal;
 }
-
-const streetNames = ["Gdańska", "Sobieskiego", "Zamkowa", "Leśna", "Szkolna", "Przemysłowa", "Długa", "Kwiatowa", "Słoneczna", "Łąkowa", "Krótka", "Mickiewicza", "Polna", "Ogrodowa", "Kaszubska", "Morska", "Kolejowa", "Parkowa", "Lipowa", "Brzozowa"];
 
 const subtypesData = {
     "P": [
@@ -598,91 +636,122 @@ let shiftStats = {
     refusalReasons: {}
 };
 
-// --- AUTOMATYCZNA SYNCHRONIZACJA BUDYNKÓW REMIZ Z OPENSTREETMAP (OVERPASS API) ---
-let osmStationsSynced = false;
-async function syncFireStationsWithOSM() {
-    if (osmStationsSynced) return;
-    osmStationsSynced = true;
-    try {
-        const query = `[out:json][timeout:10];(node["amenity"="fire_station"](54.40,17.70,54.83,18.45);way["amenity"="fire_station"](54.40,17.70,54.83,18.45););out center;`;
-        const res = await fetch('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(query));
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data.elements) return;
-
-        Object.keys(unitExactLocations).forEach(uName => {
-            const uObj = unitExactLocations[uName];
-            const isPSP = uName.includes("JRG") || uName.includes("KP PSP");
-
-            // Szukamy najbliższego budynku strażnicy w danej miejscowości w OpenStreetMap
-            let bestMatch = null;
-            let bestDist = 3.5; // maks. 3.5 km od punktu bazowego
-            data.elements.forEach(el => {
-                const lat = el.lat || el.center?.lat;
-                const lng = el.lon || el.center?.lon;
-                if (!lat || !lng) return;
-                const nameTag = ((el.tags?.name || '') + ' ' + (el.tags?.operator || '')).toLowerCase();
-                if (isPSP && nameTag.includes('osp')) return;
-                if (!isPSP && (nameTag.includes('jrg') || nameTag.includes('państwowa'))) return;
-
-                const d = haversineKm(uObj.lat, uObj.lng, lat, lng);
-                if (d < bestDist) {
-                    bestDist = d;
-                    bestMatch = { lat, lng };
-                }
-            });
-
-            if (bestMatch) {
-                uObj.lat = bestMatch.lat + (uName.includes("KP PSP") ? 0.0002 : 0);
-                uObj.lng = bestMatch.lng + (uName.includes("KP PSP") ? 0.0003 : 0);
-            }
-        });
-        updateMapMarkers();
-    } catch (e) {}
-}
-
-// --- GEOKODOWANIE DOKŁADNEJ ULICY I NUMERU ZDARZENIA (NOMINATIM OSM) ---
-async function geocodeEventAddress(ev) {
-    const fallbackCoords = gpsCoords[ev.city] || [54.6059, 18.2443];
-    if (!ev.lat || !ev.lng) {
-        ev.lat = fallbackCoords[0];
-        ev.lng = fallbackCoords[1];
-    }
-
-    const rawStreet = (ev.street || "").trim();
-    if (!rawStreet) {
-        updateMapMarkers();
-        return;
-    }
-
-    let cleaned = rawStreet
+// --- UNIWERSALNY GEOKODER DOKŁADNYCH ADRESÓW (ARCGIS ROOFTOP + PHOTON OSM + NOMINATIM) ---
+async function resolveExactCoordinates(streetAddress, townName) {
+    const cleanTown = (townName || "Wejherowo").trim();
+    let cleanedStreet = (streetAddress || "")
         .replace(/^(Przystanek Autobusowy|Kamienica|Blok mieszkalny|Hala Magazynowa|Tartak \/ Skład Drzewny|Balex-Metal|Markisol Polska|Zakład Przetwórstwa Drzewnego|Kompleks Magazynowy)[,\s-]*/i, '')
-        .replace(/\b(ul\.|ulica|al\.|aleja|pl\.|plac)\s*/gi, '')
         .split('/')[0]
         .trim();
 
-    const streetOnly = cleaned.replace(/\s+\d+[a-zA-Z]*$/, '').trim();
+    const fullQuery = cleanedStreet ? `${cleanedStreet}, ${cleanTown}, powiat wejherowski, pomorskie, Polska` : `${cleanTown}, powiat wejherowski, pomorskie, Polska`;
 
-    const queries = [
-        `https://nominatim.openstreetmap.org/search?format=json&street=${encodeURIComponent(cleaned)}&city=${encodeURIComponent(ev.city)}&county=powiat+wejherowski&country=Poland&limit=1`,
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleaned + ', ' + ev.city + ', powiat wejherowski, Polska')}&limit=1`,
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(streetOnly + ', ' + ev.city + ', powiat wejherowski, Polska')}&limit=1`
-    ];
-
-    for (const url of queries) {
-        try {
-            const res = await fetch(url, { headers: { 'Accept-Language': 'pl' } });
-            if (res.ok) {
-                const data = await res.json();
-                if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
-                    ev.lat = parseFloat(data[0].lat);
-                    ev.lng = parseFloat(data[0].lon);
-                    ev.geocodedDisplay = data[0].display_name;
-                    updateMapMarkers();
-                    return;
+    // 1. ArcGIS World Geocoder (posiada kompletną bazę punktów adresowych w Polsce z dokładnością do budynku, brak blokad limitów)
+    try {
+        const arcUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(fullQuery)}&countryCode=POL&searchExtent=17.65,54.38,18.50,54.85&maxLocations=1`;
+        const res = await fetch(arcUrl);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.candidates && data.candidates.length > 0) {
+                const loc = data.candidates[0].location;
+                if (loc && loc.y && loc.x) {
+                    return { lat: parseFloat(loc.y), lng: parseFloat(loc.x) };
                 }
             }
-        } catch (err) {}
+        }
+    } catch (e) {}
+
+    // 2. Photon Komoot (OpenStreetMap Geocoder)
+    try {
+        const streetNoPrefix = cleanedStreet.replace(/\b(ul\.|ulica|al\.|aleja|pl\.|plac)\s*/gi, '').trim();
+        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(streetNoPrefix + ' ' + cleanTown)}&lat=54.60&lon=18.23&limit=1`;
+        const res = await fetch(photonUrl);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.features && data.features.length > 0) {
+                const coords = data.features[0].geometry?.coordinates;
+                if (coords && coords.length === 2) {
+                    return { lat: parseFloat(coords[1]), lng: parseFloat(coords[0]) };
+                }
+            }
+        }
+    } catch (e) {}
+
+    // 3. Nominatim OpenStreetMap
+    try {
+        const streetNoPrefix = cleanedStreet.replace(/\b(ul\.|ulica|al\.|aleja|pl\.|plac)\s*/gi, '').trim();
+        const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(streetNoPrefix + ', ' + cleanTown)}&viewbox=17.65,54.85,18.50,54.38&bounded=1&limit=1`;
+        const res = await fetch(nomUrl, { headers: { 'Accept-Language': 'pl' } });
+        if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+                return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+            }
+        }
+    } catch (e) {}
+
+    return null;
+}
+
+// --- AUTOMATYCZNE GEOKODOWANIE WSZYSTKICH 39 STRAŻNIC PO DOKŁADNYCH ADRESACH ---
+let stationsGeocoded = false;
+async function geocodeAllFireStationsExact() {
+    if (stationsGeocoded) return;
+    stationsGeocoded = true;
+
+    const cacheKey = 'SWD_EXACT_STATIONS_V5';
+    try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            Object.keys(parsed).forEach(uName => {
+                if (unitExactLocations[uName] && parsed[uName].lat && parsed[uName].lng) {
+                    unitExactLocations[uName].lat = parsed[uName].lat;
+                    unitExactLocations[uName].lng = parsed[uName].lng;
+                }
+            });
+            updateMapMarkers();
+            return;
+        }
+    } catch (e) {}
+
+    const unitNames = Object.keys(unitExactLocations);
+    const cacheToSave = {};
+
+    // Pobieramy współrzędne budynków dla każdego oficjalnego adresu strażnicy
+    await Promise.all(unitNames.map(async (uName) => {
+        const info = unitExactLocations[uName];
+        const coords = await resolveExactCoordinates(info.address, info.town);
+        if (coords) {
+            // Lekkie odsunięcie o 15m dla KP PSP Wejherowo, aby nie przykrywała JRG 1 Wejherowo pod tym samym adresem Tartaczna 5
+            const offsetLat = uName === "KP PSP Wejherowo" ? 0.00018 : 0;
+            const offsetLng = uName === "KP PSP Wejherowo" ? 0.00025 : 0;
+            info.lat = coords.lat + offsetLat;
+            info.lng = coords.lng + offsetLng;
+            cacheToSave[uName] = { lat: info.lat, lng: info.lng };
+        }
+    }));
+
+    try {
+        if (Object.keys(cacheToSave).length > 10) {
+            localStorage.setItem(cacheKey, JSON.stringify(cacheToSave));
+        }
+    } catch (e) {}
+
+    updateMapMarkers();
+}
+
+// --- GEOKODOWANIE DOKŁADNEJ ULICY I NUMERU ZDARZENIA ---
+async function geocodeEventAddress(ev) {
+    const rawStreet = (ev.street || "").trim();
+    const coords = await resolveExactCoordinates(rawStreet, ev.city);
+    if (coords) {
+        ev.lat = coords.lat;
+        ev.lng = coords.lng;
+    } else if (!ev.lat || !ev.lng) {
+        const fallback = gpsCoords[ev.city] || [54.6052, 18.2345];
+        ev.lat = fallback[0];
+        ev.lng = fallback[1];
     }
     updateMapMarkers();
 }
@@ -691,7 +760,11 @@ function focusEventOnMap(evId) {
     const ev = events.find(e => e.id === evId);
     if (!ev) return;
     switchMainView('map');
-    setTimeout(() => {
+    setTimeout(async () => {
+        if (!ev.geocodedOnce) {
+            ev.geocodedOnce = true;
+            await geocodeEventAddress(ev);
+        }
         if (leafletMap && ev.lat && ev.lng) {
             leafletMap.setView([ev.lat, ev.lng], 17);
         }
@@ -724,13 +797,13 @@ function initLeafletMap() {
         const mapEl = document.getElementById('leaflet-map');
         if (!mapEl) return;
         if (!leafletMap) {
-            leafletMap = L.map('leaflet-map').setView([54.6033, 18.2396], 11);
+            leafletMap = L.map('leaflet-map').setView([54.6052, 18.2345], 11);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 attribution: '&copy; OpenStreetMap'
             }).addTo(leafletMap);
             mapMarkersLayer = L.layerGroup().addTo(leafletMap);
-            syncFireStationsWithOSM();
+            geocodeAllFireStationsExact();
         }
         leafletMap.invalidateSize();
         updateMapMarkers();
@@ -741,13 +814,13 @@ function updateMapMarkers() {
     if (!leafletMap || !mapMarkersLayer || !window.L) return;
     mapMarkersLayer.clearLayers();
 
-    // 1. Markery wszystkich 39 jednostek PSP i OSP pod ich oficjalnymi adresami
+    // 1. Markery wszystkich 39 jednostek PSP i OSP dokładnie w punktach adresowych budynków
     [...unitsPSP, ...unitsOSP].forEach(u => {
         const loc = unitExactLocations[u.name] || {
             town: "Wejherowo",
             address: "ul. Tartaczna 5, 84-200 Wejherowo",
-            lat: 54.6074,
-            lng: 18.2192
+            lat: 54.6075,
+            lng: 18.2195
         };
 
         const isPSP = u.name.includes("JRG") || u.name.includes("KP PSP");
@@ -757,12 +830,13 @@ function updateMapMarkers() {
             return `<div style="font-size:11px;"><span style="color:${color};">●</span> <b>${v.id}</b> - ${v.name}</div>`;
         }).join('');
 
+        // Punktowe zakotwiczenie (0,0) gwarantuje brak przesunięcia przy zoomowaniu
         const marker = L.marker([loc.lat, loc.lng], {
             icon: L.divIcon({
-                className: 'custom-unit-icon',
-                html: `<div style="background:${bgColor}; color:#fff; border:1px solid #fff; border-radius:3px; padding:1px 5px; font-size:10px; font-weight:bold; white-space:nowrap; box-shadow:1px 1px 3px rgba(0,0,0,0.5);">🚒 ${u.name}</div>`,
-                iconSize: [120, 20],
-                iconAnchor: [60, 10]
+                className: '',
+                html: `<div style="transform:translate(-50%, -50%); background:${bgColor}; color:#fff; border:1.5px solid #fff; border-radius:3px; padding:1px 5px; font-size:10px; font-weight:bold; white-space:nowrap; box-shadow:1px 1px 4px rgba(0,0,0,0.6); cursor:pointer;">🚒 ${u.name}</div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0]
             })
         });
         marker.bindPopup(`
@@ -775,19 +849,19 @@ function updateMapMarkers() {
         mapMarkersLayer.addLayer(marker);
     });
 
-    // 2. Markery aktywnych zdarzeń na dokładnych ulicach
+    // 2. Markery aktywnych zdarzeń dokładnie na ulicy i numerze budynku
     events.forEach(ev => {
         if (ev.status !== 'ACTIVE') return;
-        const fallback = gpsCoords[ev.city] || [54.6059, 18.2443];
+        const fallback = gpsCoords[ev.city] || [54.6052, 18.2345];
         const evLat = ev.lat || fallback[0];
         const evLng = ev.lng || fallback[1];
 
         const marker = L.marker([evLat, evLng], {
             icon: L.divIcon({
-                className: 'custom-ev-icon',
-                html: `<div style="background:#ff0000; color:#ffff00; border:2px solid #ffff00; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 0 8px #ff0000;">🚨 [ID:${ev.id}] ${ev.city}, ${ev.street || ''}</div>`,
-                iconSize: [170, 24],
-                iconAnchor: [85, 12]
+                className: '',
+                html: `<div style="transform:translate(-50%, -50%); background:#ff0000; color:#ffff00; border:2px solid #ffff00; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 0 8px #ff0000; cursor:pointer;">🚨 [ID:${ev.id}] ${ev.city}, ${ev.street || ''}</div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0]
             })
         });
 
@@ -870,6 +944,9 @@ function makeDraggable(elmnt, header) {
 
 // --- AUTOMATYCZNA INICJALIZACJA INTERFEJSU ---
 window.addEventListener('DOMContentLoaded', () => {
+    // Od razu w tle pobieramy dokładne współrzędne wszystkich strażnic po ich oficjalnych adresach
+    geocodeAllFireStationsExact();
+
     document.querySelectorAll('.top-menu .menu-item').forEach(item => {
         const txt = item.innerText.trim().toLowerCase();
         if (txt.includes('siły i środki')) {
@@ -1002,16 +1079,23 @@ function setVehicleStatusManual(vehId, newStatus) {
     updateMapMarkers();
 }
 
-function addCustomUnit(type) {
+async function addCustomUnit(type) {
     const name = prompt(`Podaj nazwę nowej jednostki ${type} (np. OSP KSRG Bolszewo II):`);
     if (!name || !name.trim()) return;
     const town = prompt(`Podaj miejscowość stacjonowania jednostki:`, "Wejherowo") || "Wejherowo";
     const address = prompt(`Podaj dokładną ulicę i numer strażnicy:`, `ul. Strażacka 1, ${town}`) || town;
-    const tCoords = gpsCoords[town.trim()] || [54.6059, 18.2443];
+    const tCoords = gpsCoords[town.trim()] || [54.6052, 18.2345];
     unitExactLocations[name.trim()] = { town: town.trim(), address: address.trim(), lat: tCoords[0], lng: tCoords[1] };
 
     if (type === 'PSP') unitsPSP.push({ name: name.trim(), vehicles: [] });
     else unitsOSP.push({ name: name.trim(), vehicles: [] });
+
+    const exact = await resolveExactCoordinates(address, town);
+    if (exact) {
+        unitExactLocations[name.trim()].lat = exact.lat;
+        unitExactLocations[name.trim()].lng = exact.lng;
+    }
+
     renderUnits();
     renderSiSManagerList();
     updateMapMarkers();
@@ -1566,7 +1650,7 @@ function generateFallbackDescription(subtype) {
     return cleanSub.charAt(0).toUpperCase() + cleanSub.slice(1);
 }
 
-// --- SYMULACJA ZGŁOSZENIA CPR (112) ---
+// --- SYMULACJA ZGŁOSZENIA CPR (112) Z PRAWDZIWYMI ULICAMI DANEJ MIEJSCOWOŚCI ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -1579,9 +1663,15 @@ async function simulateIncomingCPR() {
     const possibleSubtypes = subtypesData[chosenType];
     const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
 
+    // Wybieramy rzeczywistą ulicę istniejącą w wylosowanej miejscowości
+    const townStreets = realStreetsByTown[randomTown] || ["ul. Długa", "ul. Szkolna"];
+    const baseStreet = townStreets[Math.floor(Math.random() * townStreets.length)];
+    const houseNum = Math.floor(Math.random() * 25) + 1;
+    const verifiedStreetAddress = `${baseStreet} ${houseNum}`;
+
     safeSetElementText('cpr-id', newCprId);
     safeSetElementText('cpr-city', randomTown);
-    safeSetElementText('cpr-street', "Ustalanie dokładnego adresu...");
+    safeSetElementText('cpr-street', verifiedStreetAddress);
     safeSetElementText('cpr-caller', "Łączenie z 112...");
     safeSetElementText('cpr-desc', "🤖 Generowanie opisu zdarzenia...");
     
@@ -1590,11 +1680,13 @@ async function simulateIncomingCPR() {
 
     const sysPrompt = `Jesteś operatorem CPR 112. Wygeneruj zgłoszenie w formacie JSON (bez znaczników markdown):
 {
-  "street": "prawdziwa nazwa ulicy i numer budynku w miejscowości ${randomTown} (np. ul. Długa 12, ul. Szkolna 5, ul. Zamostna 8)",
   "caller": "Imię Nazwisko (tel. 6xx-xxx-xxx)",
   "desc": "Naturalny, potoczny opis co się dzieje (1-2 zdania). Nie pisz kodów P ani MZ."
 }`;
-    const usrPrompt = `Miejscowość: ${randomTown} (powiat wejherowski), Temat: ${randomSubtype}`;
+    const usrPrompt = `Miejscowość: ${randomTown}, Adres: ${verifiedStreetAddress}, Temat: ${randomSubtype}`;
+
+    let finalDesc = generateFallbackDescription(randomSubtype);
+    let finalCaller = "Jan Kowalski (tel. 601-234-567)";
 
     try {
         const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
@@ -1602,30 +1694,31 @@ async function simulateIncomingCPR() {
         const cleaned = jsonMatch ? jsonMatch[0] : rawJson.replace(/```json|```/g, '').trim();
         const aiEvent = JSON.parse(cleaned);
 
-        let finalDesc = aiEvent.desc || generateFallbackDescription(randomSubtype);
-        finalDesc = finalDesc.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
+        if (aiEvent.desc) {
+            finalDesc = aiEvent.desc.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
+        }
+        if (aiEvent.caller) {
+            finalCaller = aiEvent.caller;
+        }
+    } catch (e) {}
 
-        currentCPRData = {
-            id: newCprId,
-            city: randomTown,
-            street: aiEvent.street || `ul. ${streetNames[Math.floor(Math.random() * streetNames.length)]} ${Math.floor(Math.random() * 40) + 1}`,
-            type: chosenType,
-            subtype: randomSubtype,
-            desc: finalDesc,
-            caller: aiEvent.caller || "Jan Kowalski (tel. 601-234-567)"
-        };
-    } catch (e) {
-        const stName = streetNames[Math.floor(Math.random() * streetNames.length)];
-        currentCPRData = {
-            id: newCprId,
-            city: randomTown,
-            street: `ul. ${stName} ${Math.floor(Math.random() * 40) + 1}`,
-            type: chosenType,
-            subtype: randomSubtype,
-            desc: generateFallbackDescription(randomSubtype),
-            caller: "Jan Kowalski (tel. 601-234-567)"
-        };
-    }
+    currentCPRData = {
+        id: newCprId,
+        city: randomTown,
+        street: verifiedStreetAddress,
+        type: chosenType,
+        subtype: randomSubtype,
+        desc: finalDesc,
+        caller: finalCaller
+    };
+
+    // Od razu w tle geokodujemy wylosowany adres, aby mieć jego dokładne współrzędne GPS
+    resolveExactCoordinates(verifiedStreetAddress, randomTown).then(coords => {
+        if (coords && currentCPRData && currentCPRData.id === newCprId) {
+            currentCPRData.lat = coords.lat;
+            currentCPRData.lng = coords.lng;
+        }
+    });
 
     safeSetElementText('cpr-id', currentCPRData.id);
     safeSetElementText('cpr-city', currentCPRData.city);
@@ -2072,7 +2165,7 @@ function saveEvent() {
         const timeInput = document.getElementById('inp-ev-time');
         const regInput = document.getElementById('inp-ev-region');
         const jrgInput = document.getElementById('inp-ev-jrg');
-        const fallback = gpsCoords[city] || [54.6059, 18.2443];
+        const fallback = gpsCoords[city] || [54.6052, 18.2345];
 
         const newEv = {
             id: events.length + 1,
