@@ -59,8 +59,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.5,
-                max_tokens: 160,
+                temperature: 0.45,
+                max_tokens: 180,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
@@ -78,7 +78,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 model: 'openai',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.5,
+                temperature: 0.45,
                 jsonMode: jsonMode
             })
         });
@@ -136,7 +136,6 @@ const locationsDatabase = {
 
 const townsList = Object.keys(locationsDatabase);
 
-// Rzeczywiste ulice występujące w konkretnych miejscowościach powiatu wejherowskiego
 const realStreetsByTown = {
     "Wejherowo": ["ul. Jana III Sobieskiego", "ul. 12 Marca", "ul. Gdańska", "ul. Tartaczna", "ul. 3 Maja", "ul. Przemysłowa", "ul. Kalwaryjska", "ul. Sikorskiego", "ul. I Brygady Pancernej WP", "ul. Chopina"],
     "Bolszewo": ["ul. Zamostna", "ul. Strażacka", "ul. Główna", "ul. Wejherowska", "ul. Szkolna", "ul. Długa", "ul. Leśna", "ul. Polna", "ul. Krótka"],
@@ -180,7 +179,7 @@ const realStreetsByTown = {
 const gpsCoords = {
     "Wejherowo": [54.6052, 18.2345],
     "Bolszewo": [54.6155, 18.1772],
-    "Rumia": [54.5714, 18.3879],
+    "Rumia": [54.5798, 18.3973],
     "Reda": [54.6053, 18.3478],
     "Gościcino": [54.5975, 18.1458],
     "Gniewowo": [54.5655, 18.2995],
@@ -217,14 +216,15 @@ const gpsCoords = {
     "Kaczkowo": [54.6215, 17.8925]
 };
 
-// --- OFICJALNE ADRESY JEDNOSTEK (ZWERYFIKOWANE Z GOV.PL / KRS / BIP) ---
+// --- OFICJALNE ADRESY I ZABLOKOWANE DOKŁADNE WSPÓŁRZĘDNE BUDYNKÓW STRAŻNIC ---
+// Flaga locked: true chroni przed nadpisaniem współrzędnych budynku przez geokoder uliczny
 const unitExactLocations = {
-    "JRG 1 Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6075, lng: 18.2195 },
-    "KP PSP Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6075, lng: 18.2198 },
-    "JRG 2 Rumia": { town: "Rumia", address: "ul. Świętego Floriana 1, 84-230 Rumia", lat: 54.5762, lng: 18.3756 },
-    ".OSP KSRG Bolszewo": { town: "Bolszewo", address: "ul. Zamostna 4A, 84-239 Bolszewo", lat: 54.6156, lng: 18.1772 },
+    "JRG 1 Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6075, lng: 18.2195, locked: true },
+    "KP PSP Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6077, lng: 18.2199, locked: true },
+    "JRG 2 Rumia": { town: "Rumia", address: "ul. Świętego Floriana 1, 84-230 Rumia", lat: 54.5798, lng: 18.3973, locked: true },
+    ".OSP KSRG Bolszewo": { town: "Bolszewo", address: "ul. Zamostna 4A, 84-239 Bolszewo", lat: 54.6156, lng: 18.1772, locked: true },
     ".OSP KSRG Gościcino": { town: "Gościcino", address: "ul. Drzewiarza 22, 84-241 Gościcino", lat: 54.5975, lng: 18.1458 },
-    ".OSP KSRG Wejherowo": { town: "Wejherowo", address: "ul. 3 Maja 2, 84-200 Wejherowo", lat: 54.6014, lng: 18.2333 },
+    ".OSP KSRG Wejherowo": { town: "Wejherowo", address: "ul. 3 Maja 2, 84-200 Wejherowo", lat: 54.6014, lng: 18.2333, locked: true },
     ".OSP KSRG Reda": { town: "Reda", address: "ul. Pucka 1, 84-240 Reda", lat: 54.6053, lng: 18.3478 },
     ".OSP KSRG Luzino": { town: "Luzino", address: "ul. Ofiar Stutthofu 39, 84-242 Luzino", lat: 54.5608, lng: 18.1038 },
     ".OSP KSRG Zelewo": { town: "Zelewo", address: "ul. Długa 31, 84-252 Zelewo", lat: 54.6146, lng: 18.0825 },
@@ -270,27 +270,80 @@ function haversineKm(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// --- OBLICZANIE ODLEGŁOŚCI I CZASU DOJAZDU (1 KM = OK. 30 SEKUND +/-) ---
 function getUnitProximity(unitName, city) {
     const unitLoc = unitExactLocations[unitName] || unitExactLocations["JRG 1 Wejherowo"];
     const targetTown = Object.keys(gpsCoords).find(
         c => c.toLowerCase() === (city || "").trim().toLowerCase()
     ) || "Wejherowo";
 
+    let kmRounded = 1.5;
     if (unitLoc.town.toLowerCase() === targetTown.toLowerCase()) {
         const isJRG = unitName.includes("JRG");
-        return { sec: isJRG ? 15 : 18, km: isJRG ? "1.2 km" : "1.5 km" };
+        kmRounded = isJRG ? 1.5 : 1.8;
+    } else {
+        const tCoords = gpsCoords[targetTown] || [54.6052, 18.2345];
+        const roadDist = haversineKm(unitLoc.lat, unitLoc.lng, tCoords[0], tCoords[1]) * 1.25;
+        kmRounded = Math.max(1.5, Math.round(roadDist * 10) / 10);
     }
 
-    const tCoords = gpsCoords[targetTown] || [54.6052, 18.2345];
-    const roadDist = haversineKm(unitLoc.lat, unitLoc.lng, tCoords[0], tCoords[1]) * 1.25;
-    const kmRounded = Math.max(1.5, Math.round(roadDist * 10) / 10);
-    const secCalc = Math.max(20, Math.round(kmRounded * 4.5));
+    // 1 km = ok. 30 sekund (np. 30 km = 900 s = 15 minut)
+    const secCalc = Math.max(30, Math.round(kmRounded * 30));
 
-    return { sec: secCalc, km: `${kmRounded.toFixed(1)} km` };
+    return { sec: secCalc, kmNum: kmRounded, km: `${kmRounded.toFixed(1)} km` };
 }
 
-function calculateTravelTimeSeconds(unitName, city) {
-    return getUnitProximity(unitName, city).sec;
+// Losowanie czasu wyjazdu z jednostki (PSP: 30-90s, OSP: 60-180s)
+function generateDeparturePrepSeconds(unitName) {
+    const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP");
+    if (isPSP) {
+        return Math.floor(Math.random() * (90 - 30 + 1)) + 30;
+    } else {
+        return Math.floor(Math.random() * (180 - 60 + 1)) + 60;
+    }
+}
+
+// Czas trasy z lekkim wahaniem +/- wokół 30s na 1 km
+function calculateRouteTravelSeconds(unitName, city) {
+    const prox = getUnitProximity(unitName, city);
+    const secPerKm = 28 + (Math.random() * 4); // 28 - 32 sekundy na 1 km (średnio 30s/km)
+    return Math.max(25, Math.round(prox.kmNum * secPerKm));
+}
+
+// Czas działań na miejscu (Poszukiwania i większe pożary: 5 do 15 minut = 300-900s)
+function calculateActionDurationSeconds(desc, subtype, type) {
+    if (type === 'PZR') return 600;
+    const text = ((desc || "") + " " + (subtype || "")).toLowerCase();
+    const isBigOrSearch =
+        text.includes("poszukiwan") ||
+        text.includes("zaginion") ||
+        text.includes("hala") ||
+        text.includes("hali") ||
+        text.includes("magazyn") ||
+        text.includes("zakład") ||
+        text.includes("produkcyjn") ||
+        text.includes("las") ||
+        text.includes("leśn") ||
+        text.includes("mieszkan") ||
+        text.includes("kamienic") ||
+        text.includes("budynk") ||
+        text.includes("dach") ||
+        text.includes("poddasz") ||
+        text.includes("gospodarcz") ||
+        text.includes("stodoł") ||
+        text.includes("tartak") ||
+        text.includes("szkoł") ||
+        text.includes("składowisk");
+
+    if (isBigOrSearch) {
+        // Od 5 minut (300s) do 15 minut (900s)
+        return Math.floor(Math.random() * (900 - 300 + 1)) + 300;
+    }
+    if (text.includes("wypadek") || text.includes("zderzenie") || text.includes("chemiczn")) {
+        return Math.floor(Math.random() * (420 - 240 + 1)) + 240; // 4 - 7 min
+    }
+    // Mniejsze zdarzenia (śmietnik, owady, konar, kolizja): 2.5 - 4.5 min
+    return Math.floor(Math.random() * (270 - 150 + 1)) + 150;
 }
 
 function autoSelectJRGByCity(city) {
@@ -628,6 +681,8 @@ let servicesState = { prm: false, police: false };
 let currentCPRData = null;
 let cprCounter = 101;
 let openRadioWindows = {};
+let mainRadioLogs = [];
+let mainRadioModalEl = null;
 
 let shiftStats = {
     cprTotalGenerated: 0,
@@ -636,7 +691,109 @@ let shiftStats = {
     refusalReasons: {}
 };
 
-// --- UNIWERSALNY GEOKODER DOKŁADNYCH ADRESÓW (ARCGIS ROOFTOP + PHOTON OSM + NOMINATIM) ---
+// --- GŁÓWNE RADIO OGÓLNOPOWIATOWE SKKP WEJHEROWO 998 ---
+function ensureMainRadioWindow() {
+    if (mainRadioModalEl) return mainRadioModalEl;
+
+    const modal = document.createElement('div');
+    modal.id = 'main-radio-modal';
+    modal.style.position = 'fixed';
+    modal.style.zIndex = '1045';
+    modal.style.width = '460px';
+    modal.style.right = '20px';
+    modal.style.bottom = '35px';
+
+    modal.innerHTML = `
+        <div style="background: #c0c0c0; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; box-shadow: 2px 2px 6px rgba(0,0,0,0.5); font-family: 'Segoe UI', Tahoma, sans-serif;">
+            <div class="main-radio-header" style="background: linear-gradient(90deg, #800000, #b30000); color: #ffffff; padding: 4px 6px; font-weight: bold; font-size: 13px; display: flex; justify-content: space-between; align-items: center; cursor: move; user-select: none;">
+                <span>📻 Główne Radio SKKP Wejherowo (Kanał Ogólny B029)</span>
+                <div style="display: flex; gap: 2px;">
+                    <button style="background: #c0c0c0; border: 1px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; width: 18px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; padding: 0;" onclick="minimizeMainRadio()">_</button>
+                    <button style="background: #c0c0c0; border: 1px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; width: 18px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; padding: 0;" onclick="closeMainRadio()">✕</button>
+                </div>
+            </div>
+            <div style="padding: 6px; background: #c0c0c0;">
+                <div style="font-size:10px; color:#222; margin-bottom:3px; font-weight:bold;">Meldunki wyjazdów, dojazdów, zakończenia działań i powrotów do bazy:</div>
+                <div id="main-radio-chat" style="background: #111111; color: #ffffff; font-family: 'Consolas', 'Courier New', monospace; font-weight: bold; font-size: 12px; height: 210px; padding: 6px; overflow-y: auto; border: 2px solid #808080; border-right-color: #ffffff; border-bottom-color: #ffffff; box-sizing: border-box; line-height: 1.35;">
+                    <div style="color:#aaa; font-style:italic;">[System] Kanał główny SKKP Wejherowo 998 aktywny. Nasłuch statusów SiS...</div>
+                </div>
+                <div style="display: flex; gap: 4px; margin-top: 6px; align-items: center;">
+                    <button style="padding: 4px 8px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color:#000;" onclick="sendMainRadioDispatchMsg('Wejherowo 998, przyjąłem.')">✔ Przyjąłem</button>
+                    <input type="text" id="inp-main-radio" placeholder="Nadaj komunikat ogólny (Wejherowo 998)..." style="flex: 1; padding: 4px 6px; font-size: 12px; background: #ffffff; color:#000; border: 2px solid #808080; outline: none;" onkeypress="if(event.key==='Enter') sendMainRadioCustom()">
+                    <button style="padding: 4px 10px; font-size: 11px; background: #e1e1e1; border: 2px solid #ffffff; border-right-color: #404040; border-bottom-color: #404040; cursor: pointer; font-weight: bold; color:#000;" onclick="sendMainRadioCustom()">Nadaj</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    makeDraggable(modal, modal.querySelector('.main-radio-header'));
+    mainRadioModalEl = modal;
+    return modal;
+}
+
+function openMainRadio() {
+    const modal = ensureMainRadioWindow();
+    modal.style.display = 'block';
+    const minItem = document.getElementById('min-main-radio');
+    if (minItem) minItem.remove();
+    updateMainRadioChat();
+}
+
+function closeMainRadio() {
+    if (mainRadioModalEl) mainRadioModalEl.style.display = 'none';
+}
+
+function minimizeMainRadio() {
+    if (mainRadioModalEl) mainRadioModalEl.style.display = 'none';
+    const bar = document.getElementById('minimized-bar');
+    if (bar && !document.getElementById('min-main-radio')) {
+        const item = document.createElement('div');
+        item.className = 'minimized-item';
+        item.id = 'min-main-radio';
+        item.innerHTML = `📻 Główne Radio SKKP`;
+        item.onclick = () => {
+            openMainRadio();
+        };
+        bar.appendChild(item);
+    }
+}
+
+function logToMainRadio(callsign, messageText, color = '#7CFC00', playBeep = true) {
+    ensureMainRadioWindow();
+    if (playBeep) {
+        audioMotorola.currentTime = 0;
+        audioMotorola.play().catch(e => {});
+    }
+    const timeStr = new Date().toLocaleTimeString();
+    const entry = `<div style="margin-bottom: 6px; color: ${color}; border-bottom: 1px dashed #333; padding-bottom: 3px;"><span style="color:#cccccc;">[${timeStr}]</span> <b>${callsign}:</b><br>"${messageText}"</div>`;
+    mainRadioLogs.push(entry);
+    updateMainRadioChat();
+}
+
+function updateMainRadioChat() {
+    const chat = document.getElementById('main-radio-chat');
+    if (chat) {
+        chat.innerHTML = mainRadioLogs.length > 0
+            ? mainRadioLogs.join('')
+            : `<div style="color:#aaa; font-style:italic;">[System] Kanał główny SKKP Wejherowo 998 aktywny. Nasłuch statusów SiS...</div>`;
+        chat.scrollTop = chat.scrollHeight;
+    }
+}
+
+function sendMainRadioDispatchMsg(text) {
+    if (!text) return;
+    logToMainRadio('Wejherowo 998 ➔ WSZYSCY', text, '#00ffff', true);
+}
+
+function sendMainRadioCustom() {
+    const inp = document.getElementById('inp-main-radio');
+    if (!inp || !inp.value.trim()) return;
+    sendMainRadioDispatchMsg(inp.value.trim());
+    inp.value = '';
+}
+
+// --- UNIWERSALNY GEOKODER DOKŁADNYCH ADRESÓW ---
 async function resolveExactCoordinates(streetAddress, townName) {
     const cleanTown = (townName || "Wejherowo").trim();
     let cleanedStreet = (streetAddress || "")
@@ -646,7 +803,6 @@ async function resolveExactCoordinates(streetAddress, townName) {
 
     const fullQuery = cleanedStreet ? `${cleanedStreet}, ${cleanTown}, powiat wejherowski, pomorskie, Polska` : `${cleanTown}, powiat wejherowski, pomorskie, Polska`;
 
-    // 1. ArcGIS World Geocoder (posiada kompletną bazę punktów adresowych w Polsce z dokładnością do budynku, brak blokad limitów)
     try {
         const arcUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(fullQuery)}&countryCode=POL&searchExtent=17.65,54.38,18.50,54.85&maxLocations=1`;
         const res = await fetch(arcUrl);
@@ -661,7 +817,6 @@ async function resolveExactCoordinates(streetAddress, townName) {
         }
     } catch (e) {}
 
-    // 2. Photon Komoot (OpenStreetMap Geocoder)
     try {
         const streetNoPrefix = cleanedStreet.replace(/\b(ul\.|ulica|al\.|aleja|pl\.|plac)\s*/gi, '').trim();
         const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(streetNoPrefix + ' ' + cleanTown)}&lat=54.60&lon=18.23&limit=1`;
@@ -677,35 +832,22 @@ async function resolveExactCoordinates(streetAddress, townName) {
         }
     } catch (e) {}
 
-    // 3. Nominatim OpenStreetMap
-    try {
-        const streetNoPrefix = cleanedStreet.replace(/\b(ul\.|ulica|al\.|aleja|pl\.|plac)\s*/gi, '').trim();
-        const nomUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(streetNoPrefix + ', ' + cleanTown)}&viewbox=17.65,54.85,18.50,54.38&bounded=1&limit=1`;
-        const res = await fetch(nomUrl, { headers: { 'Accept-Language': 'pl' } });
-        if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
-                return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-            }
-        }
-    } catch (e) {}
-
     return null;
 }
 
-// --- AUTOMATYCZNE GEOKODOWANIE WSZYSTKICH 39 STRAŻNIC PO DOKŁADNYCH ADRESACH ---
+// Geokodowanie tylko tych jednostek, które nie mają flagi locked: true
 let stationsGeocoded = false;
 async function geocodeAllFireStationsExact() {
     if (stationsGeocoded) return;
     stationsGeocoded = true;
 
-    const cacheKey = 'SWD_EXACT_STATIONS_V5';
+    const cacheKey = 'SWD_EXACT_STATIONS_V7';
     try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
             const parsed = JSON.parse(cached);
             Object.keys(parsed).forEach(uName => {
-                if (unitExactLocations[uName] && parsed[uName].lat && parsed[uName].lng) {
+                if (unitExactLocations[uName] && !unitExactLocations[uName].locked && parsed[uName].lat && parsed[uName].lng) {
                     unitExactLocations[uName].lat = parsed[uName].lat;
                     unitExactLocations[uName].lng = parsed[uName].lng;
                 }
@@ -715,25 +857,21 @@ async function geocodeAllFireStationsExact() {
         }
     } catch (e) {}
 
-    const unitNames = Object.keys(unitExactLocations);
+    const unitNames = Object.keys(unitExactLocations).filter(u => !unitExactLocations[u].locked);
     const cacheToSave = {};
 
-    // Pobieramy współrzędne budynków dla każdego oficjalnego adresu strażnicy
     await Promise.all(unitNames.map(async (uName) => {
         const info = unitExactLocations[uName];
         const coords = await resolveExactCoordinates(info.address, info.town);
         if (coords) {
-            // Lekkie odsunięcie o 15m dla KP PSP Wejherowo, aby nie przykrywała JRG 1 Wejherowo pod tym samym adresem Tartaczna 5
-            const offsetLat = uName === "KP PSP Wejherowo" ? 0.00018 : 0;
-            const offsetLng = uName === "KP PSP Wejherowo" ? 0.00025 : 0;
-            info.lat = coords.lat + offsetLat;
-            info.lng = coords.lng + offsetLng;
+            info.lat = coords.lat;
+            info.lng = coords.lng;
             cacheToSave[uName] = { lat: info.lat, lng: info.lng };
         }
     }));
 
     try {
-        if (Object.keys(cacheToSave).length > 10) {
+        if (Object.keys(cacheToSave).length > 5) {
             localStorage.setItem(cacheKey, JSON.stringify(cacheToSave));
         }
     } catch (e) {}
@@ -741,7 +879,6 @@ async function geocodeAllFireStationsExact() {
     updateMapMarkers();
 }
 
-// --- GEOKODOWANIE DOKŁADNEJ ULICY I NUMERU ZDARZENIA ---
 async function geocodeEventAddress(ev) {
     const rawStreet = (ev.street || "").trim();
     const coords = await resolveExactCoordinates(rawStreet, ev.city);
@@ -771,7 +908,7 @@ function focusEventOnMap(evId) {
     }, 250);
 }
 
-// --- MAPA OPERACYJNA LEAFLET ---
+// --- MAPA OPERACYJNA LEAFLET (CZYTELNE, KONTRASTOWE ETYKIETY Z CZARNYM TEKSTEM) ---
 let leafletMap = null;
 let mapMarkersLayer = null;
 
@@ -814,7 +951,7 @@ function updateMapMarkers() {
     if (!leafletMap || !mapMarkersLayer || !window.L) return;
     mapMarkersLayer.clearLayers();
 
-    // 1. Markery wszystkich 39 jednostek PSP i OSP dokładnie w punktach adresowych budynków
+    // 1. Markery jednostek PSP i OSP (Jasne tło + CZARNY pogrubiony tekst + wyraźna kolorowa ramka)
     [...unitsPSP, ...unitsOSP].forEach(u => {
         const loc = unitExactLocations[u.name] || {
             town: "Wejherowo",
@@ -824,32 +961,32 @@ function updateMapMarkers() {
         };
 
         const isPSP = u.name.includes("JRG") || u.name.includes("KP PSP");
-        const bgColor = isPSP ? "#b30000" : "#0a246a";
+        const borderColor = isPSP ? "#b30000" : "#0a246a";
+        const bgBadge = isPSP ? "#ffe6e6" : "#ffffff";
         const vehListHtml = u.vehicles.map(v => {
-            const color = v.status === 'green' ? '#2ecc71' : (v.status === 'orange' ? '#f39c12' : '#e74c3c');
-            return `<div style="font-size:11px;"><span style="color:${color};">●</span> <b>${v.id}</b> - ${v.name}</div>`;
+            const color = v.status === 'green' ? '#1e8449' : (v.status === 'orange' ? '#d68910' : '#c0392b');
+            return `<div style="font-size:11px; color:#000;"><span style="color:${color}; font-weight:bold;">●</span> <b>${v.id}</b> - ${v.name}</div>`;
         }).join('');
 
-        // Punktowe zakotwiczenie (0,0) gwarantuje brak przesunięcia przy zoomowaniu
         const marker = L.marker([loc.lat, loc.lng], {
             icon: L.divIcon({
                 className: '',
-                html: `<div style="transform:translate(-50%, -50%); background:${bgColor}; color:#fff; border:1.5px solid #fff; border-radius:3px; padding:1px 5px; font-size:10px; font-weight:bold; white-space:nowrap; box-shadow:1px 1px 4px rgba(0,0,0,0.6); cursor:pointer;">🚒 ${u.name}</div>`,
+                html: `<div style="transform:translate(-50%, -50%); background:${bgBadge}; color:#000000; border:2px solid ${borderColor}; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 2px 5px rgba(0,0,0,0.45); cursor:pointer;">🚒 ${u.name}</div>`,
                 iconSize: [0, 0],
                 iconAnchor: [0, 0]
             })
         });
         marker.bindPopup(`
-            <div style="min-width:220px;">
-                <div style="font-weight:bold; color:${bgColor}; font-size:12px;">${u.name}</div>
-                <div style="font-size:10px; color:#333; border-bottom:1px solid #ccc; margin-bottom:4px; padding-bottom:3px;">📍 <b>Adres:</b> ${loc.address}</div>
+            <div style="min-width:220px; color:#000;">
+                <div style="font-weight:bold; color:${borderColor}; font-size:12px;">${u.name}</div>
+                <div style="font-size:10px; color:#222; border-bottom:1px solid #ccc; margin-bottom:4px; padding-bottom:3px;">📍 <b>Adres:</b> ${loc.address}</div>
                 ${vehListHtml}
             </div>
         `);
         mapMarkersLayer.addLayer(marker);
     });
 
-    // 2. Markery aktywnych zdarzeń dokładnie na ulicy i numerze budynku
+    // 2. Markery aktywnych zdarzeń (Kontrastowe jasnoczerwone/pomarańczowe tło + CZARNY pogrubiony tekst)
     events.forEach(ev => {
         if (ev.status !== 'ACTIVE') return;
         const fallback = gpsCoords[ev.city] || [54.6052, 18.2345];
@@ -859,22 +996,29 @@ function updateMapMarkers() {
         const marker = L.marker([evLat, evLng], {
             icon: L.divIcon({
                 className: '',
-                html: `<div style="transform:translate(-50%, -50%); background:#ff0000; color:#ffff00; border:2px solid #ffff00; border-radius:4px; padding:2px 6px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 0 8px #ff0000; cursor:pointer;">🚨 [ID:${ev.id}] ${ev.city}, ${ev.street || ''}</div>`,
+                html: `<div style="transform:translate(-50%, -50%); background:#ffcccc; color:#000000; border:2.5px solid #b30000; border-radius:4px; padding:2px 7px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 0 8px rgba(179,0,0,0.8); cursor:pointer;">🚨 [ID:${ev.id}] ${ev.city}, ${ev.street || ''}</div>`,
                 iconSize: [0, 0],
                 iconAnchor: [0, 0]
             })
         });
 
-        const sisList = ev.vehicles.map(v => `${v.id} (${v.travelTime > 0 ? 'Dojazd: ' + v.travelTime + 's' : 'Na miejscu'})`).join('<br>');
+        const sisList = ev.vehicles.map(v => {
+            if (v.phase === 'PREP') return `${v.id} (Wyjazd z bazy za: ${v.prepTime}s)`;
+            if (v.phase === 'TRAVEL') return `${v.id} (Dojazd: ${formatMMSS(v.travelTime)})`;
+            if (v.phase === 'ONSITE') return `${v.id} (Na miejscu akcji)`;
+            if (v.phase === 'RETURN') return `${v.id} (Powrót: ${formatMMSS(v.returnTime)})`;
+            return `${v.id}`;
+        }).join('<br>');
+
         marker.bindPopup(`
-            <div style="min-width:230px;">
+            <div style="min-width:230px; color:#000;">
                 <b style="color:#b30000;">ZDARZENIE ID: ${ev.id}/2026 (${ev.type})</b><br>
                 <b>Dokładny adres:</b> ${ev.city}, ${ev.street || 'Brak ulicy'}<br>
                 <b>Opis:</b> ${ev.desc}<br>
                 <b>Zadysponowane SiS (${ev.vehicles.length}):</b><br>${sisList || 'Brak'}<br>
                 <div style="margin-top:6px; display:flex; gap:4px;">
                     <button class="btn-win" onclick="openEditEventModal(${ev.id})">Edytuj kartę</button>
-                    <button class="btn-win" onclick="openRadioForEvent(${ev.id})">📻 Radio</button>
+                    <button class="btn-win" onclick="openRadioForEvent(${ev.id})">📻 Radio zdarzenia</button>
                 </div>
             </div>
         `);
@@ -944,8 +1088,8 @@ function makeDraggable(elmnt, header) {
 
 // --- AUTOMATYCZNA INICJALIZACJA INTERFEJSU ---
 window.addEventListener('DOMContentLoaded', () => {
-    // Od razu w tle pobieramy dokładne współrzędne wszystkich strażnic po ich oficjalnych adresach
     geocodeAllFireStationsExact();
+    ensureMainRadioWindow();
 
     document.querySelectorAll('.top-menu .menu-item').forEach(item => {
         const txt = item.innerText.trim().toLowerCase();
@@ -957,6 +1101,8 @@ window.addEventListener('DOMContentLoaded', () => {
             item.onclick = () => switchMainView('table');
         } else if (txt.includes('zestawienia') || txt.includes('raporty') || txt.includes('rejestr')) {
             item.onclick = () => openReportsModal();
+        } else if (txt.includes('komunikator') || txt.includes('urządzenia')) {
+            item.onclick = () => openMainRadio();
         }
     });
 
@@ -974,6 +1120,18 @@ window.addEventListener('DOMContentLoaded', () => {
         repTabBtn.innerHTML = '📊 Zestawienia i Raporty';
         repTabBtn.onclick = () => openReportsModal();
         tabsBar.appendChild(repTabBtn);
+    }
+
+    // Dodanie przycisku otwierania Głównego Radia obok przycisku radia zdarzenia
+    const btnOpenRadio = document.getElementById('btn-open-radio');
+    if (btnOpenRadio && btnOpenRadio.parentElement && !document.getElementById('btn-open-main-radio')) {
+        const mainRadBtn = document.createElement('button');
+        mainRadBtn.className = 'btn-win';
+        mainRadBtn.id = 'btn-open-main-radio';
+        mainRadBtn.style.cssText = 'background: #fff0f0; border-color: #800000; font-weight: bold; color: #800000;';
+        mainRadBtn.innerHTML = '📻 Główne Radio SKKP';
+        mainRadBtn.onclick = () => openMainRadio();
+        btnOpenRadio.parentElement.appendChild(mainRadBtn);
     }
 
     const pspGrid = document.getElementById('grid-psp');
@@ -1048,7 +1206,7 @@ function renderSiSManagerList() {
     [...unitsPSP, ...unitsOSP].forEach(u => {
         const addr = unitExactLocations[u.name]?.address || "Wejherowo";
         u.vehicles.forEach(v => {
-            const stText = v.status === 'green' ? 'W bazie' : (v.status === 'orange' ? 'W drodze' : 'W akcji');
+            const stText = v.status === 'green' ? 'W bazie' : (v.status === 'orange' ? 'W drodze / Powrót' : 'W akcji na miejscu');
             const stColor = v.status === 'green' ? '#155724' : (v.status === 'orange' ? '#b36b00' : '#b30000');
             html += `
                 <tr>
@@ -1164,7 +1322,7 @@ function ensureReportsModalExists() {
                     </div>
                     <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;">
                         <div style="font-weight: bold; color: #222;">Średni czas obsługi</div>
-                        <div id="rep-avg-time" style="font-size: 16px; font-weight: bold; margin-top: 6px; color:#000;">00:03:00</div>
+                        <div id="rep-avg-time" style="font-size: 16px; font-weight: bold; margin-top: 6px; color:#000;">00:08:30</div>
                     </div>
 
                     <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;">
@@ -1209,7 +1367,7 @@ function ensureReportsModalExists() {
                                 <td id="rep-prm-act" style="text-align:right;">0</td>
                                 <td id="rep-prm-fin" style="text-align:right;">0</td>
                                 <td style="text-align:right;">00:01:20</td>
-                                <td style="text-align:right;">00:03:00</td>
+                                <td style="text-align:right;">00:08:00</td>
                             </tr>
                             <tr>
                                 <td>PSP / OSP</td>
@@ -1217,8 +1375,8 @@ function ensureReportsModalExists() {
                                 <td id="rep-psp-wait" style="text-align:right;">0</td>
                                 <td id="rep-psp-act" style="text-align:right;">0</td>
                                 <td id="rep-psp-fin" style="text-align:right;">0</td>
-                                <td style="text-align:right;">00:00:35</td>
-                                <td style="text-align:right;">00:03:00</td>
+                                <td style="text-align:right;">00:01:15</td>
+                                <td style="text-align:right;">00:08:30</td>
                             </tr>
                             <tr>
                                 <td>Policja</td>
@@ -1227,7 +1385,7 @@ function ensureReportsModalExists() {
                                 <td id="rep-pol-act" style="text-align:right;">0</td>
                                 <td id="rep-pol-fin" style="text-align:right;">0</td>
                                 <td style="text-align:right;">00:01:45</td>
-                                <td style="text-align:right;">00:03:00</td>
+                                <td style="text-align:right;">00:08:00</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1333,8 +1491,8 @@ function openReportsModal() {
         if (ev.vehicles && ev.vehicles.length > 0) {
             pspDisp += ev.vehicles.length;
             ev.vehicles.forEach(v => {
-                if (ev.status === 'FINISHED') pspFin++;
-                else if (v.travelTime > 0) pspWait++;
+                if (ev.status === 'FINISHED' && v.phase === 'DONE') pspFin++;
+                else if (v.phase === 'PREP' || v.phase === 'TRAVEL') pspWait++;
                 else pspAct++;
             });
         }
@@ -1406,15 +1564,112 @@ function openReportsModal() {
     if (modal) modal.style.display = 'flex';
 }
 
-// --- LOKALNY SILNIK INTELIGENTNYCH ODPOWIEDZI KDR (FALLBACK) ---
+// --- TAKTYCZNA OCENA SIŁ I ŚRODKÓW NA MIEJSCU ZDARZENIA (ZASADA: LEPIEJ 1 ZASTĘP WIĘCEJ NIŻ ZA MAŁO) ---
+function evaluateTacticalForces(ev) {
+    const text = ((ev.desc || "") + " " + (ev.subtype || "")).toLowerCase();
+    const vehicles = ev.vehicles || [];
+    const totalCount = vehicles.length;
+    const hasJRG = vehicles.some(v => v.unitName && v.unitName.includes("JRG"));
+    const onlyOSP = totalCount > 0 && !hasJRG;
+    const hasLadder = vehicles.some(v => v.name.includes("SH-") || v.name.includes("SD-") || v.id.includes("53") || v.id.includes("51"));
+    const gcbaCount = vehicles.filter(v => v.name.includes("GCBA")).length;
+
+    const isHallOrIndustry = text.includes("hala") || text.includes("hali") || text.includes("magazyn") || text.includes("zakład") || text.includes("produkcyjn") || text.includes("składowisk") || text.includes("tartak");
+    const isApartmentOrBuilding = text.includes("mieszkan") || text.includes("kamienic") || text.includes("balkon") || text.includes("klatce") || text.includes("dach") || text.includes("poddasz") || text.includes("szkoł") || text.includes("urząd") || text.includes("budynk") || text.includes("komin") || text.includes("sadz");
+    const isForestOrFarm = text.includes("las") || text.includes("leśn") || text.includes("traw") || text.includes("stog") || text.includes("stodoł") || text.includes("gospodarcz") || text.includes("rolnicz");
+    const isAccident = text.includes("wypadek") || text.includes("zderzenie") || text.includes("czołow") || text.includes("zakleszcz");
+    const isSearch = text.includes("poszukiwan") || text.includes("zaginion");
+
+    if (isHallOrIndustry) {
+        let missing = [];
+        if (!hasJRG) missing.push("zastępy gaśnicze z JRG PSP");
+        if (gcbaCount < 2) missing.push("co najmniej dwa ciężkie zastępy GCBA (duże zapotrzebowanie na wodę)");
+        if (!hasLadder) missing.push("drabina mechaniczna lub podnośnik (SH-40 / SD-32)");
+        if (totalCount < 4) missing.push(`dodatkowe zastępy gaśnicze (obecnie zadysponowano tylko ${totalCount}, a na pożar obiektu przemysłowego potrzeba min. 4-5 zastępów)`);
+
+        if (missing.length > 0) {
+            return {
+                sufficient: false,
+                reason: `Siły i środki są ZDECYDOWANIE NIEWYSTARCZAJĄCE jak na pożar hali/zakładu! Pilnie potrzebne na miejsce: ${missing.join(", ")}.`
+            };
+        }
+    }
+
+    if (isApartmentOrBuilding) {
+        let missing = [];
+        if (onlyOSP) missing.push("wsparcie z JRG PSP (samo OSP na pożarze budynku mieszkalnego to za mało)");
+        if (!hasLadder) missing.push("podnośnik lub drabina mechaniczna (SH-40 / SD-32)");
+        if (totalCount < 3) missing.push(`minimum jeszcze ${3 - totalCount} zastęp(y) GBA/GCBA do pracy w aparatach ODO i zabezpieczenia wodnego`);
+
+        if (missing.length > 0) {
+            return {
+                sufficient: false,
+                reason: `Siły i środki są NIEWYSTARCZAJĄCE! Na pożar w obiekcie mieszkalnym/budynku konieczne jest zadysponowanie: ${missing.join(", ")}.`
+            };
+        }
+    }
+
+    if (isForestOrFarm) {
+        let missing = [];
+        if (onlyOSP && totalCount < 3) missing.push("wsparcie z JRG PSP oraz sąsiednich OSP");
+        if (gcbaCount < 1) missing.push("ciężki samochód gaśniczy GCBA do dowożenia wody");
+        if (totalCount < 3) missing.push(`dodatkowe zastępy gaśnicze (obecnie tylko ${totalCount}, ogień szybko się rozprzestrzenia)`);
+
+        if (missing.length > 0) {
+            return {
+                sufficient: false,
+                reason: `Siły i środki są NIEWYSTARCZAJĄCE! Brakuje zasilania wodnego i ludzi, prosimy o zadysponowanie: ${missing.join(", ")}.`
+            };
+        }
+    }
+
+    if (isAccident) {
+        if (totalCount < 2 || onlyOSP) {
+            return {
+                sufficient: false,
+                reason: `Siły i środki są niewystarczające na wypadek komunikacyjny – potrzebujemy wsparcia zastępu ratownictwa technicznego z JRG PSP oraz zabezpieczenia przez ZRM i Policję.`
+            };
+        }
+    }
+
+    if (isSearch) {
+        if (totalCount < 3) {
+            return {
+                sufficient: false,
+                reason: `Siły i środki są niewystarczające do przeszukania tak dużego terenu – prosimy o zadysponowanie dodatkowych zastępów OSP/PSP oraz quada do tyraliery.`
+            };
+        }
+    }
+
+    // Zasada ogólna: jeśli jest tylko 1 zastęp (zwłaszcza samo OSP) przy pożarze lub poważniejszym MZ, lepiej mieć 1 zastęp więcej
+    if (totalCount <= 1 && (ev.type === 'P' || onlyOSP)) {
+        const isTrivial = text.includes("śmietnik") || text.includes("os") || text.includes("szerszeni") || text.includes("konar");
+        if (!isTrivial) {
+            return {
+                sufficient: false,
+                reason: `Jeden zastęp na miejscu to za mało ze względów bezpieczeństwa taktycznego – prosimy o zadysponowanie jeszcze jednego zastępu GBA/GCBA do wsparcia działań.`
+            };
+        }
+    }
+
+    return {
+        sufficient: true,
+        reason: `Siły i środki zadysponowane na miejsce (${totalCount} zast.) są w tej chwili wystarczające do opanowania sytuacji.`
+    };
+}
+
 function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     const q = userQuestion.toLowerCase();
     const desc = (ev.desc || "").toLowerCase();
-    const isSmall = desc.includes("śmietnik") || desc.includes("os") || desc.includes("szerszeni") || desc.includes("plama") || desc.includes("konar") || desc.includes("drzewo");
+    const tactical = evaluateTacticalForces(ev);
+    const isSmall = desc.includes("śmietnik") || desc.includes("os") || desc.includes("szerszeni") || desc.includes("konar");
     const hasPrm = q.includes("pogotow") || q.includes("zrm") || q.includes("karetk") || q.includes("medyczn");
     const hasPol = q.includes("policj") || q.includes("patrol");
-    const hasSis = q.includes("dodatkow") || q.includes("siły") || q.includes("środki") || q.includes("srodki") || q.includes("zastęp") || q.includes("podnośnik") || q.includes("drabin");
+    const hasSis = q.includes("dodatkow") || q.includes("siły") || q.includes("środki") || q.includes("srodki") || q.includes("zastęp") || q.includes("podnośnik") || q.includes("drabin") || q.includes("wystarcz");
 
+    if (hasSis) {
+        return `Wejherowo 998, tu ${kdrCallsign}. ${tactical.reason} Bez odbioru.`;
+    }
     if (hasPrm && hasPol) {
         return `Wejherowo 998, tu ${kdrCallsign}. Przyda się u nas zarówno ZRM, jak i patrol Policji do zabezpieczenia miejsca. Bez odbioru.`;
     } else if (hasPrm) {
@@ -1423,20 +1678,20 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
             : `Wejherowo 998, tu ${kdrCallsign}. Tak, mamy osobę wymagającą przebadania, poproszę ZRM na miejsce. Bez odbioru.`;
     } else if (hasPol) {
         return `Wejherowo 998, tu ${kdrCallsign}. Tak, przyda się patrol Policji na miejscu. Bez odbioru.`;
-    } else if (hasSis) {
-        return isSmall
-            ? `Wejherowo 998, tu ${kdrCallsign}. Siły i środki całkowicie wystarczające, radzimy sobie tym co mamy na miejscu. Bez odbioru.`
-            : `Wejherowo 998, tu ${kdrCallsign}. Na ten moment siły na miejscu wystarczają, działamy. Bez odbioru.`;
     }
 
     if (q.includes("przyjąłem") || q.includes("zrozumiałem")) {
-        return `Wejherowo 998, tu ${kdrCallsign}. Zrozumiałem, działamy dalej. Bez odbioru.`;
+        return `Wejherowo 998, tu ${kdrCallsign}. Zrozumiałem, działamy dalej na miejscu. Bez odbioru.`;
     }
 
-    return `Wejherowo 998, tu ${kdrCallsign}. Sytuacja na miejscu opanowana, prowadzimy działania pod adresem ${ev.street || ev.city}. Bez odbioru.`;
+    if (!tactical.sufficient) {
+        return `Wejherowo 998, tu ${kdrCallsign}. Prowadzimy działania pod adresem ${ev.street || ev.city}, ale ${tactical.reason.charAt(0).toLowerCase() + tactical.reason.slice(1)} Bez odbioru.`;
+    }
+
+    return `Wejherowo 998, tu ${kdrCallsign}. Sytuacja na miejscu pod kontrolą, prowadzimy działania pod adresem ${ev.street || ev.city}. Bez odbioru.`;
 }
 
-// --- OKNO RADIA ---
+// --- OKNO RADIA ZDARZENIA (DOTYCHCZASOWE) ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
         openRadioWindows[evId].style.display = 'block';
@@ -1558,23 +1813,33 @@ function sendCustomInputRadio(evId) {
     sendRadioReplyDynamic(evId, val);
 }
 
-// --- MELDUNEK Z DOJAZDU ---
+// --- MELDUNEK Z DOJAZDU I ROZPOZNANIA (UWZGLĘDNIA BRAK SIŁ I ŚRODKÓW!) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     createRadioWindow(ev.id);
 
-    const sysPrompt = `Jesteś dowódcą zastępu straży pożarnej (${vehicle.id}). Dojechałeś na miejsce w miejscowości ${ev.city}, adres: ${ev.street || ''}. Zdarzenie: "${ev.desc}". 
-Napisz krótki, naturalny 1-zdaniowy meldunek przez radio co zastaliście na miejscu i co robicie. 
+    const tactical = evaluateTacticalForces(ev);
+    const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.unitName})`).join(', ');
+
+    const sysPrompt = `Jesteś dowódcą zastępu straży pożarnej (${vehicle.id} z jednostki ${vehicle.unitName}). Dojechałeś jako pierwszy na miejsce w miejscowości ${ev.city}, adres: ${ev.street || ''}.
+Zdarzenie: "${ev.desc}".
+Zadysponowane wszystkie siły: ${vehiclesListStr}.
+OCENA TAKTYCZNA SIŁ I ŚRODKÓW: ${tactical.reason}
+ZASADA: Jeśli w ocenie taktycznej napisano, że siły są NIEWYSTARCZAJĄCE, MUSISZ w tym meldunku z dojazdu od razu poprosić dyspozytora o zadysponowanie brakujących sił! Nigdy nie mów, że siły wystarczą, jeśli jesteś sam z OSP na pożarze hali, lasu lub mieszkania!
 Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
 
     let reportText = "";
     try {
-        reportText = await callUniversalAI(sysPrompt, "Meldunek z rozpoznania", false);
+        reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z rozpoznania po dojeździe na miejsce.", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {}
 
     if (!reportText) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street || ''}) – potwierdzam zgłoszenie: ${ev.desc}, przystępujemy do działań. Bez odbioru.`;
+        if (!tactical.sufficient) {
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street || ''}) – zastano: ${ev.desc}. ${tactical.reason} Bez odbioru.`;
+        } else {
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street || ''}) – potwierdzam zgłoszenie: ${ev.desc}, przystępujemy do działań, siły wystarczające. Bez odbioru.`;
+        }
     }
 
     audioMotorola.currentTime = 0;
@@ -1611,21 +1876,32 @@ async function sendRadioReplyDynamic(evId, text) {
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.name})`).join(', ');
-    const systemPrompt = `Jesteś dowódcą akcji straży pożarnej (${kdrName}) na miejscu w miejscowości ${ev.city}, adres: ${ev.street || ''}.
-Opis zdarzenia: "${ev.desc}". Zadysponowane wozy: ${vehiclesListStr}.
-Dyspozytor (Wejherowo 998) mówi do Ciebie przez radio: "${text}".
-Odpowiedz naturalnie, krótko i konkretnie na pytanie dyspozytora, jak prawdziwy strażak.
-Format: "Wejherowo 998, tu ${kdrName}. [Krótka odpowiedź]. Bez odbioru."`;
+    const qLower = text.toLowerCase();
+    const tactical = evaluateTacticalForces(ev);
+    const asksForSis = qLower.includes("siły") || qLower.includes("środki") || qLower.includes("srodki") || qLower.includes("dodatkow") || qLower.includes("zastęp") || qLower.includes("potrzeb") || qLower.includes("wystarcz");
 
     let aiReply = "";
-    try {
-        aiReply = await callUniversalAI(systemPrompt, text, false);
-        aiReply = aiReply.replace(/^["']|["']$/g, '');
-    } catch (err) {}
 
-    if (!aiReply) {
-        aiReply = generateSmartKdrResponse(kdrName, text, ev);
+    // Jeśli dyspozytor pyta o SiS, a taktycznie brakuje sił (np. samo OSP na hali/lesie/mieszkaniu), wymuszamy zgłoszenie zapotrzebowania!
+    if (asksForSis && !tactical.sufficient) {
+        aiReply = `Wejherowo 998, tu ${kdrName}. ${tactical.reason} Bez odbioru.`;
+    } else {
+        const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.unitName} - ${v.name})`).join(', ');
+        const systemPrompt = `Jesteś dowódcą akcji straży pożarnej (${kdrName}) na miejscu w miejscowości ${ev.city}, adres: ${ev.street || ''}.
+Opis zdarzenia: "${ev.desc}". Zadysponowane wozy: ${vehiclesListStr}.
+OCENA TAKTYCZNA SIŁ I ŚRODKÓW: ${tactical.reason}
+Dyspozytor (Wejherowo 998) mówi do Ciebie przez radio: "${text}".
+BEZWZGLĘDNA ZASADA: Jeśli ocena taktyczna wskazuje, że siły są NIEWYSTARCZAJĄCE, NIE WOLNO Ci powiedzieć, że są wystarczające – zażądaj dodatkowych zastępów! Lepiej mieć jeden zastęp więcej niż jeden za mało.
+Format: "Wejherowo 998, tu ${kdrName}. [Krótka, konkretna odpowiedź]. Bez odbioru."`;
+
+        try {
+            aiReply = await callUniversalAI(systemPrompt, text, false);
+            aiReply = aiReply.replace(/^["']|["']$/g, '');
+        } catch (err) {}
+
+        if (!aiReply) {
+            aiReply = generateSmartKdrResponse(kdrName, text, ev);
+        }
     }
 
     audioMotorola.currentTime = 0;
@@ -1650,7 +1926,7 @@ function generateFallbackDescription(subtype) {
     return cleanSub.charAt(0).toUpperCase() + cleanSub.slice(1);
 }
 
-// --- SYMULACJA ZGŁOSZENIA CPR (112) Z PRAWDZIWYMI ULICAMI DANEJ MIEJSCOWOŚCI ---
+// --- SYMULACJA ZGŁOSZENIA CPR (112) ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -1663,7 +1939,6 @@ async function simulateIncomingCPR() {
     const possibleSubtypes = subtypesData[chosenType];
     const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
 
-    // Wybieramy rzeczywistą ulicę istniejącą w wylosowanej miejscowości
     const townStreets = realStreetsByTown[randomTown] || ["ul. Długa", "ul. Szkolna"];
     const baseStreet = townStreets[Math.floor(Math.random() * townStreets.length)];
     const houseNum = Math.floor(Math.random() * 25) + 1;
@@ -1712,7 +1987,6 @@ async function simulateIncomingCPR() {
         caller: finalCaller
     };
 
-    // Od razu w tle geokodujemy wylosowany adres, aby mieć jego dokładne współrzędne GPS
     resolveExactCoordinates(verifiedStreetAddress, randomTown).then(coords => {
         if (coords && currentCPRData && currentCPRData.id === newCprId) {
             currentCPRData.lat = coords.lat;
@@ -1843,13 +2117,13 @@ function createUnitHTML(unit) {
         unit.vehicles.map(v => `
             <div class="vehicle-row">
                 <span class="status-dot ${v.status}"></span>
-                <span><b>${v.id}</b> - ${v.name}</span>
+                <span style="color:#000000;"><b>${v.id}</b> - ${v.name}</span>
             </div>
         `).join('');
 
     return `
         <div class="unit-box">
-            <div class="unit-header" title="Adres: ${exactAddr}">${unit.name}</div>
+            <div class="unit-header" style="color:#000000; font-weight:bold;" title="Adres: ${exactAddr}">${unit.name}</div>
             <div>${vehiclesHTML}</div>
         </div>
     `;
@@ -1866,7 +2140,16 @@ function renderEvents() {
         tr.ondblclick = () => openEditEventModal(ev.id);
         tr.onclick = () => selectEvent(ev.id);
 
-        let timeDisplay = ev.status === 'FINISHED' ? "0:00 min (Zakończono)" : (!ev.firstArrived ? `Oczekiwanie... (${formatMMSS(ev.remainingSeconds)})` : formatMMSS(ev.remainingSeconds));
+        let timeDisplay = "";
+        if (ev.status === 'FINISHED') {
+            const anyReturning = ev.vehicles.some(v => v.phase === 'RETURN' && v.returnTime > 0);
+            timeDisplay = anyReturning ? "Powrót SiS do bazy..." : "0:00 min (Zakończono)";
+        } else if (!ev.firstArrived) {
+            timeDisplay = `W drodze na miejsce... (Czas akcji: ${formatMMSS(ev.remainingSeconds)})`;
+        } else {
+            timeDisplay = `Działania: ${formatMMSS(ev.remainingSeconds)}`;
+        }
+
         const fullPlace = ev.street ? `${ev.city}, ${ev.street}` : ev.city;
 
         tr.innerHTML = `
@@ -1900,14 +2183,21 @@ function renderSelectedEventDetails() {
     }
 
     sisBody.innerHTML = ev.vehicles.map(v => {
-        let statusText = v.travelTime > 0 
-            ? `<span style="color: #f39c12; font-weight: bold;">Dojazd (${v.travelTime}s)</span>` 
-            : (ev.status === 'ACTIVE' 
-                ? `<span style="color: #ff3333; font-weight: bold;">Na miejscu</span>` 
-                : `<span style="color: #00ff00;">Wolny</span>`);
+        let statusText = "";
+        if (v.phase === 'PREP') {
+            statusText = `<span style="color: #d35400; font-weight: bold;">Alarmowanie / Wyjazd za ${v.prepTime}s</span>`;
+        } else if (v.phase === 'TRAVEL') {
+            statusText = `<span style="color: #b36b00; font-weight: bold;">W drodze (${formatMMSS(v.travelTime)})</span>`;
+        } else if (v.phase === 'ONSITE') {
+            statusText = `<span style="color: #b30000; font-weight: bold;">Na miejscu działań</span>`;
+        } else if (v.phase === 'RETURN') {
+            statusText = `<span style="color: #004080; font-weight: bold;">Powrót do bazy (${formatMMSS(v.returnTime)})</span>`;
+        } else {
+            statusText = `<span style="color: #155724; font-weight: bold;">W bazie (Wolny)</span>`;
+        }
                 
         return `
-            <tr>
+            <tr style="color:#000000;">
                 <td><b>${v.id}</b> - ${v.name}</td>
                 <td>${v.obsada}</td>
                 <td>${v.unitName}</td>
@@ -2077,7 +2367,7 @@ function openDispatchModal() {
     container.innerHTML = '';
 
     if(infoBar) {
-        infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span>` : `⚠️ Brak miejscowości`;
+        infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span> (1 km ≈ 30s jazdy)` : `⚠️ Brak miejscowości`;
     }
 
     const availableUnits = [...unitsPSP, ...unitsOSP]
@@ -2088,16 +2378,18 @@ function openDispatchModal() {
     availableUnits.forEach((u, index) => {
         const isClosest = index === 0 && targetCity !== "";
         const exactAddr = unitExactLocations[u.name]?.address || "";
+        const isPSP = u.name.includes("JRG") || u.name.includes("KP PSP");
+        const prepRange = isPSP ? "Wyjazd: 30-90s" : "Wyjazd: 60-180s";
         const groupDiv = document.createElement('div');
         groupDiv.className = 'dispatch-unit-group';
 
         groupDiv.innerHTML = `
             <div class="dispatch-unit-header ${isClosest ? 'closest' : ''}" title="${exactAddr}">
-                <span>${index + 1}. ${u.name} <small style="font-weight:normal; color:#555;">(${exactAddr})</small> ${isClosest ? '⭐' : ''}</span>
-                <span>${u.km} | ~${u.sec}s</span>
+                <span>${index + 1}. ${u.name} <small style="font-weight:normal; color:#333;">(${exactAddr})</small> ${isClosest ? '⭐' : ''}</span>
+                <span>${u.km} | Jazda: ~${formatMMSS(u.sec)} (${prepRange})</span>
             </div>
             ${u.vehicles.map(v => `
-                <label class="dispatch-vehicle-item" style="cursor:pointer;">
+                <label class="dispatch-vehicle-item" style="cursor:pointer; color:#000000;">
                     <input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}>
                     <span class="status-dot ${v.status}"></span>
                     <span><b>${v.id}</b> - ${v.name}</span>
@@ -2114,15 +2406,34 @@ function confirmDispatch() {
     const checkboxes = document.querySelectorAll('#dispatch-list input:checked');
     const cityInput = document.getElementById('inp-ev-city');
     const targetCity = (cityInput && cityInput.value.trim()) ? cityInput.value.trim() : "Bolszewo";
-    selectedVehicles = [];
+    const newSelection = [];
 
     checkboxes.forEach(cb => {
-        [...unitsPSP, ...unitsOSP].forEach(u => {
-            const v = u.vehicles.find(veh => veh.id === cb.value);
-            if (v) selectedVehicles.push({ ...v, unitName: u.name, travelTime: calculateTravelTimeSeconds(u.name, targetCity) });
-        });
+        // Jeśli pojazd był już wcześniej wybrany w tym zdarzeniu, zachowaj jego aktualny stan jazdy/alarmowania
+        const existing = selectedVehicles.find(sv => sv.id === cb.value);
+        if (existing) {
+            newSelection.push(existing);
+        } else {
+            [...unitsPSP, ...unitsOSP].forEach(u => {
+                const v = u.vehicles.find(veh => veh.id === cb.value);
+                if (v) {
+                    const prepSec = generateDeparturePrepSeconds(u.name);
+                    const routeSec = calculateRouteTravelSeconds(u.name, targetCity);
+                    newSelection.push({
+                        ...v,
+                        unitName: u.name,
+                        phase: 'PREP',
+                        prepTime: prepSec,
+                        travelTime: routeSec,
+                        baseRouteSeconds: routeSec,
+                        returnTime: routeSec
+                    });
+                }
+            });
+        }
     });
 
+    selectedVehicles = newSelection;
     const countLbl = document.getElementById('lbl-selected-count');
     if(countLbl) countLbl.innerText = "Wybrano pojazdów: " + selectedVehicles.length;
     closeModal('modal-dispatch');
@@ -2145,9 +2456,15 @@ function saveEvent() {
     const streetInput = document.getElementById('inp-ev-street');
     const streetVal = streetInput ? streetInput.value.trim() : '';
 
+    // Upewnienie się, że każdy zadysponowany wóz ma wyliczony czas wyjazdu (PSP 30-90s, OSP 60-180s) oraz trasę (1km ~ 30s)
     selectedVehicles.forEach(sv => {
-        if (sv.travelTime === undefined || activeEditingId === null) {
-            sv.travelTime = calculateTravelTimeSeconds(sv.unitName, city);
+        if (!sv.phase) {
+            sv.phase = 'PREP';
+            sv.prepTime = generateDeparturePrepSeconds(sv.unitName);
+            const routeSec = calculateRouteTravelSeconds(sv.unitName, city);
+            sv.travelTime = routeSec;
+            sv.baseRouteSeconds = routeSec;
+            sv.returnTime = routeSec;
         }
     });
 
@@ -2166,6 +2483,7 @@ function saveEvent() {
         const regInput = document.getElementById('inp-ev-region');
         const jrgInput = document.getElementById('inp-ev-jrg');
         const fallback = gpsCoords[city] || [54.6052, 18.2345];
+        const calcDuration = calculateActionDurationSeconds(descVal, subtypeVal, typeVal);
 
         const newEv = {
             id: events.length + 1,
@@ -2178,7 +2496,7 @@ function saveEvent() {
             desc: descVal,
             type: typeVal,
             subtype: subtypeVal,
-            remainingSeconds: 180,
+            remainingSeconds: calcDuration,
             firstArrived: false,
             radioReported: false,
             radioLogs: [],
@@ -2220,19 +2538,54 @@ function saveEvent() {
     closeModal('modal-event');
 }
 
+// Rozpoczęcie procedury zakończenia działań i powrotu zastępów do koszar (powrót trwa tyle samo co dojazd!)
+function triggerEventFinishAndReturn(ev) {
+    if (!ev || ev.status === 'FINISHED') return;
+    ev.status = 'FINISHED';
+    ev.remainingSeconds = 0;
+
+    ev.vehicles.forEach(sv => {
+        if (sv.phase === 'ONSITE' || sv.phase === 'TRAVEL') {
+            sv.phase = 'RETURN';
+            sv.returnTime = sv.baseRouteSeconds || calculateRouteTravelSeconds(sv.unitName, ev.city);
+            const approxMin = Math.max(1, Math.round(sv.returnTime / 60));
+
+            // Zmiana kropki z czerwonej na pomarańczową na czas powrotu do bazy
+            [...unitsPSP, ...unitsOSP].forEach(u => {
+                const veh = u.vehicles.find(vObj => vObj.id === sv.id);
+                if (veh) veh.status = 'orange';
+            });
+
+            logToMainRadio(
+                `${sv.id} ➔ Wejherowo 998`,
+                `Wejherowo 998, tu ${sv.id}. Zakończyliśmy działania w miejscowości ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}, wracamy do koszar (czas powrotu ok. ${approxMin} min). Bez odbioru.`,
+                '#ffcc00',
+                true
+            );
+        } else if (sv.phase === 'PREP') {
+            // Jeśli zastęp jeszcze nawet nie wyjechał z bazy, odwołujemy alarm
+            sv.phase = 'DONE';
+            sv.returnTime = 0;
+            [...unitsPSP, ...unitsOSP].forEach(u => {
+                const veh = u.vehicles.find(vObj => vObj.id === sv.id);
+                if (veh) veh.status = 'green';
+            });
+            logToMainRadio(
+                `Wejherowo 998 ➔ ${sv.id}`,
+                `${sv.id}, odwołuję alarm dla waszego zastępu, pozostańcie w koszarach.`,
+                '#00ffff',
+                false
+            );
+        }
+    });
+}
+
 function finishCurrentEvent() {
     const targetId = activeEditingId !== null ? activeEditingId : selectedEvIdForRadio;
     if (targetId === null) return;
     const ev = events.find(e => e.id === targetId);
     if (ev) {
-        ev.status = 'FINISHED';
-        ev.remainingSeconds = 0;
-        ev.vehicles.forEach(sv => {
-            [...unitsPSP, ...unitsOSP].forEach(u => {
-                const v = u.vehicles.find(veh => veh.id === sv.id);
-                if (v) v.status = 'green';
-            });
-        });
+        triggerEventFinishAndReturn(ev);
     }
     renderUnits();
     renderEvents();
@@ -2263,48 +2616,98 @@ function closeModal(id) {
     if(modal) modal.style.display = 'none'; 
 }
 
-// --- GŁÓWNA PĘTLA CZASU SYMULATORA ---
+// --- GŁÓWNA PĘTLA CZASU SYMULATORA (WYJAZD -> DOJAZD -> DZIAŁANIA -> POWRÓT DO BAZY) ---
 setInterval(() => {
     let needsRender = false;
+
     events.forEach(ev => {
         if (ev.status === 'ACTIVE') {
             ev.vehicles.forEach(v => {
-                if (v.travelTime > 0) {
-                    v.travelTime--;
-                    needsRender = true;
-                } else {
-                    [...unitsPSP, ...unitsOSP].forEach(u => {
-                        const veh = u.vehicles.find(vObj => vObj.id === v.id);
-                        if (veh && veh.status === 'orange') {
-                            veh.status = 'red';
-                            if (!ev.firstArrived) {
-                                ev.firstArrived = true;
-                                if (!ev.radioReported) {
-                                    ev.radioReported = true;
-                                    triggerArrivalRadioReport(ev, v);
-                                }
+                // FAZA 1: Alarmowanie i wyjazd z jednostki (PSP: 30-90s, OSP: 60-180s)
+                if (v.phase === 'PREP') {
+                    if (v.prepTime > 0) {
+                        v.prepTime--;
+                        needsRender = true;
+                    } else {
+                        v.phase = 'TRAVEL';
+                        const travelMin = Math.max(1, Math.round(v.travelTime / 60));
+                        logToMainRadio(
+                            `${v.id} ➔ Wejherowo 998`,
+                            `Wejherowo 998, tu ${v.id} (${v.unitName}). Wyjeżdżamy do zdarzenia: ${ev.city}${ev.street ? ', ' + ev.street : ''} (szacowany dojazd ok. ${travelMin} min). Bez odbioru.`,
+                            '#7CFC00',
+                            true
+                        );
+                        needsRender = true;
+                    }
+                }
+                // FAZA 2: Dojazd na miejsce zdarzenia (1 km ~ 30s)
+                else if (v.phase === 'TRAVEL') {
+                    if (v.travelTime > 0) {
+                        v.travelTime--;
+                        needsRender = true;
+                    } else {
+                        v.phase = 'ONSITE';
+                        [...unitsPSP, ...unitsOSP].forEach(u => {
+                            const veh = u.vehicles.find(vObj => vObj.id === v.id);
+                            if (veh) veh.status = 'red';
+                        });
+
+                        // Meldunek o dojeździe na Głównym Radiu
+                        logToMainRadio(
+                            `${v.id} ➔ Wejherowo 998`,
+                            `Wejherowo 998, tu ${v.id}. Jesteśmy na miejscu zdarzenia w ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}. Bez odbioru.`,
+                            '#ffa500',
+                            true
+                        );
+
+                        if (!ev.firstArrived) {
+                            ev.firstArrived = true;
+                            if (!ev.radioReported) {
+                                ev.radioReported = true;
+                                triggerArrivalRadioReport(ev, v);
                             }
-                            needsRender = true;
                         }
-                    });
+                        needsRender = true;
+                    }
                 }
             });
 
+            // FAZA 3: Działania ratownicze na miejscu
             if (ev.firstArrived && ev.remainingSeconds > 0) {
                 ev.remainingSeconds--;
                 needsRender = true;
             } else if (ev.firstArrived && ev.remainingSeconds === 0) {
-                ev.status = 'FINISHED';
-                ev.vehicles.forEach(sv => {
-                    [...unitsPSP, ...unitsOSP].forEach(u => {
-                        const veh = u.vehicles.find(vObj => vObj.id === sv.id);
-                        if (veh) veh.status = 'green';
-                    });
-                });
+                triggerEventFinishAndReturn(ev);
                 needsRender = true;
             }
         }
+        // FAZA 4: Powrót zastępów do bazy po zakończeniu zdarzenia (trwa tyle samo co dojazd)
+        else if (ev.status === 'FINISHED') {
+            ev.vehicles.forEach(v => {
+                if (v.phase === 'RETURN') {
+                    if (v.returnTime > 0) {
+                        v.returnTime--;
+                        needsRender = true;
+                    } else {
+                        v.phase = 'DONE';
+                        [...unitsPSP, ...unitsOSP].forEach(u => {
+                            const veh = u.vehicles.find(vObj => vObj.id === v.id);
+                            if (veh) veh.status = 'green';
+                        });
+
+                        logToMainRadio(
+                            `${v.id} ➔ Wejherowo 998`,
+                            `Wejherowo 998, tu ${v.id} (${v.unitName}). Zastęp w bazie, gotowy do działań. Bez odbioru.`,
+                            '#00ff7f',
+                            true
+                        );
+                        needsRender = true;
+                    }
+                }
+            });
+        }
     });
+
     if (needsRender) {
         renderUnits();
         renderEvents();
