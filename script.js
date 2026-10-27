@@ -755,10 +755,13 @@ async function simulateIncomingCPR() {
     document.getElementById('cpr-city').innerText = randomTown;
     document.getElementById('cpr-street').innerText = "Trwa ustalanie lokalizacji przez AI...";
     
-    // Ukrywamy/usuwamy element rodzaju z formatki CPR, jeśli istnieje w HTML, lub przypisujemy pusty/brakujący tekst
+    // Usuwamy/ukrywamy element wiersza "Rodzaj" z interfejsu formatki WCPR
     const typeEl = document.getElementById('cpr-type');
-    if (typeEl && typeEl.parentElement) {
-        typeEl.parentElement.style.display = 'none'; // Całkowite ukrycie linii Rodzaj w oknie CPR
+    if (typeEl) {
+        let parentRow = typeEl.parentElement;
+        if (parentRow) {
+            parentRow.style.display = 'none';
+        }
     }
 
     document.getElementById('cpr-caller').innerText = "Łączenie z operatorem 112...";
@@ -804,11 +807,6 @@ async function simulateIncomingCPR() {
     document.getElementById('cpr-id').innerText = currentCPRData.id;
     document.getElementById('cpr-city').innerText = currentCPRData.city;
     document.getElementById('cpr-street').innerText = currentCPRData.street;
-    
-    if (typeEl && typeEl.parentElement) {
-        typeEl.parentElement.style.display = 'none';
-    }
-
     document.getElementById('cpr-caller').innerText = currentCPRData.caller;
     document.getElementById('cpr-desc').innerText = currentCPRData.desc;
 }
