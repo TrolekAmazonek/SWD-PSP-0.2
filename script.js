@@ -55,8 +55,8 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.5,
-                max_tokens: 100,
+                temperature: 0.2, // Bardzo niska temperatura zapobiega halucynacjom
+                max_tokens: 90,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
@@ -74,7 +74,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 model: 'openai',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.5,
+                temperature: 0.2,
                 jsonMode: jsonMode
             })
         });
@@ -622,28 +622,36 @@ window.addEventListener('DOMContentLoaded', () => {
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 });
 
-// --- MELDUNEK Z DOJAZDU (ŚCIŚLE POWIĄZANY Z DANEGO ZDARZENIA) ---
+// --- MELDUNEK Z DOJAZDU (BLOKADA HALUCYNACJI) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     currentRadioVehicle = vehicle.id;
     selectedEvIdForRadio = ev.id;
     if (!ev.radioLogs) ev.radioLogs = [];
     openRadioForEvent(ev.id);
 
-    const sysPrompt = `Jesteś dowódcą zastępu straży pożarnej (${vehicle.id}) na miejscu zdarzenia.
-Szczegóły akcji:
+    const sysPrompt = `Jesteś dowódcą zastępu (${vehicle.id}). Dotarłeś na miejsce. 
+KRYTYCZNA ZASADA: Musisz opisać dokładnie to zdarzenie, które jest w karcie!
 - Miejscowość: ${ev.city}
-- Rodzaj / Podrodzaj: ${ev.subtype || ev.type}
-- Opis zdarzenia z karty: "${ev.desc}"
-
-Zadanie: Podaj krótki meldunek z dojazdu i pierwszego rozpoznania. Musisz bezwzględnie nawiązać do powyższego opisu i rodzaju zdarzenia (np. jeśli to zwierzęta, to mów o zwierzętach, a nie o pożarze!).
-Format: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}, sytuacja potwierdzona [krótki kontekst z opisu]. Rozpoznanie w toku. Bez odbioru."`;
+- Typ/Podrodzaj: ${ev.subtype || ev.type}
+- Opis: "${ev.desc}"
+Zabrania się wymyślania pożaru, jeśli zgłoszenie dotyczy czegoś innego (np. wypadku lotniczego, plamy oleju, zwierząt itp.).
+Format: "Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}. [Opis sytuacji wynikający wyłącznie z: ${ev.desc}]. Rozpoznanie w toku. Bez odbioru."`;
 
     let reportText = "";
     try {
         reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z dojazdu.", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
-    } catch (e) {
-        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}, zdarzenie potwierdzone (${ev.subtype || ev.desc}), przystępujemy do działań. Bez odbioru.`;
+    } catch (e) {}
+
+    // Zabezpieczenie systemowe: jeśli AI zignoruje opis i wklepać słowo "pożar" mimo że w opisie nie ma pożaru, nadpiszemy to poprawnym tekstem:
+    const descLower = (ev.desc || "").toLowerCase();
+    const textLower = (reportText || "").toLowerCase();
+    if (textLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień")) {
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}, sytuacja potwierdzona (${ev.desc}). Przystępujemy do działań. Bez odbioru.`;
+    }
+
+    if (!reportText) {
+        reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu w ${ev.city}, zdarzenie potwierdzone (${ev.desc}). Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
@@ -677,7 +685,7 @@ function openRadioForSelectedEvent() {
     else alert('Brak aktywnych zdarzeń.');
 }
 
-// --- ODPOWIEDŹ AI ŚCIŚLE DOPASOWANA DO KARTY ZDARZENIA ---
+// --- ODPOWIEDŹ AI ZE ŚCISŁYM DOPASOWANIEM DO KARTY ---
 async function sendRadioReply(customText = null) {
     const input = document.getElementById('inp-radio-reply');
     const text = customText !== null ? customText : (input ? input.value.trim() : "");
@@ -703,26 +711,34 @@ async function sendRadioReply(customText = null) {
     if(input) input.value = '';
 
     const systemPrompt = `Jesteś dowódcą akcji (${currentRadioVehicle || 'KDR'}) na miejscu zdarzenia.
-INFORMACJE O ZDARZENIU:
+DANE ZDARZENIA (BEZWZGLĘDNIE ICH PRZESTRZEGAJ):
 - Miejscowość: ${ev.city}
 - Kategoria: ${ev.type}
 - Podrodzaj: ${ev.subtype}
-- Opis ze zgłoszenia: "${ev.desc}"
+- Dokładny opis zgłoszenia: "${ev.desc}"
 
-Zadanie: Dyspozytor (Wejherowo 998) przekazał Ci komunikat / pytanie: "${text}".
-Odpowiedz na niego w pełni logicznie, odnosząc się bezpośrednio do faktycznego charakteru tego zdarzenia (np. jeśli zgłoszenie dotyczy zwierząt, ugaszania plamy, otwarcia drzwi itp., NIE wspominaj o pożarze budynku, chyba że tego dotyczy zgłoszenie!).
+Dyspozytor (Wejherowo 998) pyta lub nakazuje: "${text}".
+Odpowiedz w 1-2 zwięzłych zdaniach profesjonalnego żargonu strażackiego. 
+UWAGA: Odpowiadaj wyłącznie w kontekście powyższego opisu (${ev.desc}). Nigdy nie wymyślaj pożaru ani innych zdarzeń niezgodnych z kartą!
 
-Zasady komunikatu:
-1. Zawsze zaczynaj od: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..."
-2. Zawsze kończ na: "... Bez odbioru."
-3. Długość: maksymalnie 1-2 zwięzłe zdania w profesjonalnym żargonie strażackim.`;
+Zawsze zaczynaj od: "Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}..."
+Zawsze kończ na: "... Bez odbioru."`;
 
     let aiReply = "";
     try {
         aiReply = await callUniversalAI(systemPrompt, text, false);
         aiReply = aiReply.replace(/^["']|["']$/g, '');
-    } catch (err) {
-        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu zgodnie z charakterem zdarzenia (${ev.subtype}). Bez odbioru.`;
+    } catch (err) {}
+
+    // Blokada halucynacji o pożarze
+    const descLower = (ev.desc || "").toLowerCase();
+    const replyLower = (aiReply || "").toLowerCase();
+    if (replyLower.includes("pożar") && !descLower.includes("pożar") && !descLower.includes("ogień")) {
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Działamy na miejscu zgodnie z dyspozycją i charakterem zdarzenia. Bez odbioru.`;
+    }
+
+    if (!aiReply) {
+        aiReply = `Wejherowo 998, tu ${currentRadioVehicle || 'KDR'}. Przyjąłem, realizujemy zadanie. Bez odbioru.`;
     }
 
     audioMotorola.currentTime = 0;
