@@ -291,16 +291,16 @@ function getUnitProximity(unitName, city) {
 function generateDeparturePrepSeconds(unitName) {
     const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP");
     if (isPSP) {
-        return Math.floor(Math.random() * (90 - 30 + 1)) + 30;
+        return Math.floor(Math.random() * 5) + 1; // PSP: losowo od 1 do 5 sekund
     } else {
-        return Math.floor(Math.random() * (180 - 60 + 1)) + 60;
+        return Math.floor(Math.random() * 10) + 1; // OSP: losowo od 1 do 10 sekund (do 10s)
     }
 }
 
 function calculateRouteTravelSeconds(unitName, city) {
     const prox = getUnitProximity(unitName, city);
-    const secPerKm = 28 + (Math.random() * 4);
-    return Math.max(25, Math.round(prox.kmNum * secPerKm));
+    const secPerKm = 3.5 + (Math.random() * 1); // Średnio ok. 4 sekundy na 1 km (zakres 3.5 - 4.5s)
+    return Math.max(5, Math.round(prox.kmNum * secPerKm));
 }
 
 function calculateActionDurationSeconds(desc, subtype, type) {
