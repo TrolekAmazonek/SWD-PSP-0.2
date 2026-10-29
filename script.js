@@ -217,7 +217,6 @@ const gpsCoords = {
 };
 
 // --- OFICJALNE ADRESY I ZABLOKOWANE DOKŁADNE WSPÓŁRZĘDNE BUDYNKÓW STRAŻNIC ---
-// Flaga locked: true chroni przed nadpisaniem współrzędnych budynku przez geokoder uliczny
 const unitExactLocations = {
     "JRG 1 Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6075, lng: 18.2195, locked: true },
     "KP PSP Wejherowo": { town: "Wejherowo", address: "ul. Tartaczna 5, 84-200 Wejherowo", lat: 54.6077, lng: 18.2199, locked: true },
@@ -287,13 +286,10 @@ function getUnitProximity(unitName, city) {
         kmRounded = Math.max(1.5, Math.round(roadDist * 10) / 10);
     }
 
-    // 1 km = ok. 30 sekund (np. 30 km = 900 s = 15 minut)
     const secCalc = Math.max(30, Math.round(kmRounded * 30));
-
     return { sec: secCalc, kmNum: kmRounded, km: `${kmRounded.toFixed(1)} km` };
 }
 
-// Losowanie czasu wyjazdu z jednostki (PSP: 30-90s, OSP: 60-180s)
 function generateDeparturePrepSeconds(unitName) {
     const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP");
     if (isPSP) {
@@ -303,14 +299,12 @@ function generateDeparturePrepSeconds(unitName) {
     }
 }
 
-// Czas trasy z lekkim wahaniem +/- wokół 30s na 1 km
 function calculateRouteTravelSeconds(unitName, city) {
     const prox = getUnitProximity(unitName, city);
-    const secPerKm = 28 + (Math.random() * 4); // 28 - 32 sekundy na 1 km (średnio 30s/km)
+    const secPerKm = 28 + (Math.random() * 4);
     return Math.max(25, Math.round(prox.kmNum * secPerKm));
 }
 
-// Czas działań na miejscu (Poszukiwania i większe pożary: 5 do 15 minut = 300-900s)
 function calculateActionDurationSeconds(desc, subtype, type) {
     if (type === 'PZR') return 600;
     const text = ((desc || "") + " " + (subtype || "")).toLowerCase();
@@ -336,13 +330,11 @@ function calculateActionDurationSeconds(desc, subtype, type) {
         text.includes("składowisk");
 
     if (isBigOrSearch) {
-        // Od 5 minut (300s) do 15 minut (900s)
         return Math.floor(Math.random() * (900 - 300 + 1)) + 300;
     }
     if (text.includes("wypadek") || text.includes("zderzenie") || text.includes("chemiczn")) {
-        return Math.floor(Math.random() * (420 - 240 + 1)) + 240; // 4 - 7 min
+        return Math.floor(Math.random() * (420 - 240 + 1)) + 240;
     }
-    // Mniejsze zdarzenia (śmietnik, owady, konar, kolizja): 2.5 - 4.5 min
     return Math.floor(Math.random() * (270 - 150 + 1)) + 150;
 }
 
@@ -666,7 +658,6 @@ let unitsOSP = [
     }
 ];
 
-// --- LOSOWANIE OBSADY DLA OSP ---
 unitsOSP.forEach(u => {
     u.vehicles.forEach(v => {
         v.obsada = Math.floor(Math.random() * 4) + 3;
@@ -835,7 +826,6 @@ async function resolveExactCoordinates(streetAddress, townName) {
     return null;
 }
 
-// Geokodowanie tylko tych jednostek, które nie mają flagi locked: true
 let stationsGeocoded = false;
 async function geocodeAllFireStationsExact() {
     if (stationsGeocoded) return;
@@ -908,7 +898,7 @@ function focusEventOnMap(evId) {
     }, 250);
 }
 
-// --- MAPA OPERACYJNA LEAFLET (CZYTELNE, KONTRASTOWE ETYKIETY Z CZARNYM TEKSTEM) ---
+// --- MAPA OPERACYJNA LEAFLET ---
 let leafletMap = null;
 let mapMarkersLayer = null;
 
@@ -951,7 +941,6 @@ function updateMapMarkers() {
     if (!leafletMap || !mapMarkersLayer || !window.L) return;
     mapMarkersLayer.clearLayers();
 
-    // 1. Markery jednostek PSP i OSP (Jasne tło + CZARNY pogrubiony tekst + wyraźna kolorowa ramka)
     [...unitsPSP, ...unitsOSP].forEach(u => {
         const loc = unitExactLocations[u.name] || {
             town: "Wejherowo",
@@ -986,7 +975,6 @@ function updateMapMarkers() {
         mapMarkersLayer.addLayer(marker);
     });
 
-    // 2. Markery aktywnych zdarzeń (Kontrastowe jasnoczerwone/pomarańczowe tło + CZARNY pogrubiony tekst)
     events.forEach(ev => {
         if (ev.status !== 'ACTIVE') return;
         const fallback = gpsCoords[ev.city] || [54.6052, 18.2345];
@@ -1122,7 +1110,6 @@ window.addEventListener('DOMContentLoaded', () => {
         tabsBar.appendChild(repTabBtn);
     }
 
-    // Dodanie przycisku otwierania Głównego Radia obok przycisku radia zdarzenia
     const btnOpenRadio = document.getElementById('btn-open-radio');
     if (btnOpenRadio && btnOpenRadio.parentElement && !document.getElementById('btn-open-main-radio')) {
         const mainRadBtn = document.createElement('button');
@@ -1564,7 +1551,7 @@ function openReportsModal() {
     if (modal) modal.style.display = 'flex';
 }
 
-// --- TAKTYCZNA OCENA SIŁ I ŚRODKÓW NA MIEJSCU ZDARZENIA (ZASADA: LEPIEJ 1 ZASTĘP WIĘCEJ NIŻ ZA MAŁO) ---
+// --- TAKTYCZNA OCENA SIŁ I ŚRODKÓW ---
 function evaluateTacticalForces(ev) {
     const text = ((ev.desc || "") + " " + (ev.subtype || "")).toLowerCase();
     const vehicles = ev.vehicles || [];
@@ -1641,7 +1628,6 @@ function evaluateTacticalForces(ev) {
         }
     }
 
-    // Zasada ogólna: jeśli jest tylko 1 zastęp (zwłaszcza samo OSP) przy pożarze lub poważniejszym MZ, lepiej mieć 1 zastęp więcej
     if (totalCount <= 1 && (ev.type === 'P' || onlyOSP)) {
         const isTrivial = text.includes("śmietnik") || text.includes("os") || text.includes("szerszeni") || text.includes("konar");
         if (!isTrivial) {
@@ -1691,7 +1677,7 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     return `Wejherowo 998, tu ${kdrCallsign}. Sytuacja na miejscu pod kontrolą, prowadzimy działania pod adresem ${ev.street || ev.city}. Bez odbioru.`;
 }
 
-// --- OKNO RADIA ZDARZENIA (DOTYCHCZASOWE) ---
+// --- OKNO RADIA ZDARZENIA ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
         openRadioWindows[evId].style.display = 'block';
@@ -1813,32 +1799,66 @@ function sendCustomInputRadio(evId) {
     sendRadioReplyDynamic(evId, val);
 }
 
-// --- MELDUNEK Z DOJAZDU I ROZPOZNANIA (UWZGLĘDNIA BRAK SIŁ I ŚRODKÓW!) ---
+// --- MELDUNEK Z DOJAZDU I HIERARCHIA DOWODZENIA (OSP < OSP KSRG < PSP < KP PSP) ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     createRadioWindow(ev.id);
 
+    const isPSPNew = vehicle.unitName.includes("JRG") || vehicle.unitName.includes("KP PSP");
+    const isKSRGNew = vehicle.unitName.includes("KSRG");
+    
+    let takeoverText = "";
+    let isNewKDR = false;
+
+    // Ocena hierarchii dowodzenia (OSP < OSP KSRG < PSP < KP PSP)
+    if (!ev.kdrVehicleId) {
+        ev.kdrVehicleId = vehicle.id;
+        ev.kdrUnitName = vehicle.unitName;
+        ev.kdrIsPSP = isPSPNew;
+        ev.kdrIsKSRG = isKSRGNew;
+        isNewKDR = true;
+    } else {
+        const prevIsPSP = ev.kdrIsPSP;
+        const prevIsKSRG = ev.kdrIsKSRG;
+
+        if (isPSPNew && !prevIsPSP) {
+            takeoverText = ` Dowodzenie na miejscu zdarzenia przejmuje przybyły zastęp Państwowej Straży Pożarnej ${vehicle.id}.`;
+            ev.kdrVehicleId = vehicle.id;
+            ev.kdrUnitName = vehicle.unitName;
+            ev.kdrIsPSP = true;
+            ev.kdrIsKSRG = true;
+            isNewKDR = true;
+        } else if (isKSRGNew && !prevIsPSP && !prevIsKSRG) {
+            takeoverText = ` Dowodzenie na miejscu zdarzenia przejmuje zastęp OSP KSRG ${vehicle.id}.`;
+            ev.kdrVehicleId = vehicle.id;
+            ev.kdrUnitName = vehicle.unitName;
+            ev.kdrIsPSP = false;
+            ev.kdrIsKSRG = true;
+            isNewKDR = true;
+        }
+    }
+
     const tactical = evaluateTacticalForces(ev);
     const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.unitName})`).join(', ');
 
-    const sysPrompt = `Jesteś dowódcą zastępu straży pożarnej (${vehicle.id} z jednostki ${vehicle.unitName}). Dojechałeś jako pierwszy na miejsce w miejscowości ${ev.city}, adres: ${ev.street || ''}.
+    const sysPrompt = `Jesteś dowódcą zastępu straży pożarnej (${vehicle.id} z jednostki ${vehicle.unitName}). Dojechałeś na miejsce w miejscowości ${ev.city}, adres: ${ev.street || ''}.
 Zdarzenie: "${ev.desc}".
-Zadysponowane wszystkie siły: ${vehiclesListStr}.
-OCENA TAKTYCZNA SIŁ I ŚRODKÓW: ${tactical.reason}
-ZASADA: Jeśli w ocenie taktycznej napisano, że siły są NIEWYSTARCZAJĄCE, MUSISZ w tym meldunku z dojazdu od razu poprosić dyspozytora o zadysponowanie brakujących sił! Nigdy nie mów, że siły wystarczą, jeśli jesteś sam z OSP na pożarze hali, lasu lub mieszkania!
-Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
+Zadysponowane siły: ${vehiclesListStr}.
+KOMUNIKAT O PRZEJĘCIU DOWODZENIA (jeśli dotyczy): ${takeoverText || 'Brak zmiany KDR.'}
+ZASADA HIERARCHII: OSP < OSP KSRG < PSP. 
+Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." Wpleć informację o przejęciu dowodzenia na miejscu zdarzenia, jeśli powyższy komunikat na to wskazuje. Zakończ: "Bez odbioru."`;
 
     let reportText = "";
     try {
-        reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z rozpoznania po dojeździe na miejsce.", false);
+        reportText = await callUniversalAI(sysPrompt, "Podaj meldunek z dojazdu i informację o dowodzeniu.", false);
         reportText = reportText.replace(/^["']|["']$/g, '');
     } catch (e) {}
 
     if (!reportText) {
-        if (!tactical.sufficient) {
-            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street || ''}) – zastano: ${ev.desc}. ${tactical.reason} Bez odbioru.`;
+        if (takeoverText) {
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Dotarliśmy na miejsce (${ev.city}).${takeoverText} Prowadzimy działania. Bez odbioru.`;
         } else {
-            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street || ''}) – potwierdzam zgłoszenie: ${ev.desc}, przystępujemy do działań, siły wystarczające. Bez odbioru.`;
+            reportText = `Wejherowo 998, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street || ''}) – potwierdzam dojazd, prowadzimy działania. Bez odbioru.`;
         }
     }
 
@@ -1846,11 +1866,14 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." i zakończ: "Bez odbioru."`;
     audioMotorola.play().catch(e => {});
 
     const timeStr = new Date().toLocaleTimeString();
-    const initialMsg = `<div style="margin-bottom: 6px;">[${timeStr}] ${vehicle.id} ➔ Wejherowo 998:<br>"${reportText}"</div>`;
+    const initialMsg = `<div style="margin-bottom: 6px; color: #ffcc00;">[${timeStr}] ${vehicle.id} ➔ Wejherowo 998:<br>"${reportText}"</div>`;
     ev.radioLogs.push(initialMsg);
 
-    ev.kdrVehicleId = vehicle.id;
     updateRadioChatDynamic(ev.id);
+    
+    if (takeoverText) {
+        logToMainRadio(`${vehicle.id} ➔ SKKP`, `Przejęcie dowodzenia na zdarzeniu ID ${ev.id} (${ev.city}):${takeoverText}`, '#ffaa00', false);
+    }
 }
 
 // --- WYSYŁANIE ODPOWIEDZI W DYNAMICZNYM OKNIE ---
@@ -1882,7 +1905,6 @@ async function sendRadioReplyDynamic(evId, text) {
 
     let aiReply = "";
 
-    // Jeśli dyspozytor pyta o SiS, a taktycznie brakuje sił (np. samo OSP na hali/lesie/mieszkaniu), wymuszamy zgłoszenie zapotrzebowania!
     if (asksForSis && !tactical.sufficient) {
         aiReply = `Wejherowo 998, tu ${kdrName}. ${tactical.reason} Bez odbioru.`;
     } else {
@@ -2409,7 +2431,6 @@ function confirmDispatch() {
     const newSelection = [];
 
     checkboxes.forEach(cb => {
-        // Jeśli pojazd był już wcześniej wybrany w tym zdarzeniu, zachowaj jego aktualny stan jazdy/alarmowania
         const existing = selectedVehicles.find(sv => sv.id === cb.value);
         if (existing) {
             newSelection.push(existing);
@@ -2456,7 +2477,6 @@ function saveEvent() {
     const streetInput = document.getElementById('inp-ev-street');
     const streetVal = streetInput ? streetInput.value.trim() : '';
 
-    // Upewnienie się, że każdy zadysponowany wóz ma wyliczony czas wyjazdu (PSP 30-90s, OSP 60-180s) oraz trasę (1km ~ 30s)
     selectedVehicles.forEach(sv => {
         if (!sv.phase) {
             sv.phase = 'PREP';
@@ -2538,7 +2558,6 @@ function saveEvent() {
     closeModal('modal-event');
 }
 
-// Rozpoczęcie procedury zakończenia działań i powrotu zastępów do koszar (powrót trwa tyle samo co dojazd!)
 function triggerEventFinishAndReturn(ev) {
     if (!ev || ev.status === 'FINISHED') return;
     ev.status = 'FINISHED';
@@ -2550,7 +2569,6 @@ function triggerEventFinishAndReturn(ev) {
             sv.returnTime = sv.baseRouteSeconds || calculateRouteTravelSeconds(sv.unitName, ev.city);
             const approxMin = Math.max(1, Math.round(sv.returnTime / 60));
 
-            // Zmiana kropki z czerwonej na pomarańczową na czas powrotu do bazy
             [...unitsPSP, ...unitsOSP].forEach(u => {
                 const veh = u.vehicles.find(vObj => vObj.id === sv.id);
                 if (veh) veh.status = 'orange';
@@ -2563,7 +2581,6 @@ function triggerEventFinishAndReturn(ev) {
                 true
             );
         } else if (sv.phase === 'PREP') {
-            // Jeśli zastęp jeszcze nawet nie wyjechał z bazy, odwołujemy alarm
             sv.phase = 'DONE';
             sv.returnTime = 0;
             [...unitsPSP, ...unitsOSP].forEach(u => {
@@ -2616,14 +2633,13 @@ function closeModal(id) {
     if(modal) modal.style.display = 'none'; 
 }
 
-// --- GŁÓWNA PĘTLA CZASU SYMULATORA (WYJAZD -> DOJAZD -> DZIAŁANIA -> POWRÓT DO BAZY) ---
+// --- GŁÓWNA PĘTLA CZASU SYMULATORA ---
 setInterval(() => {
     let needsRender = false;
 
     events.forEach(ev => {
         if (ev.status === 'ACTIVE') {
             ev.vehicles.forEach(v => {
-                // FAZA 1: Alarmowanie i wyjazd z jednostki (PSP: 30-90s, OSP: 60-180s)
                 if (v.phase === 'PREP') {
                     if (v.prepTime > 0) {
                         v.prepTime--;
@@ -2640,7 +2656,6 @@ setInterval(() => {
                         needsRender = true;
                     }
                 }
-                // FAZA 2: Dojazd na miejsce zdarzenia (1 km ~ 30s)
                 else if (v.phase === 'TRAVEL') {
                     if (v.travelTime > 0) {
                         v.travelTime--;
@@ -2652,7 +2667,6 @@ setInterval(() => {
                             if (veh) veh.status = 'red';
                         });
 
-                        // Meldunek o dojeździe na Głównym Radiu
                         logToMainRadio(
                             `${v.id} ➔ Wejherowo 998`,
                             `Wejherowo 998, tu ${v.id}. Jesteśmy na miejscu zdarzenia w ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}. Bez odbioru.`,
@@ -2662,17 +2676,15 @@ setInterval(() => {
 
                         if (!ev.firstArrived) {
                             ev.firstArrived = true;
-                            if (!ev.radioReported) {
-                                ev.radioReported = true;
-                                triggerArrivalRadioReport(ev, v);
-                            }
                         }
+
+                        // Każdy nowy zastęp zgłasza dojazd i ewentualne przejęcie dowodzenia
+                        triggerArrivalRadioReport(ev, v);
                         needsRender = true;
                     }
                 }
             });
 
-            // FAZA 3: Działania ratownicze na miejscu
             if (ev.firstArrived && ev.remainingSeconds > 0) {
                 ev.remainingSeconds--;
                 needsRender = true;
@@ -2681,7 +2693,6 @@ setInterval(() => {
                 needsRender = true;
             }
         }
-        // FAZA 4: Powrót zastępów do bazy po zakończeniu zdarzenia (trwa tyle samo co dojazd)
         else if (ev.status === 'FINISHED') {
             ev.vehicles.forEach(v => {
                 if (v.phase === 'RETURN') {
