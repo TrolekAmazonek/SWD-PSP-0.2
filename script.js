@@ -33,7 +33,7 @@ function playOspAlarmRepeated(ospCount) {
 const _k = {
     g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
     m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
-    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdqVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzQmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ8b1FkUUM5SFhuQlZsOWxxM2pxalBmbUE="
+    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdqVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzQmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ="
 };
 
 function decodeKey(b64) {
@@ -59,7 +59,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.45,
+                temperature: 0.65,
                 max_tokens: 180,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
@@ -78,7 +78,7 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
             body: JSON.stringify({
                 model: 'openai',
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.45,
+                temperature: 0.65,
                 jsonMode: jsonMode
             })
         });
@@ -290,19 +290,18 @@ function getUnitProximity(unitName, city) {
     return { sec: secCalc, kmNum: kmRounded, km: `${kmRounded.toFixed(1)} km` };
 }
 
-// --- PODMIENIONE FUNKCJE CZASU WYJAZDU I DOJAZDU ---
 function generateDeparturePrepSeconds(unitName) {
     const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP");
     if (isPSP) {
-        return Math.floor(Math.random() * 5) + 1; // PSP: losowo od 1 do 5 sekund
+        return Math.floor(Math.random() * 5) + 1; // PSP: 1-5s
     } else {
-        return Math.floor(Math.random() * 10) + 1; // OSP: losowo od 1 do 10 sekund (do 10s)
+        return Math.floor(Math.random() * 10) + 1; // OSP: 1-10s
     }
 }
 
 function calculateRouteTravelSeconds(unitName, city) {
     const prox = getUnitProximity(unitName, city);
-    const secPerKm = 3.5 + (Math.random() * 1); // Średnio ok. 4 sekundy na 1 km (zakres 3.5 - 4.5s)
+    const secPerKm = 3.5 + (Math.random() * 1);
     return Math.max(5, Math.round(prox.kmNum * secPerKm));
 }
 
@@ -349,28 +348,6 @@ function autoSelectJRGByCity(city) {
     if(elLead) elLead.value = jrgVal;
     if(elArea) elArea.value = jrgVal;
 }
-
-const subtypesData = {
-    "P": [
-        "P - Inne pożary", "P - Instytucje, obiekty użyteczności publicznej", "P - Obiekty gospodarcze i inne rolnicze",
-        "P - Obiekty magazynowe, place składowe", "P - Obiekty mieszkalne", "P - Obiekty produkcyjne, instalacje technologiczne",
-        "P - Śmietniska, wysypiska", "P - Środki transportu drogowego (np. autobus)", "P - Środki transportu kolejowego",
-        "P - Środki transportu lotniczego", "P - Środki transportu wodnego", "P - Trawy, torfowiska, lasy, pola, stogi"
-    ],
-    "MZ": [
-        "Inne MZ", "MZ - Atmosferyczne", "MZ - Budowlane", "MZ - Chemiczne", "MZ - Drogowe", "MZ - Kolejowe",
-        "MZ - Kolizja", "MZ - Lotnicze", "MZ - Wodne", "MZ - Palenie ognisk w miejscach niedozwolonych",
-        "MZ - Podejrzenie podłożenia ładunku", "MZ - Pomoc innym służbom", "MZ - Pomoc Policji", "MZ - Pomoc PRM",
-        "MZ - Pomoc w otwarciu mieszkania, podejrzenie zgonu", "MZ - Poszukiwanie osób zaginionych", "MZ - Próba samobójcza",
-        "MZ - Sanitarno-epidemiologiczne", "MZ - Topienie się", "MZ - Wypadek", "MZ - Zabezpieczenie ładunku", "MZ - Zwierzęta"
-    ],
-    "AF": ["AF - Fałszywy z instalacji", "AF - Złośliwy", "AF - W dobrej wierze"],
-    "CW": ["CW - Zagrożenie chemiczne", "CW - Zagrożenie ekologiczne"],
-    "WG": ["WG - Wybuch gazu", "WG - Inne zagrożenie wybuchem"],
-    "BL": ["BL - Budynek zagrożony zawaleniem"],
-    "ZPR": ["ZPR - Zagrożenie promieniotwórcze"],
-    "PZR": []
-};
 
 let unitsPSP = [
     {
@@ -1038,7 +1015,6 @@ function switchMainView(viewType) {
     }
 }
 
-// --- MECHANIZM PRZESUWANIA OKIEN ---
 function makeDraggable(elmnt, header) {
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     if (header) header.onmousedown = dragMouseDown;
@@ -1075,7 +1051,6 @@ function makeDraggable(elmnt, header) {
     }
 }
 
-// --- AUTOMATYCZNA INICJALIZACJA INTERFEJSU ---
 window.addEventListener('DOMContentLoaded', () => {
     geocodeAllFireStationsExact();
     ensureMainRadioWindow();
@@ -1552,7 +1527,6 @@ function openReportsModal() {
     if (modal) modal.style.display = 'flex';
 }
 
-// --- TAKTYCZNA OCENA SIŁ I ŚRODKÓW ---
 function evaluateTacticalForces(ev) {
     const text = ((ev.desc || "") + " " + (ev.subtype || "")).toLowerCase();
     const vehicles = ev.vehicles || [];
@@ -1800,46 +1774,33 @@ function sendCustomInputRadio(evId) {
     sendRadioReplyDynamic(evId, val);
 }
 
-// --- PUNKTACJA DOWODZENIA (HIERARCHIA: OSP < OSP KSRG < JRG reszta < JRG 25 < JRG 21 < JRG 90 < KP PSP) ---
 function getCommandRank(vehicle) {
     const uName = (vehicle.unitName || "").toUpperCase();
     const vId = (vehicle.id || "").toUpperCase();
-
-    // KP PSP - najwyższa ranga dowodzenia
     if (uName.includes("KP PSP")) return 4.0;
-
-    // JRG PSP
     if (uName.includes("JRG")) {
-        if (vId.includes("90")) return 3.3; // Dowódca / SLRr (np. 551[G]90)
-        if (vId.includes("21")) return 3.2; // Pierwszy wyjazd GBA (np. 551[G]21)
-        if (vId.includes("25")) return 3.1; // Ciężki gaśniczy GCBA (np. 551[G]25)
-        return 3.0; // Pozostałe zastępy JRG
+        if (vId.includes("90")) return 3.3;
+        if (vId.includes("21")) return 3.2;
+        if (vId.includes("25")) return 3.1;
+        return 3.0;
     }
-
-    // OSP w Krajowym Systemie
     if (uName.includes("KSRG")) return 2.0;
-
-    // Zwykłe OSP
     return 1.0;
 }
 
-// --- MELDUNEK Z DOJAZDU I HIERARCHIA DOWODZENIA ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     createRadioWindow(ev.id);
 
     const newRank = getCommandRank(vehicle);
     const prevRank = ev.kdrRank || 0;
-
     let takeoverText = "";
 
     if (!ev.kdrVehicleId) {
-        // Pierwsza jednostka na miejscu automatycznie zostaje KDR
         ev.kdrVehicleId = vehicle.id;
         ev.kdrUnitName = vehicle.unitName;
         ev.kdrRank = newRank;
     } else if (newRank > prevRank) {
-        // Przejęcie dowodzenia przez jednostkę o wyższym priorytecie
         takeoverText = ` Dowodzenie na miejscu zdarzenia przejmuje przybyły zastęp ${vehicle.id} (${vehicle.unitName}).`;
         ev.kdrVehicleId = vehicle.id;
         ev.kdrUnitName = vehicle.unitName;
@@ -1884,7 +1845,6 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." Wpleć informację o przejęci
     }
 }
 
-// --- WYSYŁANIE ODPOWIEDZI W DYNAMICZNYM OKNIE ---
 async function sendRadioReplyDynamic(evId, text) {
     if (!text) return;
 
@@ -1948,15 +1908,7 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
-function generateFallbackDescription(subtype) {
-    let cleanSub = (subtype || "").replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
-    if (!cleanSub || cleanSub.toLowerCase().includes("inne")) {
-        cleanSub = "Zdarzenie miejscowe wymagające interwencji straży pożarnej";
-    }
-    return cleanSub.charAt(0).toUpperCase() + cleanSub.slice(1);
-}
-
-// --- SYMULACJA ZGŁOSZENIA CPR (112) ---
+// --- DYNAMICZNE GENEROWANIE TREŚCI POWIADOMIENIA PRZEZ AI ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -1966,8 +1918,6 @@ async function simulateIncomingCPR() {
     const newCprId = `WCPR-2026-${cprCounter++}`;
     const randomTown = townsList[Math.floor(Math.random() * townsList.length)];
     const chosenType = Math.random() < 0.5 ? "P" : "MZ";
-    const possibleSubtypes = subtypesData[chosenType];
-    const randomSubtype = possibleSubtypes[Math.floor(Math.random() * possibleSubtypes.length)];
 
     const townStreets = realStreetsByTown[randomTown] || ["ul. Długa", "ul. Szkolna"];
     const baseStreet = townStreets[Math.floor(Math.random() * townStreets.length)];
@@ -1978,42 +1928,37 @@ async function simulateIncomingCPR() {
     safeSetElementText('cpr-city', randomTown);
     safeSetElementText('cpr-street', verifiedStreetAddress);
     safeSetElementText('cpr-caller', "Łączenie z 112...");
-    safeSetElementText('cpr-desc', "🤖 Generowanie opisu zdarzenia...");
+    safeSetElementText('cpr-desc', "AI generuje treść formatki ze zgłoszenia...");
     
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) cprModal.style.display = 'flex';
 
-    const sysPrompt = `Jesteś operatorem CPR 112. Wygeneruj zgłoszenie w formacie JSON (bez znaczników markdown):
-{
-  "caller": "Imię Nazwisko (tel. 6xx-xxx-xxx)",
-  "desc": "Naturalny, potoczny opis co się dzieje (1-2 zdania). Nie pisz kodów P ani MZ."
-}`;
-    const usrPrompt = `Miejscowość: ${randomTown}, Adres: ${verifiedStreetAddress}, Temat: ${randomSubtype}`;
-
-    let finalDesc = generateFallbackDescription(randomSubtype);
-    let finalCaller = "Jan Kowalski (tel. 601-234-567)";
-
+    let generatedDesc = "";
     try {
-        const rawJson = await callUniversalAI(sysPrompt, usrPrompt, true);
-        const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
-        const cleaned = jsonMatch ? jsonMatch[0] : rawJson.replace(/```json|```/g, '').trim();
-        const aiEvent = JSON.parse(cleaned);
+        const aiPrompt = `Wygeneruj realistyczną, naturalną treść powiadomienia dla straży pożarnej z Centrali Powiadamiania Ratunkowego (112) w Polsce. Typ zgłoszenia: ${chosenType === 'P' ? 'Pożar (P)' : 'Zagrożenie miejscowe / wypadki (MZ)'}, miejscowość: ${randomTown}.
+Styl ma brzmieć dokładnie jak zgłoszenie od świadka lub notatka operatora CPR, np. "zgłaszający widzi silne zadymienie nad lasem", "kierowca samochodu osobowego uderzył w drzewo, osoba poszkodowana zakleszczona", "podejrzenie wycieku gazu w budynku mieszkalnym", "pożar sadzy w przewodzie kominowym", "silne porywy wiatru powaliły drzewo na jezdnię".
+Zwróć TYLKO treść powiadomienia po polsku, bez żadnych cudzysłowów i dodatkowego formatowania, maksymalnie 12 słów.`;
 
-        if (aiEvent.desc) {
-            finalDesc = aiEvent.desc.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
-        }
-        if (aiEvent.caller) {
-            finalCaller = aiEvent.caller;
-        }
+        generatedDesc = await callUniversalAI("Jesteś systemem WCPR, generujesz realistyczne opisy zgłoszeń dla SKKP.", aiPrompt, false);
+        generatedDesc = generatedDesc.replace(/^["']|["']$/g, '').trim();
     } catch (e) {}
+
+    if (!generatedDesc) {
+        const fallbackList = chosenType === 'P' ? 
+            ["Zgłaszający widzi silne zadymienie nad lasem", "Pożar sadzy w przewodzie kominowym w budynku", "Pali się trawa oraz nieużytki rolne"] : 
+            ["Kierowca samochodu osobowego uderzył w drzewo, osoba zakleszczona", "Podejrzenie wycieku gazu w budynku mieszkalnym", "Silny wiatr powalił drzewo na drogę"];
+        generatedDesc = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+    }
+
+    const finalCaller = "Jan Kowalski (tel. 601-234-567)";
 
     currentCPRData = {
         id: newCprId,
         city: randomTown,
         street: verifiedStreetAddress,
         type: chosenType,
-        subtype: randomSubtype,
-        desc: finalDesc,
+        subtype: generatedDesc,
+        desc: generatedDesc,
         caller: finalCaller
     };
 
@@ -2082,7 +2027,6 @@ function acceptCPRToEvent() {
 
     const radioP = document.querySelector('input[name="ev-type"][value="P"]');
     if (radioP) radioP.checked = true;
-    updateSubtypes('P');
 
     const callerParts = currentCPRData.caller.split(' ');
     const nameInp = document.getElementById('inp-caller-name');
@@ -2099,30 +2043,6 @@ function formatMMSS(sec) {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m}:${s < 10 ? '0' : ''}${s} min`;
-}
-
-function updateSubtypes(type) {
-    const select = document.getElementById('inp-ev-subtype');
-    const group = document.getElementById('subtype-group');
-    if(!select) return;
-    select.innerHTML = '';
-    
-    if (group) {
-        if (type === 'PZR') {
-            group.style.display = 'none';
-            return;
-        } else {
-            group.style.display = 'flex';
-        }
-    }
-
-    const list = subtypesData[type] || ["Brak"];
-    list.forEach(sub => {
-        const opt = document.createElement('option');
-        opt.value = sub;
-        opt.innerText = sub;
-        select.appendChild(opt);
-    });
 }
 
 function toggleService(service) {
@@ -2187,7 +2107,7 @@ function renderEvents() {
             <td>${ev.time}</td>
             <td>${ev.jrg}</td>
             <td>${ev.jrg}</td>
-            <td title="Kliknij ikonę pinezki, aby przybliżyć ulicę na mapie">${fullPlace} <span style="cursor:pointer;" onclick="event.stopPropagation(); focusEventOnMap(${ev.id});" title="Pokaż dokładną ulicę na mapie">📍</span></td>
+            <td title="Kliknij pinezkę, aby przybliżyć adres na mapie">${fullPlace} <span style="cursor:pointer;" onclick="event.stopPropagation(); focusEventOnMap(${ev.id});" title="Pokaż dokładny adres na mapie">📍</span></td>
             <td>${ev.vehicles.length}</td>
             <td>${ev.type}</td>
             <td>${ev.desc}</td>
@@ -2334,7 +2254,6 @@ function openNewEventModal() {
 
     const radioP = document.querySelector('input[name="ev-type"][value="P"]');
     if (radioP) radioP.checked = true;
-    updateSubtypes('P');
 
     switchModalTab('dane');
     if(modalEl) modalEl.style.display = 'flex';
@@ -2366,9 +2285,6 @@ function openEditEventModal(id) {
 
     const radio = document.querySelector(`input[name="ev-type"][value="${ev.type}"]`);
     if (radio) radio.checked = true;
-    updateSubtypes(ev.type);
-    const subSel = document.getElementById('inp-ev-subtype');
-    if (ev.type !== 'PZR' && subSel) subSel.value = ev.subtype || "";
 
     servicesState = { ...ev.services };
     const btnPrm = document.getElementById('btn-service-prm');
@@ -2475,8 +2391,7 @@ function saveEvent() {
 
     const typeChecked = document.querySelector('input[name="ev-type"]:checked');
     const typeVal = typeChecked ? typeChecked.value : 'P';
-    const subSel = document.getElementById('inp-ev-subtype');
-    const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : (subSel ? subSel.value : '');
+    const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : 'Zgłoszenie operacyjne';
     
     const descInput = document.getElementById('inp-ev-desc');
     let descVal = descInput ? descInput.value : '';
@@ -2686,7 +2601,6 @@ setInterval(() => {
                             ev.firstArrived = true;
                         }
 
-                        // Każdy zastęp zgłasza dojazd i ewentualnie przejmuje dowodzenie
                         triggerArrivalRadioReport(ev, v);
                         needsRender = true;
                     }
