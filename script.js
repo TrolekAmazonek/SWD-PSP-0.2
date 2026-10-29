@@ -43,15 +43,40 @@ function decodeKey(b64) {
     try { return atob(b64); } catch(e) { return ""; }
 }
 
-// --- BEZPIECZNY SILNIK AI ---
+// --- BEZPIECZNY I NAPRAWIONY SILNIK AI ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4500);
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-sekundowy czas na generowanie
 
+    // 1. Najpierw stabilny i szybki publiczny endpoint Pollinations OpenAI (brak rygorystycznych limitów API)
+    try {
+        const response = await fetch('https://text.pollinations.ai/openai', {
+            method: 'POST',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'openai',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.8,
+                jsonMode: jsonMode
+            })
+        });
+        clearTimeout(timeoutId);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.choices && data.choices[0]?.message?.content) {
+                return data.choices[0].message.content.trim();
+            }
+        }
+    } catch (err) {}
+
+    // 2. Awaryjnie Groq Llama 3.1
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
-            signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${decodeKey(_k.g)}`
@@ -62,36 +87,16 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                temperature: 0.65,
+                temperature: 0.8,
                 max_tokens: 180,
                 ...(jsonMode ? { response_format: { type: "json_object" } } : {})
             })
         });
-        clearTimeout(timeoutId);
         const data = await res.json();
         if (data.choices && data.choices[0]?.message?.content) {
             return data.choices[0].message.content.trim();
         }
     } catch (e) {}
-    
-    try {
-        const response = await fetch('https://text.pollinations.ai/openai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'openai',
-                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.65,
-                jsonMode: jsonMode
-            })
-        });
-        if (response.ok) {
-            const data = await response.json();
-            if (data.choices && data.choices[0]?.message?.content) {
-                return data.choices[0].message.content.trim();
-            }
-        }
-    } catch (err) {}
 
     throw new Error("AI Offline");
 }
@@ -1929,7 +1934,7 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
-// --- DYNAMICZNE GENEROWANIE TREŚCI POWIADOMIENIA PRZEZ AI ---
+// --- DYNAMICZNE GENEROWANIE ZGŁOSZEŃ Z CPR PRZEZ AI ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
     audioCpr.play().catch(e => {});
@@ -1948,41 +1953,50 @@ async function simulateIncomingCPR() {
     safeSetElementText('cpr-id', newCprId);
     safeSetElementText('cpr-city', randomTown);
     safeSetElementText('cpr-street', verifiedStreetAddress);
-    safeSetElementText('cpr-caller', "Łączenie z 112...");
-    safeSetElementText('cpr-desc', "AI generuje treść formatki ze zgłoszenia...");
+    safeSetElementText('cpr-caller', "Łączenie z operatorem 112...");
+    safeSetElementText('cpr-desc', "🤖 AI generuje unikalną treść formatki ze zgłoszenia...");
     
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) cprModal.style.display = 'flex';
 
     let generatedDesc = "";
     try {
-        const aiPrompt = `Wygeneruj krótką, w 100% realistyczną treść zgłoszenia od świadka dla operatora numeru 112 w Polsce. Typ zgłoszenia: ${chosenType === 'P' ? 'Pożar' : 'Zagrożenie miejscowe'}, miejscowość: ${randomTown}.
-Tekst MUSI brzmieć dokładnie tak, jak mówi zwykły człowiek w panice lub zdenerwowaniu zgłaszający zdarzenie przez telefon, np. "Dzień dobry, pali się sadza w kominie, iskry lecą na dach!", "Czuję w domu dziwny zapach gazu i słyszę syczenie", "Ktoś wjechał autem w ogrodzenie, kierowca jest w środku", "Widzę gęsty czarny dym za stodołą sąsiada", "Drzewo zablokowało całą jezdnię, nie ma przejazdu".
-Zwróć TYLKO treść powiadomienia po polsku, bez żadnych cudzysłowów, bez kropek na końcu, maksymalnie 10 słów.`;
+        const aiPrompt = `Wygeneruj krótką, w 100% realistyczną i unikalną treść zgłoszenia od świadka dla operatora numeru 112 w Polsce.
+Typ zdarzenia: ${chosenType === 'P' ? 'Pożar' : 'Zagrożenie miejscowe / Wypadek / Awaria'}, miejscowość: ${randomTown}, adres: ${verifiedStreetAddress}.
+Tekst MUSI brzmieć naturalnie, tak jak mówi zwykły człowiek w panice lub pośpiechu zgłaszający zdarzenie przez telefon (np. "Dzień dobry, na poddaszu pojawił się ogień!", "Ktoś uderzył w słup energetyczny, z auta leci dym", "Pali się sadza w kominie i iskry lecą na sąsiedni dom", "Wycieka gaz z instalacji w piwnicy").
+Zwróć TYLKO treść powiadomienia po polsku, bez żadnych cudzysłowów, bez dopisków, maksymalnie 12 słów.`;
 
-        generatedDesc = await callUniversalAI("Jesteś operatorem CPR, piszesz notatki ze zgłoszeń od obywateli.", aiPrompt, false);
+        generatedDesc = await callUniversalAI("Jesteś operatorem CPR (112), zapisujesz zgłoszenia od obywateli w systemie.", aiPrompt, false);
         generatedDesc = generatedDesc.replace(/^["']|["']$/g, '').trim();
     } catch (e) {}
 
-    // W PEŁNI PROCEDURALNY GENERATOR ZAPASOWY (NATURALNY JĘZYK)
+    // PROCEDURALNY GENERATOR ZAPASOWY (jeśli usługa AI byłaby z jakiegoś powodu całkowicie offline)
     if (!generatedDesc) {
         const phrasesP = [
-            "Pali się sadza w kominie, z komina lecą iskry",
+            "Pali się sadza w kominie, z komina lecą iskry na dach",
             "Mieszkaniec zgłasza gęsty czarny dym z budynku gospodarczego",
             "Widzę płomienie wydostające się przez dach pustostanu",
-            "Właściciel zgłasza pożar trawy i suchego ścierniska blisko lasu"
+            "Właściciel zgłasza pożar trawy i suchego ścierniska blisko lasu",
+            "Pożar samochodu osobowego na poboczu drogi, ogień pod maską",
+            "Pali się altana śmietnikowa przy budynku mieszkalnym"
         ];
         const phrasesMZ = [
             "Samochód uderzył w przydrożne drzewo, kierowca zakleszczony",
             "Silny wiatr zerwał połowę dachu z budynku mieszkalnego",
             "Podejrzenie silnego wycieku gazu z instalacji w piwnicy",
-            "Duże drzewo całkowicie zablokowało pas ruchu na drodze"
+            "Duże drzewo całkowicie zablokowało pas ruchu na drodze",
+            "Zderzenie czołowe dwóch aut, wyciek płynów na jezdnię",
+            "Konar drzewa zerwał linie energetyczne nad drogą"
         ];
         const arr = chosenType === 'P' ? phrasesP : phrasesMZ;
         generatedDesc = arr[Math.floor(Math.random() * arr.length)];
     }
 
-    const finalCaller = "Jan Kowalski (tel. 601-234-567)";
+    const callersFirst = ["Jan", "Anna", "Piotr", "Katarzyna", "Tomasz", "Magdalena", "Michał", "Agnieszka"];
+    const callersLast = ["Kowalski", "Nowak", "Wiśniewski", "Wójcik", "Kowalczyk", "Kamińska", "Lewandowski"];
+    const randomCallerName = callersFirst[Math.floor(Math.random() * callersFirst.length)] + " " + callersLast[Math.floor(Math.random() * callersLast.length)];
+    const randomPhone = "50" + Math.floor(Math.random() * 9000000 + 1000000);
+    const finalCaller = `${randomCallerName} (tel. ${randomPhone})`;
 
     currentCPRData = {
         id: newCprId,
