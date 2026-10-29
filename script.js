@@ -33,7 +33,7 @@ function playOspAlarmRepeated(ospCount) {
 const _k = {
     g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
     m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
-    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdxVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzQmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ4b1FkUUM5SFhuQlZsOWxxM2pxalBmbUE="
+    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdxVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzQmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ8b1FkUUM5SFhuQlZsOWxxM2pxalBmbUE="
 };
 
 function decodeKey(b64) {
@@ -293,15 +293,16 @@ function getUnitProximity(unitName, city) {
 function generateDeparturePrepSeconds(unitName) {
     const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP");
     if (isPSP) {
-        return Math.floor(Math.random() * 5) + 1; // PSP: losowo od 1 do 5 sekund
+        return Math.floor(Math.random() * (90 - 30 + 1)) + 30;
     } else {
-        return Math.floor(Math.random() * 10) + 1; // OSP: losowo od 1 do 10 sekund (do 10s)
+        return Math.floor(Math.random() * (180 - 60 + 1)) + 60;
     }
 }
+
 function calculateRouteTravelSeconds(unitName, city) {
     const prox = getUnitProximity(unitName, city);
-    const secPerKm = 3.5 + (Math.random() * 1); // Średnio ok. 4 sekundy na 1 km (zakres 3.5 - 4.5s)
-    return Math.max(5, Math.round(prox.kmNum * secPerKm));
+    const secPerKm = 28 + (Math.random() * 4);
+    return Math.max(25, Math.round(prox.kmNum * secPerKm));
 }
 
 function calculateActionDurationSeconds(desc, subtype, type) {
@@ -1798,43 +1799,50 @@ function sendCustomInputRadio(evId) {
     sendRadioReplyDynamic(evId, val);
 }
 
-// --- MELDUNEK Z DOJAZDU I HIERARCHIA DOWODZENIA (OSP < OSP KSRG < PSP < KP PSP) ---
+// --- PUNKTACJA DOWODZENIA (HIERARCHIA: OSP < OSP KSRG < JRG reszta < JRG 25 < JRG 21 < JRG 90 < KP PSP) ---
+function getCommandRank(vehicle) {
+    const uName = (vehicle.unitName || "").toUpperCase();
+    const vId = (vehicle.id || "").toUpperCase();
+
+    // KP PSP - najwyższa ranga dowodzenia
+    if (uName.includes("KP PSP")) return 4.0;
+
+    // JRG PSP
+    if (uName.includes("JRG")) {
+        if (vId.includes("90")) return 3.3; // Dowódca / SLRr (np. 551[G]90)
+        if (vId.includes("21")) return 3.2; // Pierwszy wyjazd GBA (np. 551[G]21)
+        if (vId.includes("25")) return 3.1; // Ciężki gaśniczy GCBA (np. 551[G]25)
+        return 3.0; // Pozostałe zastępy JRG
+    }
+
+    // OSP w Krajowym Systemie
+    if (uName.includes("KSRG")) return 2.0;
+
+    // Zwykłe OSP
+    return 1.0;
+}
+
+// --- MELDUNEK Z DOJAZDU I HIERARCHIA DOWODZENIA ---
 async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
     createRadioWindow(ev.id);
 
-    const isPSPNew = vehicle.unitName.includes("JRG") || vehicle.unitName.includes("KP PSP");
-    const isKSRGNew = vehicle.unitName.includes("KSRG");
-    
-    let takeoverText = "";
-    let isNewKDR = false;
+    const newRank = getCommandRank(vehicle);
+    const prevRank = ev.kdrRank || 0;
 
-    // Ocena hierarchii dowodzenia (OSP < OSP KSRG < PSP < KP PSP)
+    let takeoverText = "";
+
     if (!ev.kdrVehicleId) {
+        // Pierwsza jednostka na miejscu automatycznie zostaje KDR
         ev.kdrVehicleId = vehicle.id;
         ev.kdrUnitName = vehicle.unitName;
-        ev.kdrIsPSP = isPSPNew;
-        ev.kdrIsKSRG = isKSRGNew;
-        isNewKDR = true;
-    } else {
-        const prevIsPSP = ev.kdrIsPSP;
-        const prevIsKSRG = ev.kdrIsKSRG;
-
-        if (isPSPNew && !prevIsPSP) {
-            takeoverText = ` Dowodzenie na miejscu zdarzenia przejmuje przybyły zastęp Państwowej Straży Pożarnej ${vehicle.id}.`;
-            ev.kdrVehicleId = vehicle.id;
-            ev.kdrUnitName = vehicle.unitName;
-            ev.kdrIsPSP = true;
-            ev.kdrIsKSRG = true;
-            isNewKDR = true;
-        } else if (isKSRGNew && !prevIsPSP && !prevIsKSRG) {
-            takeoverText = ` Dowodzenie na miejscu zdarzenia przejmuje zastęp OSP KSRG ${vehicle.id}.`;
-            ev.kdrVehicleId = vehicle.id;
-            ev.kdrUnitName = vehicle.unitName;
-            ev.kdrIsPSP = false;
-            ev.kdrIsKSRG = true;
-            isNewKDR = true;
-        }
+        ev.kdrRank = newRank;
+    } else if (newRank > prevRank) {
+        // Przejęcie dowodzenia przez jednostkę o wyższym priorytecie
+        takeoverText = ` Dowodzenie na miejscu zdarzenia przejmuje przybyły zastęp ${vehicle.id} (${vehicle.unitName}).`;
+        ev.kdrVehicleId = vehicle.id;
+        ev.kdrUnitName = vehicle.unitName;
+        ev.kdrRank = newRank;
     }
 
     const tactical = evaluateTacticalForces(ev);
@@ -1844,7 +1852,7 @@ async function triggerArrivalRadioReport(ev, vehicle) {
 Zdarzenie: "${ev.desc}".
 Zadysponowane siły: ${vehiclesListStr}.
 KOMUNIKAT O PRZEJĘCIU DOWODZENIA (jeśli dotyczy): ${takeoverText || 'Brak zmiany KDR.'}
-ZASADA HIERARCHII: OSP < OSP KSRG < PSP. 
+ZASADA HIERARCHII: OSP < OSP KSRG < JRG PSP (25 < 21 < 90) < KP PSP. 
 Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." Wpleć informację o przejęciu dowodzenia na miejscu zdarzenia, jeśli powyższy komunikat na to wskazuje. Zakończ: "Bez odbioru."`;
 
     let reportText = "";
@@ -2677,7 +2685,7 @@ setInterval(() => {
                             ev.firstArrived = true;
                         }
 
-                        // Każdy nowy zastęp zgłasza dojazd i ewentualne przejęcie dowodzenia
+                        // Każdy zastęp zgłasza dojazd i ewentualnie przejmuje dowodzenie
                         triggerArrivalRadioReport(ev, v);
                         needsRender = true;
                     }
