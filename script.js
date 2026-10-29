@@ -1,5 +1,5 @@
 // --- STAŁA WERSJI APLIKACJI SWDST ---
-const APP_VERSION = "SWDST 0.21";
+const APP_VERSION = "SWDST 0.22";
 
 // --- MODUŁ AUDIO ---
 const audioSelekt = new Audio('selekt.wav');
@@ -1956,31 +1956,30 @@ async function simulateIncomingCPR() {
 
     let generatedDesc = "";
     try {
-        const aiPrompt = `Wygeneruj realistyczną, naturalną treść powiadomienia dla straży pożarnej z Centrali Powiadamiania Ratunkowego (112) w Polsce. Typ zgłoszenia: ${chosenType === 'P' ? 'Pożar (P)' : 'Zagrożenie miejscowe / wypadki (MZ)'}, miejscowość: ${randomTown}.
-Styl ma brzmieć dokładnie jak zgłoszenie od świadka lub notatka operatora CPR, np. "zgłaszający widzi silne zadymienie nad lasem", "kierowca samochodu osobowego uderzył w drzewo, osoba poszkodowana zakleszczona", "podejrzenie wycieku gazu w budynku mieszkalnym", "pożar sadzy w przewodzie kominowym", "silne porywy wiatru powaliły drzewo na jezdnię".
-Zwróć TYLKO treść powiadomienia po polsku, bez żadnych cudzysłowów i dodatkowego formatowania, maksymalnie 12 słów.`;
+        const aiPrompt = `Wygeneruj krótką, w 100% realistyczną treść zgłoszenia od świadka dla operatora numeru 112 w Polsce. Typ zgłoszenia: ${chosenType === 'P' ? 'Pożar' : 'Zagrożenie miejscowe'}, miejscowość: ${randomTown}.
+Tekst MUSI brzmieć dokładnie tak, jak mówi zwykły człowiek w panice lub zdenerwowaniu zgłaszający zdarzenie przez telefon, np. "Dzień dobry, pali się sadza w kominie, iskry lecą na dach!", "Czuję w domu dziwny zapach gazu i słyszę syczenie", "Ktoś wjechał autem w ogrodzenie, kierowca jest w środku", "Widzę gęsty czarny dym za stodołą sąsiada", "Drzewo zablokowało całą jezdnię, nie ma przejazdu".
+Zwróć TYLKO treść powiadomienia po polsku, bez żadnych cudzysłowów, bez kropek na końcu, maksymalnie 10 słów.`;
 
-        generatedDesc = await callUniversalAI("Jesteś systemem WCPR, generujesz realistyczne opisy zgłoszeń dla SKKP.", aiPrompt, false);
+        generatedDesc = await callUniversalAI("Jesteś operatorem CPR, piszesz notatki ze zgłoszeń od obywateli.", aiPrompt, false);
         generatedDesc = generatedDesc.replace(/^["']|["']$/g, '').trim();
     } catch (e) {}
 
-    // W PEŁNI PROCEDURALNY GENERATOR ZAPASOWY (BEZ SZTYWNYCH LIST)
+    // W PEŁNI PROCEDURALNY GENERATOR ZAPASOWY (NATURALNY JĘZYK)
     if (!generatedDesc) {
-        const actionsP = ["Silny pożar", "Zadymienie", "Zarzewie ognia", "Ogień objął", "Płonie"];
-        const objectsP = ["śmietnik komunalny", "pomieszczenie gospodarcze", "poddasze budynku", "trawę i nieużytki", "składowisko śmieci", "wiata garażowa", "sadza w kominie"];
-        const detailsP = ["w pobliżu budynków", "zagrożenie dla sąsiednich obiektów", "duże zadymienie", "brak osób poszkodowanych"];
-
-        const actionsMZ = ["Zderzenie", "Kolizja", "Drzewo zablokowało", "Podejrzenie wycieku", "Silne podrywy wiatru uszkodziły", "Awaria techniczna w"];
-        const objectsMZ = ["samochodu osobowego z drzewem", "dwóch aut na skrzyżowaniu", "główną drogę gminną", "instalacji gazowej w kuchni", "dach budynku mieszkalnego", "ciągnika rolniczego"];
-        const detailsMZ = ["osoba uskarża się na ból", "wyciek płynów eksploatacyjnych", "zerwana linia energetyczna", "zablokowany jeden pas ruchu"];
-
-        const randChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-        if (chosenType === 'P') {
-            generatedDesc = `${randChoice(actionsP)} ${randChoice(objectsP)}, ${randChoice(detailsP)}`;
-        } else {
-            generatedDesc = `${randChoice(actionsMZ)} ${randChoice(objectsMZ)}, ${randChoice(detailsMZ)}`;
-        }
+        const phrasesP = [
+            "Pali się sadza w kominie, z komina lecą iskry",
+            "Mieszkaniec zgłasza gęsty czarny dym z budynku gospodarczego",
+            "Widzę płomienie wydostające się przez dach pustostanu",
+            "Właściciel zgłasza pożar trawy i suchego ścierniska blisko lasu"
+        ];
+        const phrasesMZ = [
+            "Samochód uderzył w przydrożne drzewo, kierowca zakleszczony",
+            "Silny wiatr zerwał połowę dachu z budynku mieszkalnego",
+            "Podejrzenie silnego wycieku gazu z instalacji w piwnicy",
+            "Duże drzewo całkowicie zablokowało pas ruchu na drodze"
+        ];
+        const arr = chosenType === 'P' ? phrasesP : phrasesMZ;
+        generatedDesc = arr[Math.floor(Math.random() * arr.length)];
     }
 
     const finalCaller = "Jan Kowalski (tel. 601-234-567)";
