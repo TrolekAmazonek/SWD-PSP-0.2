@@ -33,7 +33,7 @@ function playOspAlarmRepeated(ospCount) {
 const _k = {
     g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
     m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
-    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdxVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzQmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ8b1FkUUM5SFhuQlZsOWxxM2pxalBmbUE="
+    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdqVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzQmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ8b1FkUUM5SFhuQlZsOWxxM2pxalBmbUE="
 };
 
 function decodeKey(b64) {
@@ -269,7 +269,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// --- OBLICZANIE ODLEGŁOŚCI I CZASU DOJAZDU (1 KM = OK. 30 SEKUND +/-) ---
+// --- OBLICZANIE ODLEGŁOŚCI I CZASU DOJAZDU ---
 function getUnitProximity(unitName, city) {
     const unitLoc = unitExactLocations[unitName] || unitExactLocations["JRG 1 Wejherowo"];
     const targetTown = Object.keys(gpsCoords).find(
@@ -286,10 +286,11 @@ function getUnitProximity(unitName, city) {
         kmRounded = Math.max(1.5, Math.round(roadDist * 10) / 10);
     }
 
-    const secCalc = Math.max(30, Math.round(kmRounded * 30));
+    const secCalc = Math.max(5, Math.round(kmRounded * 4));
     return { sec: secCalc, kmNum: kmRounded, km: `${kmRounded.toFixed(1)} km` };
 }
 
+// --- PODMIENIONE FUNKCJE CZASU WYJAZDU I DOJAZDU ---
 function generateDeparturePrepSeconds(unitName) {
     const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP");
     if (isPSP) {
@@ -2408,7 +2409,7 @@ function openDispatchModal() {
         const isClosest = index === 0 && targetCity !== "";
         const exactAddr = unitExactLocations[u.name]?.address || "";
         const isPSP = u.name.includes("JRG") || u.name.includes("KP PSP");
-        const prepRange = isPSP ? "Wyjazd: 30-90s" : "Wyjazd: 60-180s";
+        const prepRange = isPSP ? "Wyjazd: 1-5s" : "Wyjazd: 1-10s";
         const groupDiv = document.createElement('div');
         groupDiv.className = 'dispatch-unit-group';
 
