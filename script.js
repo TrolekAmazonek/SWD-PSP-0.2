@@ -1,3 +1,6 @@
+// --- STAŁA WERSJI APLIKACJI SWDST ---
+const APP_VERSION = "SWDST 0.2";
+
 // --- MODUŁ AUDIO ---
 const audioSelekt = new Audio('selekt.wav');
 const audioCpr = new Audio('nowe zdarzenie odbierz.mp3');
@@ -1051,9 +1054,27 @@ function makeDraggable(elmnt, header) {
     }
 }
 
+// --- WSTRZYKIWANIE WERSJI SWDST DO PASKA STATUSU ---
+function ensureVersionBadgeInStatusBar() {
+    let badge = document.getElementById('swdst-version-badge');
+    if (!badge) {
+        const clockBox = document.getElementById('clock-box');
+        if (clockBox && clockBox.parentElement) {
+            badge = document.createElement('div');
+            badge.id = 'swdst-version-badge';
+            badge.style.cssText = 'display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #000; background: #ece9d8; border: 1px solid #7f9db9; margin-left: 4px; vertical-align: middle; cursor: default;';
+            badge.innerText = APP_VERSION;
+            clockBox.parentElement.insertBefore(badge, clockBox);
+        }
+    } else {
+        badge.innerText = APP_VERSION;
+    }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     geocodeAllFireStationsExact();
     ensureMainRadioWindow();
+    ensureVersionBadgeInStatusBar();
 
     document.querySelectorAll('.top-menu .menu-item').forEach(item => {
         const txt = item.innerText.trim().toLowerCase();
@@ -2647,6 +2668,7 @@ setInterval(() => {
     }
     
     renderSelectedEventDetails();
+    ensureVersionBadgeInStatusBar();
 
     const clockEl = document.getElementById('clock-box');
     if (clockEl) {
