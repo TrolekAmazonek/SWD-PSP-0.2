@@ -1,5 +1,5 @@
 // --- STAŁA WERSJI APLIKACJI SWDST ---
-const APP_VERSION = "SWDST 0.22";
+const APP_VERSION = "SWDST 0.23";
 
 // --- MODUŁ AUDIO ---
 const audioSelekt = new Audio('selekt.wav');
