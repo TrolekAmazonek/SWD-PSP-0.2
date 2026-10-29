@@ -36,7 +36,7 @@ function playOspAlarmRepeated(ospCount) {
 const _k = {
     g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
     m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
-    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdqVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzQmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ="
+    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdqVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzMmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ="
 };
 
 function decodeKey(b64) {
@@ -1964,11 +1964,23 @@ Zwróć TYLKO treść powiadomienia po polsku, bez żadnych cudzysłowów i doda
         generatedDesc = generatedDesc.replace(/^["']|["']$/g, '').trim();
     } catch (e) {}
 
+    // W PEŁNI PROCEDURALNY GENERATOR ZAPASOWY (BEZ SZTYWNYCH LIST)
     if (!generatedDesc) {
-        const fallbackList = chosenType === 'P' ? 
-            ["Zgłaszający widzi silne zadymienie nad lasem", "Pożar sadzy w przewodzie kominowym w budynku", "Pali się trawa oraz nieużytki rolne"] : 
-            ["Kierowca samochodu osobowego uderzył w drzewo, osoba zakleszczona", "Podejrzenie wycieku gazu w budynku mieszkalnym", "Silny wiatr powalił drzewo na drogę"];
-        generatedDesc = fallbackList[Math.floor(Math.random() * fallbackList.length)];
+        const actionsP = ["Silny pożar", "Zadymienie", "Zarzewie ognia", "Ogień objął", "Płonie"];
+        const objectsP = ["śmietnik komunalny", "pomieszczenie gospodarcze", "poddasze budynku", "trawę i nieużytki", "składowisko śmieci", "wiata garażowa", "sadza w kominie"];
+        const detailsP = ["w pobliżu budynków", "zagrożenie dla sąsiednich obiektów", "duże zadymienie", "brak osób poszkodowanych"];
+
+        const actionsMZ = ["Zderzenie", "Kolizja", "Drzewo zablokowało", "Podejrzenie wycieku", "Silne podrywy wiatru uszkodziły", "Awaria techniczna w"];
+        const objectsMZ = ["samochodu osobowego z drzewem", "dwóch aut na skrzyżowaniu", "główną drogę gminną", "instalacji gazowej w kuchni", "dach budynku mieszkalnego", "ciągnika rolniczego"];
+        const detailsMZ = ["osoba uskarża się na ból", "wyciek płynów eksploatacyjnych", "zerwana linia energetyczna", "zablokowany jeden pas ruchu"];
+
+        const randChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+        if (chosenType === 'P') {
+            generatedDesc = `${randChoice(actionsP)} ${randChoice(objectsP)}, ${randChoice(detailsP)}`;
+        } else {
+            generatedDesc = `${randChoice(actionsMZ)} ${randChoice(objectsMZ)}, ${randChoice(detailsMZ)}`;
+        }
     }
 
     const finalCaller = "Jan Kowalski (tel. 601-234-567)";
