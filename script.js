@@ -46,9 +46,8 @@ function decodeKey(b64) {
 // --- BEZPIECZNY I NAPRAWIONY SILNIK AI ---
 async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-sekundowy czas na generowanie
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    // 1. Najpierw stabilny i szybki publiczny endpoint Pollinations OpenAI (brak rygorystycznych limitów API)
     try {
         const response = await fetch('https://text.pollinations.ai/openai', {
             method: 'POST',
@@ -73,7 +72,6 @@ async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
         }
     } catch (err) {}
 
-    // 2. Awaryjnie Groq Llama 3.1
     try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
@@ -314,7 +312,7 @@ function calculateRouteTravelSeconds(unitName, city) {
 }
 
 function calculateActionDurationSeconds(desc, subtype, type) {
-    if (type === 'PZR') return 600;
+    if (type === 'PZR') return -1; // PZR trwa bez limitu aż do odwołania lub wysłania na akcję
     const text = ((desc || "") + " " + (subtype || "")).toLowerCase();
     const isBigOrSearch =
         text.includes("poszukiwan") ||
@@ -715,6 +713,59 @@ let shiftStats = {
     refusalReasons: {}
 };
 
+// --- WSTRZYKIWANIE STYLÓW DLA STATUSU PZR (KOLOR ŻÓŁTY) ---
+function injectPzrStyles() {
+    if (document.getElementById('swd-pzr-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'swd-pzr-styles';
+    style.innerHTML = `
+        .status-dot.yellow {
+            background-color: #f1c40f !important;
+            box-shadow: 0 0 4px #d4ac0d;
+        }
+        .vehicle-row.pzr-active {
+            background-color: #fff8c4 !important;
+            border-left: 3px solid #f1c40f !important;
+        }
+        .unit-box.unit-on-pzr {
+            border: 1.5px solid #d4ac0d !important;
+            background-color: #fffdf0 !important;
+        }
+        .unit-header.header-on-pzr {
+            background-color: #ffe875 !important;
+            color: #000000 !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Sprawdza, czy dany pojazd jest aktualnie przypisany do aktywnego zabezpieczenia rejonu (PZR)
+function getActivePzrForVehicle(vehId) {
+    let foundPzrEv = null;
+    events.forEach(ev => {
+        if (ev.status === 'ACTIVE' && ev.type === 'PZR') {
+            if (ev.vehicles && ev.vehicles.some(v => v.id === vehId)) {
+                foundPzrEv = ev;
+            }
+        }
+    });
+    return foundPzrEv;
+}
+
+// Sprawdza, czy dany pojazd bierze udział w innej (bojowej, nie-PZR) aktywnej akcji lub wraca z niej
+function isVehicleInCombatAction(vehId) {
+    return events.some(ev => {
+        if (ev.type === 'PZR') return false;
+        if (ev.status === 'ACTIVE') {
+            return ev.vehicles.some(v => v.id === vehId && v.phase !== 'DONE');
+        }
+        if (ev.status === 'FINISHED') {
+            return ev.vehicles.some(v => v.id === vehId && v.phase === 'RETURN' && v.returnTime > 0);
+        }
+        return false;
+    });
+}
+
 // --- GŁÓWNE RADIO OGÓLNOPOWIATOWE SKKP WEJHEROWO 998 ---
 function ensureMainRadioWindow() {
     if (mainRadioModalEl) return mainRadioModalEl;
@@ -983,11 +1034,13 @@ function updateMapMarkers() {
         };
 
         const isPSP = u.name.includes("JRG") || u.name.includes("KP PSP");
-        const borderColor = isPSP ? "#b30000" : "#0a246a";
-        const bgBadge = isPSP ? "#ffe6e6" : "#ffffff";
+        const hasPzrVeh = u.vehicles.some(v => v.status === 'yellow');
+        const borderColor = hasPzrVeh ? "#d4ac0d" : (isPSP ? "#b30000" : "#0a246a");
+        const bgBadge = hasPzrVeh ? "#ffe875" : (isPSP ? "#ffe6e6" : "#ffffff");
         const vehListHtml = u.vehicles.map(v => {
-            const color = v.status === 'green' ? '#1e8449' : (v.status === 'orange' ? '#d68910' : '#c0392b');
-            return `<div style="font-size:11px; color:#000;"><span style="color:${color}; font-weight:bold;">●</span> <b>${v.id}</b> - ${v.name}</div>`;
+            const color = v.status === 'green' ? '#1e8449' : (v.status === 'yellow' ? '#d4ac0d' : (v.status === 'orange' ? '#d68910' : '#c0392b'));
+            const pzrTag = v.status === 'yellow' ? ' <b style="color:#b38600;">[PZR]</b>' : '';
+            return `<div style="font-size:11px; color:#000;"><span style="color:${color}; font-weight:bold;">●</span> <b>${v.id}</b> - ${v.name}${pzrTag}</div>`;
         }).join('');
 
         const marker = L.marker([loc.lat, loc.lng], {
@@ -1014,10 +1067,15 @@ function updateMapMarkers() {
         const evLat = ev.lat || fallback[0];
         const evLng = ev.lng || fallback[1];
 
+        const isPZR = ev.type === 'PZR';
+        const bgEv = isPZR ? '#fff3a1' : '#ffcccc';
+        const borderEv = isPZR ? '#d4ac0d' : '#b30000';
+        const iconEv = isPZR ? '🛡️ [PZR]' : `🚨 [ID:${ev.id}]`;
+
         const marker = L.marker([evLat, evLng], {
             icon: L.divIcon({
                 className: '',
-                html: `<div style="transform:translate(-50%, -50%); background:#ffcccc; color:#000000; border:2.5px solid #b30000; border-radius:4px; padding:2px 7px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 0 8px rgba(179,0,0,0.8); cursor:pointer;">🚨 [ID:${ev.id}] ${ev.city}, ${ev.street || ''}</div>`,
+                html: `<div style="transform:translate(-50%, -50%); background:${bgEv}; color:#000000; border:2.5px solid ${borderEv}; border-radius:4px; padding:2px 7px; font-size:11px; font-weight:bold; white-space:nowrap; box-shadow:0 0 8px rgba(0,0,0,0.5); cursor:pointer;">${iconEv} ${ev.city}${ev.street ? ', ' + ev.street : ''}</div>`,
                 iconSize: [0, 0],
                 iconAnchor: [0, 0]
             })
@@ -1026,16 +1084,16 @@ function updateMapMarkers() {
         const sisList = ev.vehicles.map(v => {
             if (v.phase === 'PREP') return `${v.id} (Wyjazd z bazy za: ${v.prepTime}s)`;
             if (v.phase === 'TRAVEL') return `${v.id} (Dojazd: ${formatMMSS(v.travelTime)})`;
-            if (v.phase === 'ONSITE') return `${v.id} (Na miejscu akcji)`;
+            if (v.phase === 'ONSITE') return `${v.id} (${isPZR ? 'Zabezpieczenie rejonu' : 'Na miejscu akcji'})`;
             if (v.phase === 'RETURN') return `${v.id} (Powrót: ${formatMMSS(v.returnTime)})`;
             return `${v.id}`;
         }).join('<br>');
 
         marker.bindPopup(`
             <div style="min-width:230px; color:#000;">
-                <b style="color:#b30000;">ZDARZENIE ID: ${ev.id}/2026 (${ev.type})</b><br>
-                <b>Dokładny adres:</b> ${ev.city}, ${ev.street || 'Brak ulicy'}<br>
-                <b>Opis:</b> ${ev.desc}<br>
+                <b style="color:${borderEv};">ZDARZENIE ID: ${ev.id}/2026 (${ev.type})</b><br>
+                <b>Dokładny adres:</b> ${ev.city}, ${ev.street || 'Rejon operacyjny'}<br>
+                <b>Opis:</b> ${ev.desc || 'Zabezpieczenie operacyjne rejonu'}<br>
                 <b>Zadysponowane SiS (${ev.vehicles.length}):</b><br>${sisList || 'Brak'}<br>
                 <div style="margin-top:6px; display:flex; gap:4px;">
                     <button class="btn-win" onclick="openEditEventModal(${ev.id})">Edytuj kartę</button>
@@ -1123,7 +1181,6 @@ function ensureVersionBadgeInStatusBar() {
     }
 }
 
-// Upewnienie się, że pole wyboru podrodzaju istnieje w karcie zdarzenia i radio buttony aktualizują listę
 function ensureSubtypeDOMIntegration() {
     const radios = document.querySelectorAll('input[name="ev-type"]');
     radios.forEach(r => {
@@ -1145,6 +1202,7 @@ function ensureSubtypeDOMIntegration() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+    injectPzrStyles();
     geocodeAllFireStationsExact();
     ensureMainRadioWindow();
     ensureVersionBadgeInStatusBar();
@@ -1264,10 +1322,10 @@ function renderSiSManagerList() {
     [...unitsPSP, ...unitsOSP].forEach(u => {
         const addr = unitExactLocations[u.name]?.address || "Wejherowo";
         u.vehicles.forEach(v => {
-            const stText = v.status === 'green' ? 'W bazie' : (v.status === 'orange' ? 'W drodze / Powrót' : 'W akcji na miejscu');
-            const stColor = v.status === 'green' ? '#155724' : (v.status === 'orange' ? '#b36b00' : '#b30000');
+            const stText = v.status === 'green' ? 'W bazie' : (v.status === 'yellow' ? 'Zabezpieczenie rejonu (PZR)' : (v.status === 'orange' ? 'W drodze / Powrót' : 'W akcji na miejscu'));
+            const stColor = v.status === 'green' ? '#155724' : (v.status === 'yellow' ? '#b38600' : (v.status === 'orange' ? '#b36b00' : '#b30000'));
             html += `
-                <tr>
+                <tr style="${v.status === 'yellow' ? 'background:#fff8c4;' : ''}">
                     <td><b>${u.name}</b></td>
                     <td style="font-size:10px; color:#333;">${addr}</td>
                     <td><b>${v.id}</b></td>
@@ -1275,6 +1333,7 @@ function renderSiSManagerList() {
                     <td style="color:${stColor}; font-weight:bold;">${stText}</td>
                     <td>
                         <button class="btn-win" style="font-size:10px; padding:1px 5px;" onclick="setVehicleStatusManual('${v.id}', 'green')">Wolny</button>
+                        <button class="btn-win" style="font-size:10px; padding:1px 5px; background:#fff3a1;" onclick="setVehicleStatusManual('${v.id}', 'yellow')">PZR</button>
                         <button class="btn-win" style="font-size:10px; padding:1px 5px;" onclick="setVehicleStatusManual('${v.id}', 'red')">W akcji</button>
                     </td>
                 </tr>
@@ -1885,6 +1944,8 @@ function getCommandRank(vehicle) {
 
 async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
+    if (ev.type === 'PZR') return; // Przy PZR meldunek idzie na Główne Radio bez otwierania okna rozpoznania pożarowego
+
     createRadioWindow(ev.id);
 
     const newRank = getCommandRank(vehicle);
@@ -2003,6 +2064,63 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
+// --- ROZBUDOWANA BAZA IMION I NAZWISK ZGŁASZAJĄCYCH ---
+const callersMaleFirst = [
+    "Jan", "Piotr", "Tomasz", "Michał", "Krzysztof", "Andrzej", "Paweł", "Marek", "Adam", "Łukasz",
+    "Marcin", "Jakub", "Mateusz", "Wojciech", "kpt. w st. spocz. Henryk", "Dawid", "Szymon", "Kamil", "Robert", "Rafał",
+    "Jacek", "Grzegorz", "Dariusz", "Mariusz", "Zbigniew", "Sławomir", "Jarosław", "Mirosław", "Ryszard", "Tadeusz",
+    "Artur", "Sebastian", "Patryk", "Damian", "Przemysław", "Maciej", "Bartosz", "Dominik", "Karol", "Filip",
+    "Hubert", "Kacper", "Mikołaj", "Błażej", "Cezary", "Leszek", "Waldemar", "Roman", "Kazimierz", "Wiesław"
+];
+
+const callersMaleLast = [
+    "Kowalski", "Nowak", "Wiśniewski", "Wójcik", "Kowalczyk", "Kamiński", "Lewandowski", "Zieliński", "Szymański", "Woźniak",
+    "Dąbrowski", "Kozłowski", "Jankowski", "Mazur", "Kwiatkowski", "Wojciechowski", "Krawczyk", "Kaczmarek", "Piotrowski", "Grabowski",
+    "Zając", "Pawłowski", "Michalski", "Król", "Wieczorek", "Jabłoński", "Wróbel", "Nowakowski", "Majewski", "Olszewski",
+    "Stępień", "Malinowski", "Jaworski", "Adamczyk", "Dudek", "Nowicki", "Pawlak", "Górski", "Witkowski", "Walczak",
+    "Sikora", "Baran", "Rutkowski", "Michalak", "Szewczyk", "Ostrowski", "Tomaszewski", "Pietrzak", "Zalewski", "Wróblewski",
+    "Kreft", "Formela", "Kwidziński", "Labuda", "Hirsz", "Damps", "Treder", "Gaffke", "Kunkel", "Rohde",
+    "Bistram", "Bojke", "Ceynowa", "Dettlaff", "Gruba", "Kohnke", "Liedtke", "Miotk", "nec", "Płotka", "Richert"
+];
+
+const callersFemaleFirst = [
+    "Anna", "Katarzyna", "Magdalena", "Agnieszka", "Małgorzata", "Krystyna", "Barbara", "Ewa", "Elżbieta", "Zofia",
+    "Teresa", "Joanna", "Monika", "Danuta", "Natalia", "Karolina", "Marta", "Beata", "Dorota", "Halina",
+    "Jadwiga", "Aleksandra", "Irena", "alicja", "Paulina", "Justyna", "Renata", "Bożena", "Urszula", "Weronika",
+    "Sylwia", "Agata", "Patrycja", "Izabela", "Aneta", "Emilia", "Ewelina", "Kinga", "Martyna", "Klaudia",
+    "Dominika", "Julia", "Zuzanna", "Maja", "Hanna", "Oliwia", "Wiktoria", "Kamila", "Edyta", "Marzena"
+];
+
+const callersFemaleLast = [
+    "Kowalska", "Nowak", "Wiśniewska", "Wójcik", "Kowalczyk", "Kamińska", "Lewandowska", "Zielińska", "Szymańska", "Woźniak",
+    "Dąbrowska", "Kozłowska", "Jankowska", "Mazur", "Kwiatkowska", "Wojciechowska", "Krawczyk", "Kaczmarek", "Piotrowska", "Grabowska",
+    "Zając", "Pawłowska", "Michalska", "Król", "Wieczorek", "Jabłońska", "Wróbel", "Nowakowska", "Majewska", "Olszewska",
+    "Stępień", "Malinowska", "Jaworska", "Adamczyk", "Dudek", "Nowicka", "Pawlak", "Górska", "Witkowska", "Walczak",
+    "Sikora", "Baran", "Rutkowska", "Michalak", "Szewczyk", "Ostrowska", "Tomaszewska", "Pietrzak", "Zalewska", "Wróblewska",
+    "Kreft", "Formela", "Kwidzińska", "Labuda", "Hirsz", "Damps", "Treder", "Gaffke", "Kunkel", "Rohde",
+    "Bistram", "Bojke", "Ceynowa", "Dettlaff", "Gruba", "Kohnke", "Liedtke", "Miotk", "Płotka", "Richert"
+];
+
+function generateRandomPolishCaller() {
+    const isFemale = Math.random() < 0.48;
+    let first = "";
+    let last = "";
+    if (isFemale) {
+        first = callersFemaleFirst[Math.floor(Math.random() * callersFemaleFirst.length)];
+        first = first.charAt(0).toUpperCase() + first.slice(1);
+        last = callersFemaleLast[Math.floor(Math.random() * callersFemaleLast.length)];
+    } else {
+        first = callersMaleFirst[Math.floor(Math.random() * callersMaleFirst.length)];
+        last = callersMaleLast[Math.floor(Math.random() * callersMaleLast.length)];
+    }
+    const prefixes = ["50", "51", "53", "57", "60", "66", "69", "72", "78", "79", "88"];
+    const pref = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const rest = Math.floor(Math.random() * 9000000 + 1000000);
+    const numStr = `${pref}${rest}`;
+    const formattedPhone = `${numStr.slice(0, 3)}-${numStr.slice(3, 6)}-${numStr.slice(6, 9)}`;
+    return `${first} ${last} (tel. ${formattedPhone})`;
+}
+
 // --- DYNAMICZNE GENEROWANIE ZGŁOSZEŃ Z CPR PRZEZ AI ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0;
@@ -2039,7 +2157,6 @@ Zwróć TYLKO treść powiadomienia po polsku, bez żadnych cudzysłowów, bez d
         generatedDesc = generatedDesc.replace(/^["']|["']$/g, '').trim();
     } catch (e) {}
 
-    // PROCEDURALNY GENERATOR ZAPASOWY (ponad 100 realistycznych formatek zgłoszeń)
     if (!generatedDesc) {
         const phrasesP = [
             "Pali się sadza w kominie, z komina lecą iskry na dach",
@@ -2152,11 +2269,7 @@ Zwróć TYLKO treść powiadomienia po polsku, bez żadnych cudzysłowów, bez d
         generatedDesc = arr[Math.floor(Math.random() * arr.length)];
     }
 
-    const callersFirst = ["Jan", "Anna", "Piotr", "Katarzyna", "Tomasz", "Magdalena", "Michał", "Agnieszka"];
-    const callersLast = ["Kowalski", "Nowak", "Wiśniewski", "Wójcik", "Kowalczyk", "Kamińska", "Lewandowski"];
-    const randomCallerName = callersFirst[Math.floor(Math.random() * callersFirst.length)] + " " + callersLast[Math.floor(Math.random() * callersLast.length)];
-    const randomPhone = "50" + Math.floor(Math.random() * 9000000 + 1000000);
-    const finalCaller = `${randomCallerName} (tel. ${randomPhone})`;
+    const finalCaller = generateRandomPolishCaller();
 
     currentCPRData = {
         id: newCprId,
@@ -2235,18 +2348,26 @@ function acceptCPRToEvent() {
     if (radioP) radioP.checked = true;
     updateSubtypes('P');
 
-    const callerParts = currentCPRData.caller.split(' ');
+    const rawCaller = currentCPRData.caller || "";
+    const namePart = rawCaller.split(' (tel.')[0] || "";
+    const phoneMatch = rawCaller.match(/tel\.\s*([0-9\-]+)/);
+    const callerParts = namePart.trim().split(' ');
+    const lastNameVal = callerParts.length > 1 ? callerParts.pop() : '';
+    const firstNameVal = callerParts.join(' ');
+
     const nameInp = document.getElementById('inp-caller-name');
     const surInp = document.getElementById('inp-caller-surname');
-    if(nameInp) nameInp.value = callerParts[0] || '';
-    if(surInp) surInp.value = callerParts[1] || '';
+    const phoneInp = document.getElementById('inp-caller-phone');
+    if(nameInp) nameInp.value = firstNameVal;
+    if(surInp) surInp.value = lastNameVal;
+    if(phoneInp && phoneMatch) phoneInp.value = phoneMatch[1];
 
     closeCPR(true);
     currentCPRData = null;
 }
 
 function formatMMSS(sec) {
-    if (sec < 0) return "Zabezpieczenie rejonu";
+    if (sec < 0) return "Zabezpieczenie rejonu (PZR)";
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m}:${s < 10 ? '0' : ''}${s} min`;
@@ -2270,17 +2391,26 @@ function renderUnits() {
 
 function createUnitHTML(unit) {
     const exactAddr = unitExactLocations[unit.name]?.address || "";
+    const unitHasPzr = unit.vehicles.some(v => v.status === 'yellow' || getActivePzrForVehicle(v.id) !== null);
+
     let vehiclesHTML = unit.vehicles.length === 0 ? `<div style="padding: 4px; color: #888; font-style: italic;">Brak pojazdów</div>` :
-        unit.vehicles.map(v => `
-            <div class="vehicle-row">
-                <span class="status-dot ${v.status}"></span>
-                <span style="color:#000000;"><b>${v.id}</b> - ${v.name}</span>
-            </div>
-        `).join('');
+        unit.vehicles.map(v => {
+            const pzrEv = getActivePzrForVehicle(v.id);
+            const isYellowRow = v.status === 'yellow' || pzrEv !== null;
+            const pzrBadge = pzrEv ? ` <span style="background:#f1c40f; color:#000; padding:0 4px; border-radius:2px; font-weight:bold; font-size:9px;">PZR (${pzrEv.city})</span>` : '';
+            return `
+                <div class="vehicle-row ${isYellowRow ? 'pzr-active' : ''}">
+                    <span class="status-dot ${v.status}"></span>
+                    <span style="color:#000000;"><b>${v.id}</b> - ${v.name}${pzrBadge}</span>
+                </div>
+            `;
+        }).join('');
 
     return `
-        <div class="unit-box">
-            <div class="unit-header" style="color:#000000; font-weight:bold;" title="Adres: ${exactAddr}">${unit.name}</div>
+        <div class="unit-box ${unitHasPzr ? 'unit-on-pzr' : ''}">
+            <div class="unit-header ${unitHasPzr ? 'header-on-pzr' : ''}" style="color:#000000; font-weight:bold;" title="Adres: ${exactAddr}">
+                ${unit.name} ${unitHasPzr ? '🛡️ [PZR]' : ''}
+            </div>
             <div>${vehiclesHTML}</div>
         </div>
     `;
@@ -2294,13 +2424,18 @@ function renderEvents() {
     events.forEach(ev => {
         const tr = document.createElement('tr');
         tr.className = (ev.status === 'ACTIVE' ? 'active-ev' : 'finished-ev') + (selectedEvIdForRadio === ev.id ? ' selected-ev' : '');
+        if (ev.status === 'ACTIVE' && ev.type === 'PZR' && selectedEvIdForRadio !== ev.id) {
+            tr.style.color = '#ffff00';
+        }
         tr.ondblclick = () => openEditEventModal(ev.id);
         tr.onclick = () => selectEvent(ev.id);
 
         let timeDisplay = "";
         if (ev.status === 'FINISHED') {
             const anyReturning = ev.vehicles.some(v => v.phase === 'RETURN' && v.returnTime > 0);
-            timeDisplay = anyReturning ? "Powrót SiS do bazy..." : "0:00 min (Zakończono)";
+            timeDisplay = anyReturning ? "Powrót SiS..." : "0:00 min (Zakończono)";
+        } else if (ev.type === 'PZR') {
+            timeDisplay = !ev.firstArrived ? "Dojazd na PZR..." : "Zabezpieczenie rejonu (Aktywne)";
         } else if (!ev.firstArrived) {
             timeDisplay = `W drodze na miejsce... (Czas akcji: ${formatMMSS(ev.remainingSeconds)})`;
         } else {
@@ -2308,18 +2443,19 @@ function renderEvents() {
         }
 
         const fullPlace = ev.street ? `${ev.city}, ${ev.street}` : ev.city;
+        const rowColorStyle = (ev.status === 'ACTIVE' && ev.type === 'PZR' && selectedEvIdForRadio !== ev.id) ? 'style="color:#ffd700;"' : '';
 
         tr.innerHTML = `
-            <td>${ev.id}/???/2026</td>
-            <td>${ev.time}</td>
-            <td>${ev.jrg}</td>
-            <td>${ev.jrg}</td>
-            <td title="Kliknij pinezkę, aby przybliżyć adres na mapie">${fullPlace} <span style="cursor:pointer;" onclick="event.stopPropagation(); focusEventOnMap(${ev.id});" title="Pokaż dokładny adres na mapie">📍</span></td>
-            <td>${ev.vehicles.length}</td>
-            <td>${ev.type}</td>
-            <td>${ev.desc}</td>
-            <td><b>${timeDisplay}</b></td>
-            <td>???-0000${ev.id}</td>
+            <td ${rowColorStyle}>${ev.id}/???/2026</td>
+            <td ${rowColorStyle}>${ev.time}</td>
+            <td ${rowColorStyle}>${ev.jrg}</td>
+            <td ${rowColorStyle}>${ev.jrg}</td>
+            <td ${rowColorStyle} title="Kliknij pinezkę, aby przybliżyć adres na mapie">${fullPlace} <span style="cursor:pointer;" onclick="event.stopPropagation(); focusEventOnMap(${ev.id});" title="Pokaż dokładny adres na mapie">📍</span></td>
+            <td ${rowColorStyle}>${ev.vehicles.length}</td>
+            <td ${rowColorStyle}>${ev.type}</td>
+            <td ${rowColorStyle}>${ev.desc || (ev.type === 'PZR' ? 'Przekazanie na zabezpieczenie rejonu' : '')}</td>
+            <td ${rowColorStyle}><b>${timeDisplay}</b></td>
+            <td ${rowColorStyle}>???-0000${ev.id}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -2346,15 +2482,26 @@ function renderSelectedEventDetails() {
         } else if (v.phase === 'TRAVEL') {
             statusText = `<span style="color: #b36b00; font-weight: bold;">W drodze (${formatMMSS(v.travelTime)})</span>`;
         } else if (v.phase === 'ONSITE') {
-            statusText = `<span style="color: #b30000; font-weight: bold;">Na miejscu działań</span>`;
+            if (ev.type === 'PZR') {
+                statusText = `<span style="color: #b38600; background:#fff8c4; padding:1px 4px; font-weight: bold;">Na zabezpieczeniu rejonu (PZR)</span>`;
+            } else {
+                statusText = `<span style="color: #b30000; font-weight: bold;">Na miejscu działań</span>`;
+            }
         } else if (v.phase === 'RETURN') {
-            statusText = `<span style="color: #004080; font-weight: bold;">Powrót do bazy (${formatMMSS(v.returnTime)})</span>`;
+            const pzrEv = getActivePzrForVehicle(v.id);
+            const destLabel = (pzrEv && ev.type !== 'PZR') ? `Powrót na PZR ${pzrEv.city}` : `Powrót do bazy`;
+            statusText = `<span style="color: #004080; font-weight: bold;">${destLabel} (${formatMMSS(v.returnTime)})</span>`;
         } else {
-            statusText = `<span style="color: #155724; font-weight: bold;">W bazie (Wolny)</span>`;
+            const pzrEv = getActivePzrForVehicle(v.id);
+            if (pzrEv) {
+                statusText = `<span style="color: #b38600; background:#fff8c4; padding:1px 4px; font-weight: bold;">Na PZR (${pzrEv.city})</span>`;
+            } else {
+                statusText = `<span style="color: #155724; font-weight: bold;">W bazie (Wolny)</span>`;
+            }
         }
                 
         return `
-            <tr style="color:#000000;">
+            <tr style="color:#000000; ${ev.type === 'PZR' ? 'background:#fffdf0;' : ''}">
                 <td><b>${v.id}</b> - ${v.name}</td>
                 <td>${v.obsada}</td>
                 <td>${v.unitName}</td>
@@ -2524,7 +2671,7 @@ function openDispatchModal() {
     container.innerHTML = '';
 
     if(infoBar) {
-        infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span> (1 km ≈ 30s jazdy)` : `⚠️ Brak miejscowości`;
+        infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span>` : `⚠️ Brak miejscowości`;
     }
 
     const availableUnits = [...unitsPSP, ...unitsOSP]
@@ -2545,13 +2692,18 @@ function openDispatchModal() {
                 <span>${index + 1}. ${u.name} <small style="font-weight:normal; color:#333;">(${exactAddr})</small> ${isClosest ? '⭐' : ''}</span>
                 <span>${u.km} | Jazda: ~${formatMMSS(u.sec)} (${prepRange})</span>
             </div>
-            ${u.vehicles.map(v => `
-                <label class="dispatch-vehicle-item" style="cursor:pointer; color:#000000;">
-                    <input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}>
-                    <span class="status-dot ${v.status}"></span>
-                    <span><b>${v.id}</b> - ${v.name}</span>
-                </label>
-            `).join('')}
+            ${u.vehicles.map(v => {
+                const pzrEv = getActivePzrForVehicle(v.id);
+                const pzrLabel = pzrEv ? `<span style="margin-left:auto; background:#f1c40f; color:#000; padding:1px 5px; border-radius:2px; font-weight:bold; font-size:10px;">🛡️ PZR (${pzrEv.city})</span>` : '';
+                return `
+                    <label class="dispatch-vehicle-item" style="cursor:pointer; color:#000000; ${pzrEv ? 'background:#fff8c4;' : ''}">
+                        <input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}>
+                        <span class="status-dot ${v.status}"></span>
+                        <span><b>${v.id}</b> - ${v.name}</span>
+                        ${pzrLabel}
+                    </label>
+                `;
+            }).join('')}
         `;
         container.appendChild(groupDiv);
     });
@@ -2573,7 +2725,9 @@ function confirmDispatch() {
             [...unitsPSP, ...unitsOSP].forEach(u => {
                 const v = u.vehicles.find(veh => veh.id === cb.value);
                 if (v) {
-                    const prepSec = generateDeparturePrepSeconds(u.name);
+                    const pzrEv = getActivePzrForVehicle(v.id);
+                    // Jeśli zastęp jest już na zabezpieczeniu rejonu (PZR), wyjeżdża natychmiast jak JRG (1-5s) z miasta PZR
+                    const prepSec = pzrEv ? (Math.floor(Math.random() * 5) + 1) : generateDeparturePrepSeconds(u.name);
                     const routeSec = calculateRouteTravelSeconds(u.name, targetCity);
                     newSelection.push({
                         ...v,
@@ -2608,6 +2762,9 @@ function saveEvent() {
     const descInput = document.getElementById('inp-ev-desc');
     let descVal = descInput ? descInput.value : '';
     descVal = descVal.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
+    if (typeVal === 'PZR' && !descVal) {
+        descVal = `Przekazanie na zabezpieczenie rejonu operacyjnego (${city})`;
+    }
 
     const streetInput = document.getElementById('inp-ev-street');
     const streetVal = streetInput ? streetInput.value.trim() : '';
@@ -2680,7 +2837,14 @@ function saveEvent() {
     selectedVehicles.forEach(sv => {
         [...unitsPSP, ...unitsOSP].forEach(u => {
             const v = u.vehicles.find(veh => veh.id === sv.id);
-            if (v && v.status === 'green') v.status = 'orange';
+            if (v) {
+                if (typeVal === 'PZR') {
+                    // Jednostki na PZR od razu podświetlane na żółto
+                    v.status = 'yellow';
+                } else if (v.status === 'green' || v.status === 'yellow') {
+                    v.status = 'orange';
+                }
+            }
         });
     });
 
@@ -2699,6 +2863,8 @@ function triggerEventFinishAndReturn(ev) {
     ev.remainingSeconds = 0;
 
     ev.vehicles.forEach(sv => {
+        const activePzr = (ev.type !== 'PZR') ? getActivePzrForVehicle(sv.id) : null;
+
         if (sv.phase === 'ONSITE' || sv.phase === 'TRAVEL') {
             sv.phase = 'RETURN';
             sv.returnTime = sv.baseRouteSeconds || calculateRouteTravelSeconds(sv.unitName, ev.city);
@@ -2709,22 +2875,33 @@ function triggerEventFinishAndReturn(ev) {
                 if (veh) veh.status = 'orange';
             });
 
-            logToMainRadio(
-                `${sv.id} ➔ Wejherowo 998`,
-                `Wejherowo 998, tu ${sv.id}. Zakończyliśmy działania w miejscowości ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}, wracamy do koszar (czas powrotu ok. ${approxMin} min). Bez odbioru.`,
-                '#ffcc00',
-                true
-            );
+            if (activePzr) {
+                logToMainRadio(
+                    `${sv.id} ➔ Wejherowo 998`,
+                    `Wejherowo 998, tu ${sv.id}. Zakończyliśmy działania w miejscowości ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}, wracamy z powrotem na zabezpieczenie rejonu (${activePzr.city}). Bez odbioru.`,
+                    '#ffd700',
+                    true
+                );
+            } else {
+                logToMainRadio(
+                    `${sv.id} ➔ Wejherowo 998`,
+                    `Wejherowo 998, tu ${sv.id}. Zakończyliśmy działania w miejscowości ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}, wracamy do koszar (czas powrotu ok. ${approxMin} min). Bez odbioru.`,
+                    '#ffcc00',
+                    true
+                );
+            }
         } else if (sv.phase === 'PREP') {
             sv.phase = 'DONE';
             sv.returnTime = 0;
             [...unitsPSP, ...unitsOSP].forEach(u => {
                 const veh = u.vehicles.find(vObj => vObj.id === sv.id);
-                if (veh) veh.status = 'green';
+                if (veh) {
+                    veh.status = activePzr ? 'yellow' : 'green';
+                }
             });
             logToMainRadio(
                 `Wejherowo 998 ➔ ${sv.id}`,
-                `${sv.id}, odwołuję alarm dla waszego zastępu, pozostańcie w koszarach.`,
+                `${sv.id}, odwołuję alarm dla waszego zastępu, ${activePzr ? 'pozostańcie na zabezpieczeniu rejonu' : 'pozostańcie w koszarach'}.`,
                 '#00ffff',
                 false
             );
@@ -2768,6 +2945,26 @@ function closeModal(id) {
     if(modal) modal.style.display = 'none'; 
 }
 
+// --- GENERATOR KOMUNIKATU WYJAZDU NA GŁÓWNYM RADIU (10% SZANS NA ADRES + 4 PROSTE WARIANTY) ---
+function buildDepartureRadioMessage(vehicle, ev) {
+    if (ev.type === 'PZR') {
+        return `${vehicle.id} zgłaszam wyjazd na zabezpieczenie rejonu (${ev.city}), odbiór.`;
+    }
+    // 10% prawdopodobieństwa na podanie konkretnego adresu docelowego
+    if (Math.random() < 0.10) {
+        const fullAddr = ev.street ? `${ev.city}, ${ev.street}` : ev.city;
+        return `${vehicle.id} zgłaszam wyjazd do zdarzenia na adres: ${fullAddr}, odbiór.`;
+    }
+    // Pozostałe 90% - 4 proste warianty informowania o wyjeździe
+    const simpleVariants = [
+        `${vehicle.id} zgłaszam wyjazd do zdarzenia, odbiór.`,
+        `${vehicle.id} wyjazd, odbiór.`,
+        `Wejherowo 998, tu ${vehicle.id}, wyjeżdżamy do zdarzenia, odbiór.`,
+        `${vehicle.id} w drodze do zdarzenia, odbiór.`
+    ];
+    return simpleVariants[Math.floor(Math.random() * simpleVariants.length)];
+}
+
 // --- GŁÓWNA PĘTLA CZASU SYMULATORA ---
 setInterval(() => {
     let needsRender = false;
@@ -2781,10 +2978,10 @@ setInterval(() => {
                         needsRender = true;
                     } else {
                         v.phase = 'TRAVEL';
-                        const travelMin = Math.max(1, Math.round(v.travelTime / 60));
+                        const depMsg = buildDepartureRadioMessage(v, ev);
                         logToMainRadio(
                             `${v.id} ➔ Wejherowo 998`,
-                            `Wejherowo 998, tu ${v.id} (${v.unitName}). Wyjeżdżamy do zdarzenia: ${ev.city}${ev.street ? ', ' + ev.street : ''} (szacowany dojazd ok. ${travelMin} min). Bez odbioru.`,
+                            depMsg,
                             '#7CFC00',
                             true
                         );
@@ -2799,15 +2996,33 @@ setInterval(() => {
                         v.phase = 'ONSITE';
                         [...unitsPSP, ...unitsOSP].forEach(u => {
                             const veh = u.vehicles.find(vObj => vObj.id === v.id);
-                            if (veh) veh.status = 'red';
+                            if (veh) {
+                                if (ev.type === 'PZR') {
+                                    // Jeśli nie bierze udziału w innej akcji bojowej, ma kolor żółty (PZR)
+                                    if (!isVehicleInCombatAction(v.id)) {
+                                        veh.status = 'yellow';
+                                    }
+                                } else {
+                                    veh.status = 'red';
+                                }
+                            }
                         });
 
-                        logToMainRadio(
-                            `${v.id} ➔ Wejherowo 998`,
-                            `Wejherowo 998, tu ${v.id}. Jesteśmy na miejscu zdarzenia w ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}. Bez odbioru.`,
-                            '#ffa500',
-                            true
-                        );
+                        if (ev.type === 'PZR') {
+                            logToMainRadio(
+                                `${v.id} ➔ Wejherowo 998`,
+                                `Wejherowo 998, tu ${v.id}. Jesteśmy na miejscu zabezpieczenia rejonu w ${ev.city}, pozostajemy w gotowości bojowej, odbiór.`,
+                                '#ffd700',
+                                true
+                            );
+                        } else {
+                            logToMainRadio(
+                                `${v.id} ➔ Wejherowo 998`,
+                                `Wejherowo 998, tu ${v.id}. Jesteśmy na miejscu zdarzenia w ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}, odbiór.`,
+                                '#ffa500',
+                                true
+                            );
+                        }
 
                         if (!ev.firstArrived) {
                             ev.firstArrived = true;
@@ -2819,10 +3034,11 @@ setInterval(() => {
                 }
             });
 
-            if (ev.firstArrived && ev.remainingSeconds > 0) {
+            // Odliczanie czasu akcji (dla PZR remainingSeconds wynosi -1, więc trwa do ręcznego zakończenia)
+            if (ev.type !== 'PZR' && ev.firstArrived && ev.remainingSeconds > 0) {
                 ev.remainingSeconds--;
                 needsRender = true;
-            } else if (ev.firstArrived && ev.remainingSeconds === 0) {
+            } else if (ev.type !== 'PZR' && ev.firstArrived && ev.remainingSeconds === 0) {
                 triggerEventFinishAndReturn(ev);
                 needsRender = true;
             }
@@ -2835,17 +3051,34 @@ setInterval(() => {
                         needsRender = true;
                     } else {
                         v.phase = 'DONE';
+                        const activePzr = (ev.type !== 'PZR') ? getActivePzrForVehicle(v.id) : null;
+
                         [...unitsPSP, ...unitsOSP].forEach(u => {
                             const veh = u.vehicles.find(vObj => vObj.id === v.id);
-                            if (veh) veh.status = 'green';
+                            if (veh) {
+                                veh.status = activePzr ? 'yellow' : 'green';
+                            }
                         });
 
-                        logToMainRadio(
-                            `${v.id} ➔ Wejherowo 998`,
-                            `Wejherowo 998, tu ${v.id} (${v.unitName}). Zastęp w bazie, gotowy do działań. Bez odbioru.`,
-                            '#00ff7f',
-                            true
-                        );
+                        if (activePzr) {
+                            // Upewniamy się, że w obiekcie zdarzenia PZR pojazd nadal ma status ONSITE
+                            const pzrVehObj = activePzr.vehicles.find(pv => pv.id === v.id);
+                            if (pzrVehObj) pzrVehObj.phase = 'ONSITE';
+
+                            logToMainRadio(
+                                `${v.id} ➔ Wejherowo 998`,
+                                `Wejherowo 998, tu ${v.id} (${v.unitName}). Powróciliśmy na zabezpieczenie rejonu (${activePzr.city}), w gotowości bojowej, odbiór.`,
+                                '#ffd700',
+                                true
+                            );
+                        } else {
+                            logToMainRadio(
+                                `${v.id} ➔ Wejherowo 998`,
+                                `Wejherowo 998, tu ${v.id} (${v.unitName}). Zastęp w bazie, gotowy do działań, odbiór.`,
+                                '#00ff7f',
+                                true
+                            );
+                        }
                         needsRender = true;
                     }
                 }
