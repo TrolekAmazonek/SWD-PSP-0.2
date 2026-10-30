@@ -357,6 +357,53 @@ function autoSelectJRGByCity(city) {
     if(elArea) elArea.value = jrgVal;
 }
 
+// --- PODRODZAJE ZDARZEŃ ---
+const subtypesData = {
+    "P": [
+        "P - Inne pożary", "P - Instytucje, obiekty użyteczności publicznej", "P - Obiekty gospodarcze i inne rolnicze",
+        "P - Obiekty magazynowe, place składowe", "P - Obiekty mieszkalne", "P - Obiekty produkcyjne, instalacje technologiczne",
+        "P - Śmietniska, wysypiska", "P - Środki transportu drogowego (np. autobus)", "P - Środki transportu kolejowego",
+        "P - Środki transportu lotniczego", "P - Środki transportu wodnego", "P - Trawy, torfowiska, lasy, pola, stogi"
+    ],
+    "MZ": [
+        "Inne MZ", "MZ - Atmosferyczne", "MZ - Budowlane", "MZ - Chemiczne", "MZ - Drogowe", "MZ - Kolejowe",
+        "MZ - Kolizja", "MZ - Lotnicze", "MZ - Wodne", "MZ - Palenie ognisk w miejscach niedozwolonych",
+        "MZ - Podejrzenie podłożenia ładunku", "MZ - Pomoc innym służbom", "MZ - Pomoc Policji", "MZ - Pomoc PRM",
+        "MZ - Pomoc w otwarciu mieszkania, podejrzenie zgonu", "MZ - Poszukiwanie osób zaginionych", "MZ - Próba samobójcza",
+        "MZ - Sanitarno-epidemiologiczne", "MZ - Topienie się", "MZ - Wypadek", "MZ - Zabezpieczenie ładunku", "MZ - Zwierzęta"
+    ],
+    "AF": ["AF - Fałszywy z instalacji", "AF - Złośliwy", "AF - W dobrej wierze"],
+    "CW": ["CW - Zagrożenie chemiczne", "CW - Zagrożenie ekologiczne"],
+    "WG": ["WG - Wybuch gazu", "WG - Inne zagrożenie wybuchem"],
+    "BL": ["BL - Budynek zagrożony zawaleniem"],
+    "ZPR": ["ZPR - Zagrożenie promieniotwórcze"],
+    "PZR": []
+};
+
+function updateSubtypes(type) {
+    const select = document.getElementById('inp-ev-subtype');
+    const group = document.getElementById('subtype-group');
+    if(!select) return;
+    select.innerHTML = '';
+    
+    if (group) {
+        if (type === 'PZR') {
+            group.style.display = 'none';
+            return;
+        } else {
+            group.style.display = 'flex';
+        }
+    }
+
+    const list = subtypesData[type] || ["Brak"];
+    list.forEach(sub => {
+        const opt = document.createElement('option');
+        opt.value = sub;
+        opt.innerText = sub;
+        select.appendChild(opt);
+    });
+}
+
 let unitsPSP = [
     {
         name: "JRG 1 Wejherowo",
@@ -1076,10 +1123,32 @@ function ensureVersionBadgeInStatusBar() {
     }
 }
 
+// Upewnienie się, że pole wyboru podrodzaju istnieje w karcie zdarzenia i radio buttony aktualizują listę
+function ensureSubtypeDOMIntegration() {
+    const radios = document.querySelectorAll('input[name="ev-type"]');
+    radios.forEach(r => {
+        r.onclick = () => updateSubtypes(r.value);
+    });
+
+    if (!document.getElementById('inp-ev-subtype') && radios.length > 0) {
+        const radioRow = radios[0].closest('.form-row');
+        if (radioRow && radioRow.parentElement) {
+            const subGroup = document.createElement('div');
+            subGroup.className = 'form-group';
+            subGroup.id = 'subtype-group';
+            subGroup.style.marginTop = '4px';
+            subGroup.innerHTML = `<label>Podrodzaj:</label><select id="inp-ev-subtype"></select>`;
+            radioRow.insertAdjacentElement('afterend', subGroup);
+        }
+    }
+    updateSubtypes('P');
+}
+
 window.addEventListener('DOMContentLoaded', () => {
     geocodeAllFireStationsExact();
     ensureMainRadioWindow();
     ensureVersionBadgeInStatusBar();
+    ensureSubtypeDOMIntegration();
 
     document.querySelectorAll('.top-menu .menu-item').forEach(item => {
         const txt = item.innerText.trim().toLowerCase();
@@ -2164,6 +2233,7 @@ function acceptCPRToEvent() {
 
     const radioP = document.querySelector('input[name="ev-type"][value="P"]');
     if (radioP) radioP.checked = true;
+    updateSubtypes('P');
 
     const callerParts = currentCPRData.caller.split(' ');
     const nameInp = document.getElementById('inp-caller-name');
@@ -2391,6 +2461,7 @@ function openNewEventModal() {
 
     const radioP = document.querySelector('input[name="ev-type"][value="P"]');
     if (radioP) radioP.checked = true;
+    updateSubtypes('P');
 
     switchModalTab('dane');
     if(modalEl) modalEl.style.display = 'flex';
@@ -2422,6 +2493,9 @@ function openEditEventModal(id) {
 
     const radio = document.querySelector(`input[name="ev-type"][value="${ev.type}"]`);
     if (radio) radio.checked = true;
+    updateSubtypes(ev.type);
+    const subSel = document.getElementById('inp-ev-subtype');
+    if (ev.type !== 'PZR' && subSel) subSel.value = ev.subtype || "";
 
     servicesState = { ...ev.services };
     const btnPrm = document.getElementById('btn-service-prm');
@@ -2528,7 +2602,8 @@ function saveEvent() {
 
     const typeChecked = document.querySelector('input[name="ev-type"]:checked');
     const typeVal = typeChecked ? typeChecked.value : 'P';
-    const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : 'Zgłoszenie operacyjne';
+    const subSel = document.getElementById('inp-ev-subtype');
+    const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : (subSel && subSel.value ? subSel.value : 'Zgłoszenie operacyjne');
     
     const descInput = document.getElementById('inp-ev-desc');
     let descVal = descInput ? descInput.value : '';
