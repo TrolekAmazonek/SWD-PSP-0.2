@@ -1,5 +1,6 @@
 // --- STAŁA WERSJI APLIKACJI SWDST ---
-const APP_VERSION = "SWDST 0.24";
+const APP_VERSION = "SWDST 0.25";
+const STORAGE_STATE_KEY = "SWDST_SAVED_SHIFT_STATE_V1";
 
 // --- MODUŁ AUDIO ---
 const audioSelekt = new Audio('selekt.wav');
@@ -312,7 +313,7 @@ function calculateRouteTravelSeconds(unitName, city) {
 }
 
 function calculateActionDurationSeconds(desc, subtype, type) {
-    if (type === 'PZR') return -1; // PZR trwa bez limitu aż do odwołania lub wysłania na akcję
+    if (type === 'PZR') return -1;
     const text = ((desc || "") + " " + (subtype || "")).toLowerCase();
     const isBigOrSearch =
         text.includes("poszukiwan") ||
@@ -706,12 +707,186 @@ let openRadioWindows = {};
 let mainRadioLogs = [];
 let mainRadioModalEl = null;
 
+// --- REGULACJA TEMPA CZASU (1x, 2x, 5x) ---
+let simSpeed = 1;
+let simIntervalId = null;
+let autoCprTimeoutId = null;
+
 let shiftStats = {
     cprTotalGenerated: 0,
     cprAccepted: 0,
     cprRefused: 0,
     refusalReasons: {}
 };
+
+// --- MODUŁ ZAPISYWANIA I WCZYTYWANIA STANU SŁUŻBY (LOCALSTORAGE + PLIK JSON) ---
+function saveSimulationState() {
+    try {
+        const stateObj = {
+            version: APP_VERSION,
+            savedAt: new Date().toISOString(),
+            events: events,
+            unitsPSP: unitsPSP,
+            unitsOSP: unitsOSP,
+            unitExactLocations: unitExactLocations,
+            shiftStats: shiftStats,
+            cprCounter: cprCounter,
+            mainRadioLogs: mainRadioLogs.slice(-100) // ostatnie 100 wpisów radia
+        };
+        localStorage.setItem(STORAGE_STATE_KEY, JSON.stringify(stateObj));
+    } catch (e) {}
+}
+
+function loadSimulationState() {
+    try {
+        const raw = localStorage.getItem(STORAGE_STATE_KEY);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        if (!data || !Array.isArray(data.events)) return false;
+
+        events = data.events;
+        if (Array.isArray(data.unitsPSP) && data.unitsPSP.length > 0) unitsPSP = data.unitsPSP;
+        if (Array.isArray(data.unitsOSP) && data.unitsOSP.length > 0) unitsOSP = data.unitsOSP;
+        if (data.unitExactLocations) {
+            Object.keys(data.unitExactLocations).forEach(k => {
+                if (!unitExactLocations[k]) {
+                    unitExactLocations[k] = data.unitExactLocations[k];
+                }
+            });
+        }
+        if (data.shiftStats) shiftStats = data.shiftStats;
+        if (typeof data.cprCounter === 'number') cprCounter = data.cprCounter;
+        if (Array.isArray(data.mainRadioLogs)) mainRadioLogs = data.mainRadioLogs;
+
+        if (events.length > 0) {
+            selectedEvIdForRadio = events[events.length - 1].id;
+            const btnOpen = document.getElementById('btn-open-radio');
+            if (btnOpen) btnOpen.style.display = 'block';
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function exportShiftStateToFile() {
+    saveSimulationState();
+    const raw = localStorage.getItem(STORAGE_STATE_KEY) || "{}";
+    const blob = new Blob([raw], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `SWDST_Zapis_Sluzby_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importShiftStateFromFile() {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.json,application/json';
+    inp.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                const parsed = JSON.parse(ev.target.result);
+                if (!parsed || !Array.isArray(parsed.events)) {
+                    alert("Nieprawidłowy plik zapisu służby!");
+                    return;
+                }
+                localStorage.setItem(STORAGE_STATE_KEY, JSON.stringify(parsed));
+                loadSimulationState();
+                renderUnits();
+                renderEvents();
+                renderSelectedEventDetails();
+                updateMainRadioChat();
+                alert("✅ Pomyślnie wczytano zapis służby z pliku!");
+            } catch (err) {
+                alert("Błąd podczas odczytu pliku zapisu!");
+            }
+        };
+        reader.readAsText(file);
+    };
+    inp.click();
+}
+
+function resetShiftState() {
+    if (!confirm("Czy na pewno chcesz zresetować obecną służbę?\nWszystkie zdarzenia, statystyki i statusy pojazdów zostaną wyzerowane (nowa zmiana).")) {
+        return;
+    }
+    localStorage.removeItem(STORAGE_STATE_KEY);
+    events = [];
+    selectedEvIdForRadio = null;
+    activeEditingId = null;
+    mainRadioLogs = [];
+    cprCounter = 101;
+    shiftStats = {
+        cprTotalGenerated: 0,
+        cprAccepted: 0,
+        cprRefused: 0,
+        refusalReasons: {}
+    };
+    Object.keys(openRadioWindows).forEach(k => closeRadioWindow(k));
+    [...unitsPSP, ...unitsOSP].forEach(u => {
+        u.vehicles.forEach(v => { v.status = 'green'; });
+    });
+    renderUnits();
+    renderEvents();
+    updateMainRadioChat();
+    const sisBody = document.getElementById('details-sis-body');
+    if (sisBody) sisBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Brak wybranego zdarzenia</td></tr>';
+}
+
+// --- ZMIANA PRĘDKOŚCI CZASU SYMULACJI (1x, 2x, 5x) ---
+function setSimulationSpeed(speed) {
+    simSpeed = speed;
+    [1, 2, 5].forEach(s => {
+        const btn = document.getElementById(`btn-speed-${s}x`);
+        if (btn) {
+            if (s === speed) {
+                btn.style.background = '#0a246a';
+                btn.style.color = '#ffffff';
+                btn.style.borderColor = '#001a4d';
+            } else {
+                btn.style.background = '#e1e1e1';
+                btn.style.color = '#000000';
+                btn.style.borderColor = '#707070';
+            }
+        }
+    });
+    startSimulationLoop();
+    scheduleNextAutoCPR();
+}
+
+function injectSpeedAndSaveControls() {
+    if (document.getElementById('swd-speed-controls')) return;
+
+    const btnOpenRadio = document.getElementById('btn-open-radio');
+    if (btnOpenRadio && btnOpenRadio.parentElement) {
+        const bar = btnOpenRadio.parentElement;
+        bar.style.flexWrap = 'wrap';
+
+        const speedBox = document.createElement('div');
+        speedBox.id = 'swd-speed-controls';
+        speedBox.style.cssText = 'display: inline-flex; align-items: center; gap: 3px; background: #d4d0c8; border: 1px solid #808080; padding: 2px 6px; border-radius: 2px; margin-left: auto;';
+        speedBox.innerHTML = `
+            <span style="font-weight:bold; color:#000; margin-right:2px;">⏩ Tempo:</span>
+            <button id="btn-speed-1x" class="btn-win" style="padding: 1px 7px; font-weight: bold; background: #0a246a; color: #fff;" onclick="setSimulationSpeed(1)">1x</button>
+            <button id="btn-speed-2x" class="btn-win" style="padding: 1px 7px; font-weight: bold;" onclick="setSimulationSpeed(2)">2x</button>
+            <button id="btn-speed-5x" class="btn-win" style="padding: 1px 7px; font-weight: bold;" onclick="setSimulationSpeed(5)">5x</button>
+            <span style="margin: 0 4px; color:#777;">|</span>
+            <button class="btn-win" style="padding: 1px 6px; font-weight: bold;" title="Pobierz zapis służby do pliku .json" onclick="exportShiftStateToFile()">💾 Eksportuj</button>
+            <button class="btn-win" style="padding: 1px 6px;" title="Wczytaj zapis służby z pliku .json" onclick="importShiftStateFromFile()">📂 Wczytaj</button>
+            <button class="btn-win" style="padding: 1px 6px; background:#ffe6e6; color:#800000;" title="Wyzeruj służbę i zacznij nową zmianę" onclick="resetShiftState()">🗑️ Reset</button>
+        `;
+        bar.appendChild(speedBox);
+    }
+}
 
 // --- WSTRZYKIWANIE STYLÓW DLA STATUSU PZR (KOLOR ŻÓŁTY) ---
 function injectPzrStyles() {
@@ -739,7 +914,6 @@ function injectPzrStyles() {
     document.head.appendChild(style);
 }
 
-// Sprawdza, czy dany pojazd jest aktualnie przypisany do aktywnego zabezpieczenia rejonu (PZR)
 function getActivePzrForVehicle(vehId) {
     let foundPzrEv = null;
     events.forEach(ev => {
@@ -752,7 +926,6 @@ function getActivePzrForVehicle(vehId) {
     return foundPzrEv;
 }
 
-// Sprawdza, czy dany pojazd bierze udział w innej (bojowej, nie-PZR) aktywnej akcji lub wraca z niej
 function isVehicleInCombatAction(vehId) {
     return events.some(ev => {
         if (ev.type === 'PZR') return false;
@@ -844,6 +1017,7 @@ function logToMainRadio(callsign, messageText, color = '#7CFC00', playBeep = tru
     const entry = `<div style="margin-bottom: 6px; color: ${color}; border-bottom: 1px dashed #333; padding-bottom: 3px;"><span style="color:#cccccc;">[${timeStr}]</span> <b>${callsign}:</b><br>"${messageText}"</div>`;
     mainRadioLogs.push(entry);
     updateMainRadioChat();
+    saveSimulationState();
 }
 
 function updateMainRadioChat() {
@@ -965,6 +1139,7 @@ async function geocodeEventAddress(ev) {
         ev.lng = fallback[1];
     }
     updateMapMarkers();
+    saveSimulationState();
 }
 
 function focusEventOnMap(evId) {
@@ -1173,11 +1348,11 @@ function ensureVersionBadgeInStatusBar() {
             badge = document.createElement('div');
             badge.id = 'swdst-version-badge';
             badge.style.cssText = 'display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #000; background: #ece9d8; border: 1px solid #7f9db9; margin-left: 4px; vertical-align: middle; cursor: default;';
-            badge.innerText = APP_VERSION;
+            badge.innerText = `${APP_VERSION} (${simSpeed}x)`;
             clockBox.parentElement.insertBefore(badge, clockBox);
         }
     } else {
-        badge.innerText = APP_VERSION;
+        badge.innerText = `${APP_VERSION} (${simSpeed}x)`;
     }
 }
 
@@ -1203,8 +1378,10 @@ function ensureSubtypeDOMIntegration() {
 
 window.addEventListener('DOMContentLoaded', () => {
     injectPzrStyles();
+    loadSimulationState();
     geocodeAllFireStationsExact();
     ensureMainRadioWindow();
+    updateMainRadioChat();
     ensureVersionBadgeInStatusBar();
     ensureSubtypeDOMIntegration();
 
@@ -1250,6 +1427,8 @@ window.addEventListener('DOMContentLoaded', () => {
         btnOpenRadio.parentElement.appendChild(mainRadBtn);
     }
 
+    injectSpeedAndSaveControls();
+
     const pspGrid = document.getElementById('grid-psp');
     if (pspGrid && !document.getElementById('view-map-container')) {
         const mapWrap = document.createElement('div');
@@ -1267,6 +1446,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
+
+    renderUnits();
+    renderEvents();
+    renderSelectedEventDetails();
 });
 
 function ensureSiSModalExists() {
@@ -1352,6 +1535,7 @@ function setVehicleStatusManual(vehId, newStatus) {
     renderUnits();
     renderSiSManagerList();
     updateMapMarkers();
+    saveSimulationState();
 }
 
 async function addCustomUnit(type) {
@@ -1374,6 +1558,7 @@ async function addCustomUnit(type) {
     renderUnits();
     renderSiSManagerList();
     updateMapMarkers();
+    saveSimulationState();
 }
 
 function addCustomVehicle(type) {
@@ -1392,6 +1577,7 @@ function addCustomVehicle(type) {
         renderUnits();
         renderSiSManagerList();
         updateMapMarkers();
+        saveSimulationState();
     }
 }
 
@@ -1415,13 +1601,17 @@ function ensureReportsModalExists() {
                         <button class="btn-win">Miesiąc</button>
                         <button class="btn-win">Rok</button>
                         <button class="btn-win">Wszystkie</button>
-                        <span id="rep-date-sub" style="color: #444; margin-left: 6px;">Statystyka z dnia 27.10.2026</span>
+                        <span id="rep-date-sub" style="color: #444; margin-left: 6px;">Statystyka z dnia bieżącego</span>
                     </div>
-                    <button class="btn-win" style="padding: 4px 16px; font-weight: bold;" onclick="window.print()">Drukuj</button>
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn-win" style="padding: 4px 10px; font-weight: bold;" onclick="exportShiftStateToFile()">💾 Eksportuj JSON</button>
+                        <button class="btn-win" style="padding: 4px 10px;" onclick="importShiftStateFromFile()">📂 Wczytaj JSON</button>
+                        <button class="btn-win" style="padding: 4px 14px; font-weight: bold;" onclick="window.print()">Drukuj</button>
+                    </div>
                 </div>
 
                 <div style="background: #ece9d8; border: 1px solid #999; padding: 6px 8px;">
-                    <b>Tryb statystyk:</b> online / lokalny (SWD). Dane obejmują wszystkie zdarzenia i formatki z bieżącej służby.
+                    <b>Tryb statystyk:</b> Zapis automatyczny w przeglądarce (localStorage) + obsługa plików .json. Dane obejmują wszystkie zdarzenia z bieżącej służby.
                 </div>
 
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
@@ -1456,7 +1646,7 @@ function ensureReportsModalExists() {
                     </div>
                     <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;">
                         <div style="font-weight: bold; color: #222;">Zakres</div>
-                        <div id="rep-range-box" style="font-size: 13px; font-weight: bold; margin-top: 6px; color:#000;">Statystyka z bieżącej służby</div>
+                        <div id="rep-range-box" style="font-size: 13px; font-weight: bold; margin-top: 6px; color:#000;">Zapisana sesja służby</div>
                     </div>
                 </div>
 
@@ -1944,7 +2134,7 @@ function getCommandRank(vehicle) {
 
 async function triggerArrivalRadioReport(ev, vehicle) {
     if (!ev.radioLogs) ev.radioLogs = [];
-    if (ev.type === 'PZR') return; // Przy PZR meldunek idzie na Główne Radio bez otwierania okna rozpoznania pożarowego
+    if (ev.type === 'PZR') return;
 
     createRadioWindow(ev.id);
 
@@ -1995,6 +2185,7 @@ Rozpocznij od: "Wejherowo 998, tu ${vehicle.id}." Wpleć informację o przejęci
     ev.radioLogs.push(initialMsg);
 
     updateRadioChatDynamic(ev.id);
+    saveSimulationState();
     
     if (takeoverText) {
         logToMainRadio(`${vehicle.id} ➔ SKKP`, `Przejęcie dowodzenia na zdarzeniu ID ${ev.id} (${ev.city}):${takeoverText}`, '#ffaa00', false);
@@ -2057,6 +2248,7 @@ Format: "Wejherowo 998, tu ${kdrName}. [Krótka, konkretna odpowiedź]. Bez odbi
     
     ev.radioLogs.push(respMsg);
     updateRadioChatDynamic(evId);
+    saveSimulationState();
 }
 
 function safeSetElementText(id, text) {
@@ -2067,7 +2259,7 @@ function safeSetElementText(id, text) {
 // --- ROZBUDOWANA BAZA IMION I NAZWISK ZGŁASZAJĄCYCH ---
 const callersMaleFirst = [
     "Jan", "Piotr", "Tomasz", "Michał", "Krzysztof", "Andrzej", "Paweł", "Marek", "Adam", "Łukasz",
-    "Marcin", "Jakub", "Mateusz", "Wojciech", "kpt. w st. spocz. Henryk", "Dawid", "Szymon", "Kamil", "Robert", "Rafał",
+    "Marcin", "Jakub", "Mateusz", "Wojciech", "Henryk", "Dawid", "Szymon", "Kamil", "Robert", "Rafał",
     "Jacek", "Grzegorz", "Dariusz", "Mariusz", "Zbigniew", "Sławomir", "Jarosław", "Mirosław", "Ryszard", "Tadeusz",
     "Artur", "Sebastian", "Patryk", "Damian", "Przemysław", "Maciej", "Bartosz", "Dominik", "Karol", "Filip",
     "Hubert", "Kacper", "Mikołaj", "Błażej", "Cezary", "Leszek", "Waldemar", "Roman", "Kazimierz", "Wiesław"
@@ -2080,13 +2272,13 @@ const callersMaleLast = [
     "Stępień", "Malinowski", "Jaworski", "Adamczyk", "Dudek", "Nowicki", "Pawlak", "Górski", "Witkowski", "Walczak",
     "Sikora", "Baran", "Rutkowski", "Michalak", "Szewczyk", "Ostrowski", "Tomaszewski", "Pietrzak", "Zalewski", "Wróblewski",
     "Kreft", "Formela", "Kwidziński", "Labuda", "Hirsz", "Damps", "Treder", "Gaffke", "Kunkel", "Rohde",
-    "Bistram", "Bojke", "Ceynowa", "Dettlaff", "Gruba", "Kohnke", "Liedtke", "Miotk", "nec", "Płotka", "Richert"
+    "Bistram", "Bojke", "Ceynowa", "Dettlaff", "Gruba", "Kohnke", "Liedtke", "Miotk", "Płotka", "Richert"
 ];
 
 const callersFemaleFirst = [
     "Anna", "Katarzyna", "Magdalena", "Agnieszka", "Małgorzata", "Krystyna", "Barbara", "Ewa", "Elżbieta", "Zofia",
     "Teresa", "Joanna", "Monika", "Danuta", "Natalia", "Karolina", "Marta", "Beata", "Dorota", "Halina",
-    "Jadwiga", "Aleksandra", "Irena", "alicja", "Paulina", "Justyna", "Renata", "Bożena", "Urszula", "Weronika",
+    "Jadwiga", "Aleksandra", "Irena", "Alicja", "Paulina", "Justyna", "Renata", "Bożena", "Urszula", "Weronika",
     "Sylwia", "Agata", "Patrycja", "Izabela", "Aneta", "Emilia", "Ewelina", "Kinga", "Martyna", "Klaudia",
     "Dominika", "Julia", "Zuzanna", "Maja", "Hanna", "Oliwia", "Wiktoria", "Kamila", "Edyta", "Marzena"
 ];
@@ -2107,7 +2299,6 @@ function generateRandomPolishCaller() {
     let last = "";
     if (isFemale) {
         first = callersFemaleFirst[Math.floor(Math.random() * callersFemaleFirst.length)];
-        first = first.charAt(0).toUpperCase() + first.slice(1);
         last = callersFemaleLast[Math.floor(Math.random() * callersFemaleLast.length)];
     } else {
         first = callersMaleFirst[Math.floor(Math.random() * callersMaleFirst.length)];
@@ -2127,6 +2318,7 @@ async function simulateIncomingCPR() {
     audioCpr.play().catch(e => {});
 
     shiftStats.cprTotalGenerated++;
+    saveSimulationState();
 
     const newCprId = `WCPR-2026-${cprCounter++}`;
     const randomTown = townsList[Math.floor(Math.random() * townsList.length)];
@@ -2301,6 +2493,7 @@ function closeCPR(isAccepted = false) {
         const reason = "Zamknięto formatkę CPR bez otwarcia karty";
         shiftStats.refusalReasons[reason] = (shiftStats.refusalReasons[reason] || 0) + 1;
         currentCPRData = null;
+        saveSimulationState();
     }
     const modal = document.getElementById('cpr-modal');
     if(modal) modal.style.display = 'none'; 
@@ -2364,6 +2557,7 @@ function acceptCPRToEvent() {
 
     closeCPR(true);
     currentCPRData = null;
+    saveSimulationState();
 }
 
 function formatMMSS(sec) {
@@ -2726,7 +2920,6 @@ function confirmDispatch() {
                 const v = u.vehicles.find(veh => veh.id === cb.value);
                 if (v) {
                     const pzrEv = getActivePzrForVehicle(v.id);
-                    // Jeśli zastęp jest już na zabezpieczeniu rejonu (PZR), wyjeżdża natychmiast jak JRG (1-5s) z miasta PZR
                     const prepSec = pzrEv ? (Math.floor(Math.random() * 5) + 1) : generateDeparturePrepSeconds(u.name);
                     const routeSec = calculateRouteTravelSeconds(u.name, targetCity);
                     newSelection.push({
@@ -2839,7 +3032,6 @@ function saveEvent() {
             const v = u.vehicles.find(veh => veh.id === sv.id);
             if (v) {
                 if (typeVal === 'PZR') {
-                    // Jednostki na PZR od razu podświetlane na żółto
                     v.status = 'yellow';
                 } else if (v.status === 'green' || v.status === 'yellow') {
                     v.status = 'orange';
@@ -2854,6 +3046,7 @@ function saveEvent() {
 
     renderUnits();
     renderEvents();
+    saveSimulationState();
     closeModal('modal-event');
 }
 
@@ -2907,6 +3100,7 @@ function triggerEventFinishAndReturn(ev) {
             );
         }
     });
+    saveSimulationState();
 }
 
 function finishCurrentEvent() {
@@ -2950,12 +3144,10 @@ function buildDepartureRadioMessage(vehicle, ev) {
     if (ev.type === 'PZR') {
         return `${vehicle.id} zgłaszam wyjazd na zabezpieczenie rejonu (${ev.city}), odbiór.`;
     }
-    // 10% prawdopodobieństwa na podanie konkretnego adresu docelowego
     if (Math.random() < 0.10) {
         const fullAddr = ev.street ? `${ev.city}, ${ev.street}` : ev.city;
         return `${vehicle.id} zgłaszam wyjazd do zdarzenia na adres: ${fullAddr}, odbiór.`;
     }
-    // Pozostałe 90% - 4 proste warianty informowania o wyjeździe
     const simpleVariants = [
         `${vehicle.id} zgłaszam wyjazd do zdarzenia, odbiór.`,
         `${vehicle.id} wyjazd, odbiór.`,
@@ -2965,8 +3157,8 @@ function buildDepartureRadioMessage(vehicle, ev) {
     return simpleVariants[Math.floor(Math.random() * simpleVariants.length)];
 }
 
-// --- GŁÓWNA PĘTLA CZASU SYMULATORA ---
-setInterval(() => {
+// --- GŁÓWNA PĘTLA CZASU SYMULATORA Z OBSŁUGĄ REGULACJI TEMPA (1x, 2x, 5x) ---
+function runSimulationTick() {
     let needsRender = false;
 
     events.forEach(ev => {
@@ -2998,7 +3190,6 @@ setInterval(() => {
                             const veh = u.vehicles.find(vObj => vObj.id === v.id);
                             if (veh) {
                                 if (ev.type === 'PZR') {
-                                    // Jeśli nie bierze udziału w innej akcji bojowej, ma kolor żółty (PZR)
                                     if (!isVehicleInCombatAction(v.id)) {
                                         veh.status = 'yellow';
                                     }
@@ -3034,7 +3225,6 @@ setInterval(() => {
                 }
             });
 
-            // Odliczanie czasu akcji (dla PZR remainingSeconds wynosi -1, więc trwa do ręcznego zakończenia)
             if (ev.type !== 'PZR' && ev.firstArrived && ev.remainingSeconds > 0) {
                 ev.remainingSeconds--;
                 needsRender = true;
@@ -3061,7 +3251,6 @@ setInterval(() => {
                         });
 
                         if (activePzr) {
-                            // Upewniamy się, że w obiekcie zdarzenia PZR pojazd nadal ma status ONSITE
                             const pzrVehObj = activePzr.vehicles.find(pv => pv.id === v.id);
                             if (pzrVehObj) pzrVehObj.phase = 'ONSITE';
 
@@ -3089,6 +3278,7 @@ setInterval(() => {
     if (needsRender) {
         renderUnits();
         renderEvents();
+        saveSimulationState();
     }
     
     renderSelectedEventDetails();
@@ -3099,19 +3289,29 @@ setInterval(() => {
         const now = new Date();
         clockEl.innerText = now.toISOString().slice(0, 10) + ' ' + now.toLocaleTimeString();
     }
-}, 1000);
+}
 
-// --- AUTOMATYCZNE GENEROWANIE ZGŁOSZEŃ ---
+function startSimulationLoop() {
+    if (simIntervalId) clearInterval(simIntervalId);
+    const intervalMs = Math.max(200, Math.round(1000 / simSpeed));
+    simIntervalId = setInterval(runSimulationTick, intervalMs);
+}
+
+// --- AUTOMATYCZNE GENEROWANIE ZGŁOSZEŃ Z UWZGLĘDNIENIEM TEMPA (1x, 2x, 5x) ---
 function scheduleNextAutoCPR() {
-    const randomTime = Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000;
-    setTimeout(() => {
+    if (autoCprTimeoutId) clearTimeout(autoCprTimeoutId);
+    const baseRandomTime = Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000;
+    const scaledTime = Math.max(8000, Math.round(baseRandomTime / simSpeed));
+
+    autoCprTimeoutId = setTimeout(() => {
         const cprModal = document.getElementById('cpr-modal');
         if (!cprModal || cprModal.style.display !== 'flex') {
             simulateIncomingCPR();
         }
         scheduleNextAutoCPR();
-    }, randomTime);
+    }, scaledTime);
 }
 
+startSimulationLoop();
 scheduleNextAutoCPR();
 renderUnits();
