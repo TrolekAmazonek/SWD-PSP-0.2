@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SWD PSP v1.5.0 - Symulator</title>
+    <title>SWD PSP - Symulator Dyspozytora</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 </head>
@@ -11,13 +11,13 @@
 
     <div class="top-menu">
         <div class="menu-item">System</div>
-        <div class="menu-item" onclick="switchMainView('table')">Widok</div>
-        <div class="menu-item" onclick="openReportsModal()">Rejestr Wyjazdów</div>
+        <div class="menu-item">Widok</div>
+        <div class="menu-item">Rejestr Wyjazdów</div>
         <div class="menu-item">Ewid</div>
-        <div class="menu-item" onclick="openSiSModal()">Siły i środki</div>
-        <div class="menu-item" onclick="switchMainView('map')">Mapy</div>
-        <div class="menu-item" onclick="switchMainView('table')">Podział Bojowy</div>
-        <div class="menu-item" onclick="openReportsModal()">Zestawienia i raporty</div>
+        <div class="menu-item">Siły i środki</div>
+        <div class="menu-item">Mapy</div>
+        <div class="menu-item">Podział Bojowy</div>
+        <div class="menu-item">Zestawienia i raporty</div>
         <div class="menu-item">Urządzenia</div>
         <div class="menu-item">Okna</div>
         <div class="menu-item">Komunikator</div>
@@ -41,7 +41,7 @@
 
             <div class="bottom-panel">
                 <div class="left-events">
-                    <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                         <button class="btn-win" onclick="openNewEventModal()">Utwórz kartę zdarzenia</button>
                         <button class="btn-win" style="background: #ffe6e6; border-color: #b30000; font-weight: bold; color: #800000;" onclick="simulateIncomingCPR()">⚡ Symuluj nowe zgłoszenie z CPR (112)</button>
                         <button class="btn-win" id="btn-open-radio" style="background: #e6f2ff; border-color: #0a246a; font-weight: bold; color: #0a246a; display: none;" onclick="openRadioForSelectedEvent()">📻 Otwórz radio zdarzenia</button>
@@ -103,14 +103,14 @@
             <div class="modal-body" style="background: #fff;">
                 <div class="form-title" style="color: #b30000;">Formatka zgłoszenia z Centrum Powiadamiania Ratunkowego</div>
                 <div style="margin-bottom: 6px; padding: 4px; background: #fff0f0; border: 1px solid #ffcccc;">
-                    <b>ID CPR:</b> <span id="cpr-id">WCPR-2026-9932</span><br>
+                    <b>ID CPR:</b> <span id="cpr-id">WCPR-2026-101</span><br>
                     <b>Miejscowość:</b> <span id="cpr-city">Bolszewo</span><br>
-                    <b>Adres:</b> <span id="cpr-street">ul. Zamkowa 12</span><br>
+                    <b>Adres:</b> <span id="cpr-street">ul. Zamostna 4</span><br>
                     <b>Zgłaszający:</b> <span id="cpr-caller">Jan Kowalski (tel. 601-234-567)</span>
                 </div>
                 <div class="form-title">Treść powiadomienia:</div>
                 <div id="cpr-desc" style="padding: 6px; background: #f9f9f9; border: 1px solid #ccc; font-style: italic; margin-bottom: 8px;">
-                    Zgłoszenie pożaru komory silnika w autobusie komunikacji miejskiej. Pasażerowie ewakuowani.
+                    Zgłoszenie z numeru alarmowego 112...
                 </div>
                 <div style="display: flex; gap: 4px; justify-content: flex-end;">
                     <button class="btn-win" onclick="minimizeCPR()">Minimalizuj</button>
@@ -125,11 +125,11 @@
     </div>
 
     <div class="status-bar">
-        <span>Zalogowano jako: <b>aspirant damja</b></span>
+        <span>Zalogowano jako: <b style="color:#777; font-style:italic;">Nazwa Użytkownika</b></span>
         <div class="status-box" style="margin-left: auto;">Transmisja</div>
         <div class="status-box">Stan SIWCPR: Stan połączenia: OK</div>
         <div class="status-box">Terminale statusów</div>
-        <div class="status-box" id="clock-box">2026-10-27 14:00:00</div>
+        <div class="status-box" id="clock-box">2026-10-31 14:00:00</div>
     </div>
 
     <!-- MODAL: KARTA ZDARZENIA -->
@@ -156,16 +156,10 @@
 
                     <div class="form-box">
                         <div class="form-row">
-                            <div class="form-group" style="flex: 1;">
-                                <label>Czas:</label>
-                                <input type="text" id="inp-ev-time">
-                            </div>
+                            <div class="form-group" style="flex: 1;"><label>Czas:</label><input type="text" id="inp-ev-time"></div>
                             <div class="form-group" style="flex: 1;">
                                 <label>Przyjęto:</label>
-                                <select id="inp-ev-received">
-                                    <option>Telefon</option>
-                                    <option>CPR</option>
-                                </select>
+                                <select id="inp-ev-received"><option>Telefon</option><option>CPR</option></select>
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label>Kanał:</label>
@@ -173,10 +167,7 @@
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label>Jednostka:</label>
-                                <select id="inp-ev-jrg">
-                                    <option>JRG 1 Wejherowo</option>
-                                    <option>JRG 2 Rumia</option>
-                                </select>
+                                <select id="inp-ev-jrg"><option>JRG 1 Wejherowo</option><option>JRG 2 Rumia</option></select>
                             </div>
                         </div>
                     </div>
@@ -187,7 +178,7 @@
                                 <div class="form-title">Lokalizacja</div>
                                 <div class="form-group" style="position: relative;">
                                     <label>Miejscowość:</label>
-                                    <input type="text" id="inp-ev-city" placeholder="Wpisz np. Bolszewo, Rumia..." oninput="handleCityInput(this)">
+                                    <input type="text" id="inp-ev-city" placeholder="Wpisz miejscowość..." oninput="handleCityInput(this)">
                                     <div id="city-suggestions" class="suggestions-list" style="display:none; width: 100%; top: 38px;"></div>
                                 </div>
                                 <div class="form-group" style="margin-top: 4px;">
@@ -206,7 +197,7 @@
 
                             <div class="form-box">
                                 <div class="form-title">Informacje dodatkowe - opis zdarzenia</div>
-                                <textarea id="inp-ev-desc" style="width: 100%; height: 50px;" placeholder="Wpisz np. pożar autobusu, pożar hali..."></textarea>
+                                <textarea id="inp-ev-desc" style="width: 100%; height: 50px;" placeholder="Wpisz opis zdarzenia..."></textarea>
                             </div>
 
                             <div class="form-box">
@@ -228,17 +219,11 @@
                                 <div class="form-row" style="margin-top: 4px;">
                                     <div class="form-group" style="flex:1;">
                                         <label>Jedn. prow.:</label>
-                                        <select id="inp-ev-lead">
-                                            <option>JRG 1 Wejherowo</option>
-                                            <option>JRG 2 Rumia</option>
-                                        </select>
+                                        <select id="inp-ev-lead"><option>JRG 1 Wejherowo</option><option>JRG 2 Rumia</option></select>
                                     </div>
                                     <div class="form-group" style="flex:1;">
                                         <label>Teren działania:</label>
-                                        <select id="inp-ev-area">
-                                            <option>JRG 1 Wejherowo</option>
-                                            <option>JRG 2 Rumia</option>
-                                        </select>
+                                        <select id="inp-ev-area"><option>JRG 1 Wejherowo</option><option>JRG 2 Rumia</option></select>
                                     </div>
                                 </div>
                             </div>
