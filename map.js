@@ -1,5 +1,5 @@
 // =========================================================================
-// PLIK 2: map.js - MAPA OPERACYJNA LEAFLET, GEOKODER ADRESÓW I ODLEGŁOŚCI
+// PLIK 2: map.js - MAPA, GEOKODER ORAZ WZYWANIE CAŁYCH ZESPOŁÓW SGR
 // =========================================================================
 
 let leafletMap = null;
@@ -39,13 +39,35 @@ function calculateRouteTravelSeconds(unitName, city) {
     return Math.max(5, Math.round(prox.kmNum * (3.5 + Math.random())));
 }
 
-function calculateActionDurationSeconds(desc, subtype, type) {
+function calculateActionDurationSeconds(desc, subtype, type, vehicles = []) {
     if (type === 'PZR') return -1;
     const text = ((desc || "") + " " + (subtype || "")).toLowerCase();
-    const isBig = /poszukiwan|zaginion|hala|hali|magazyn|zakład|produkcyjn|las|leśn|mieszkan|kamienic|budynk|dach|poddasz|gospodarcz|stodoł|tartak|szkoł|składowisk/.test(text);
-    if (isBig) return Math.floor(Math.random() * 601) + 300;
-    if (/wypadek|zderzenie|chemiczn/.test(text)) return Math.floor(Math.random() * 181) + 240;
-    return Math.floor(Math.random() * 121) + 150;
+    
+    const hasQuad = vehicles.some(v => v.name.toLowerCase().includes("quad") || v.id.includes("Q01"));
+    const hasBoat = vehicles.some(v => v.name.toLowerCase().includes("łodzi") || v.name.toLowerCase().includes("ponton") || v.id.includes("Ł01") || v.id.includes("Ł02"));
+    const hasSgrChem = vehicles.some(v => v.name.toLowerCase().includes("srchem") || v.name.toLowerCase().includes("chem"));
+    const hasSgrt = vehicles.some(v => v.name.toLowerCase().includes("scrt") || v.name.toLowerCase().includes("scdz") || v.name.toLowerCase().includes("srt"));
+
+    let baseDuration = Math.floor(Math.random() * 121) + 150;
+
+    const isBig = /poszukiwan|zaginion|hala|hali|magazyn|zakład|produkcyjn|składowisk|tartak/.test(text);
+    const isChem = /chemiczn|wyciek|substancj|kwas|rozszczelnien/.test(text);
+    const isWater = /topienie|woda|jezioro|rzeka|ponton|lodzie/.test(text);
+    const isAccident = /wypadek|zderzenie|zakleszcz/.test(text);
+
+    if (isBig) baseDuration = Math.floor(Math.random() * 301) + 300;
+    if (isChem) {
+        if (!hasSgrChem) baseDuration *= 1.8;
+        else baseDuration *= 0.7;
+    }
+    if (isWater && hasBoat) baseDuration *= 0.75;
+    if (isAccident && hasSgrt) baseDuration *= 0.8;
+    if (/poszukiwan/.test(text) && hasQuad) baseDuration *= 0.6;
+
+    if (currentWeatherData.condition === 'DROUGHT' && /las|traw|stog|pole/.test(text)) baseDuration *= 1.3;
+    if (currentWeatherData.condition === 'STORM' || currentWeatherData.condition === 'WIND') baseDuration *= 1.25;
+
+    return Math.round(baseDuration);
 }
 
 function autoSelectJRGByCity(city) {
@@ -64,17 +86,132 @@ function autoSelectJRGByCity(city) {
     });
 }
 
-// --- GEOKODER DOKŁADNYCH ULIC I BUDYNKÓW ---
+// --- OKIENKO WYBORU CAŁYCH ZESPOŁÓW SGR ---
+function openSgrModal(evId) {
+    let modal = document.getElementById('modal-sgr-select');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-sgr-select';
+        modal.className = 'modal-overlay';
+        modal.style.cssText = 'display:flex; background:rgba(0,0,0,0.5); z-index:11000;';
+        document.body.appendChild(modal);
+    }
+
+    const regionKey = (currentCountyId === 'raciborski') ? 'slaskie' : 'pomorskie';
+    const groups = EXTERNAL_SPECIAL_GROUPS[regionKey];
+
+    const chemOptions = groups.sgrchem.map((g, idx) => `<option value="chem_${idx}">${g.groupName} (${g.vehicles.map(v => v.id).join(', ')})</option>`).join('');
+    const sgrtOptions = groups.sgrt.map((g, idx) => `<option value="t_${idx}">${g.groupName} (${g.vehicles.map(v => v.id).join(', ')})</option>`).join('');
+    const sgrwysOptions = groups.sgrwys.map((g, idx) => `<option value="wys_${idx}">${g.groupName} (${g.vehicles.map(v => v.id).join(', ')})</option>`).join('');
+    const sgrwnOptions = groups.sgrwn.map((g, idx) => `<option value="wn_${idx}">${g.groupName} (${g.vehicles.map(v => v.id).join(', ')})</option>`).join('');
+
+    modal.innerHTML = `
+        <div class="modal-window" style="width: 480px; background: #ece9d8; border: 2px solid #0a246a;">
+            <div class="modal-header" style="background: #0a246a; color: #fff; padding: 4px 8px;">
+                <span>🚨 Wezwanie Specjalistycznej Grupy Ratowniczej (KW / SGR)</span>
+                <div class="modal-close" onclick="closeModal('modal-sgr-select')">×</div>
+            </div>
+            <div class="modal-body" style="padding: 12px; display:flex; flex-direction:column; gap:10px;">
+                <div class="form-box" style="padding: 8px;">
+                    <div class="form-title" style="margin-bottom: 4px;">Wybierz profil grupy specjalistycznej:</div>
+                    <select id="sgr-type-select" style="width:100%; padding:5px;" onchange="toggleSgrDropdowns()">
+                        <option value="chem">SGRChem (Ratownictwo Chemiczne)</option>
+                        <option value="t">SGRT Tczew (Ratownictwo Techniczne / Dźwig Liebherr)</option>
+                        <option value="wys">SGRWys Rumia (Ratownictwo Wysokościowe)</option>
+                        <option value="wn">SGRWN Gdańsk / Kościerzyna (Wodno-Nurkowe)</option>
+                    </select>
+                </div>
+                <div class="form-box" style="padding: 8px;" id="sgr-chem-box">
+                    <div class="form-title" style="margin-bottom: 4px;">Dostępne zespoły SGRChem:</div>
+                    <select id="sgr-chem-choice" style="width:100%; padding:5px;">${chemOptions}</select>
+                </div>
+                <div class="form-box" style="padding: 8px; display:none;" id="sgr-t-box">
+                    <div class="form-title" style="margin-bottom: 4px;">Dostępne zespoły SGRT:</div>
+                    <select id="sgr-t-choice" style="width:100%; padding:5px;">${sgrtOptions}</select>
+                </div>
+                <div class="form-box" style="padding: 8px; display:none;" id="sgr-wys-box">
+                    <div class="form-title" style="margin-bottom: 4px;">Dostępne zespoły SGRWys:</div>
+                    <select id="sgr-wys-choice" style="width:100%; padding:5px;">${sgrwysOptions}</select>
+                </div>
+                <div class="form-box" style="padding: 8px; display:none;" id="sgr-wn-box">
+                    <div class="form-title" style="margin-bottom: 4px;">Dostępne zespoły SGRWN (Nurkowe):</div>
+                    <select id="sgr-wn-choice" style="width:100%; padding:5px;">${sgrwnOptions}</select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px;">
+                    <button class="btn-win" style="padding: 5px 14px; font-weight: bold; background: #e2f0d9;" onclick="confirmDispatchSgr(${evId})">✔ Zadysponuj zespół</button>
+                    <button class="btn-win" style="padding: 5px 10px;" onclick="closeModal('modal-sgr-select')">Anuluj</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function toggleSgrDropdowns() {
+    const val = document.getElementById('sgr-type-select').value;
+    document.getElementById('sgr-chem-box').style.display = val === 'chem' ? 'block' : 'none';
+    document.getElementById('sgr-t-box').style.display = val === 't' ? 'block' : 'none';
+    document.getElementById('sgr-wys-box').style.display = val === 'wys' ? 'block' : 'none';
+    document.getElementById('sgr-wn-box').style.display = val === 'wn' ? 'block' : 'none';
+}
+
+function confirmDispatchSgr(evId) {
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+
+    const typeVal = document.getElementById('sgr-type-select').value;
+    const selectId = typeVal === 'chem' ? 'sgr-chem-choice' : (typeVal === 't' ? 'sgr-t-choice' : (typeVal === 'wys' ? 'sgr-wys-choice' : 'sgr-wn-choice'));
+    const selEl = document.getElementById(selectId);
+    if (!selEl) return;
+    
+    const optVal = selEl.value;
+    const idx = parseInt(optVal.split('_')[1]);
+
+    const regionKey = (currentCountyId === 'raciborski') ? 'slaskie' : 'pomorskie';
+    const groupKey = typeVal === 'chem' ? 'sgrchem' : (typeVal === 't' ? 'sgrt' : (typeVal === 'wys' ? 'sgrwys' : 'sgrwn'));
+    const groupObj = EXTERNAL_SPECIAL_GROUPS[regionKey][groupKey][idx];
+
+    if (!groupObj || !groupObj.vehicles) return;
+
+    let addedCount = 0;
+    groupObj.vehicles.forEach(vehData => {
+        const already = ev.vehicles.some(v => v.id === vehData.id);
+        if (!already) {
+            const routeSec = calculateRouteTravelSeconds(vehData.unitName, ev.city);
+            ev.vehicles.push({
+                id: vehData.id,
+                name: vehData.name,
+                unitName: vehData.unitName,
+                obsada: vehData.obsada,
+                phase: 'PREP',
+                prepTime: generateDeparturePrepSeconds(vehData.unitName),
+                travelTime: routeSec,
+                baseRouteSeconds: routeSec,
+                returnTime: routeSec,
+                status: 'orange'
+            });
+            addedCount++;
+        }
+    });
+
+    if (typeof renderSelectedEventDetails === 'function') renderSelectedEventDetails();
+    if (typeof renderEvents === 'function') renderEvents();
+    if (typeof saveSimulationState === 'function') saveSimulationState();
+
+    if (typeof logToMainRadio === 'function') {
+        logToMainRadio(`${currentCountyCallsign} ➔ KW PSP`, `Zadysponowano specjalistyczny zespół ${groupObj.groupName} (${groupObj.vehicles.map(v => v.id).join(', ')}) do zdarzenia ID ${ev.id} (${ev.city}).`, '#00ffff', true);
+    }
+
+    closeModal('modal-sgr-select');
+    alert(`✅ Pomyślnie zadysponowano zespół ${groupObj.groupName} (${addedCount} pojazdy)!`);
+}
+
+// --- GEOKODER ---
 async function resolveExactCoordinates(streetAddress, townName) {
     const profile = COUNTY_PROFILES[currentCountyId];
     const cleanTown = (townName || profile.defaultTown).trim().replace(/^Gdynia\s+|^Gdańsk\s+/i, (m) => m.split(' ')[0] + ' ');
-    let cleanedStreet = (streetAddress || "")
-        .replace(/^(Przystanek Autobusowy|Kamienica|Blok mieszkalny|Hala Magazynowa|Tartak \/ Skład Drzewny)[,\s-]*/i, '')
-        .split('/')[0].trim();
+    let cleanedStreet = (streetAddress || "").replace(/^(Przystanek Autobusowy|Kamienica|Blok mieszkalny|Hala Magazynowa|Tartak \/ Skład Drzewny)[,\s-]*/i, '').split('/')[0].trim();
 
-    const fullQuery = cleanedStreet
-        ? `${cleanedStreet}, ${cleanTown}, ${profile.voivodeship}, Polska`
-        : `${cleanTown}, ${profile.voivodeship}, Polska`;
+    const fullQuery = cleanedStreet ? `${cleanedStreet}, ${cleanTown}, ${profile.voivodeship}, Polska` : `${cleanTown}, ${profile.voivodeship}, Polska`;
 
     try {
         const arcUrl = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&singleLine=${encodeURIComponent(fullQuery)}&countryCode=POL&searchExtent=${profile.bbox}&maxLocations=1`;
@@ -87,60 +224,34 @@ async function resolveExactCoordinates(streetAddress, townName) {
             }
         }
     } catch (e) {}
-
-    try {
-        const streetNoPrefix = cleanedStreet.replace(/\b(ul\.|ulica|al\.|aleja|pl\.|plac)\s*/gi, '').trim();
-        const center = profile.mapCenter;
-        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(streetNoPrefix + ' ' + cleanTown)}&lat=${center[0]}&lon=${center[1]}&limit=1`;
-        const res = await fetch(photonUrl);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.features && data.features.length > 0) {
-                const coords = data.features[0].geometry?.coordinates;
-                if (coords && coords.length === 2) return { lat: parseFloat(coords[1]), lng: parseFloat(coords[0]) };
-            }
-        }
-    } catch (e) {}
-
     return null;
 }
 
 async function geocodeAllFireStationsExact() {
     if (stationsGeocoded) return;
     stationsGeocoded = true;
-
-    const cacheKey = `SWD_EXACT_STATIONS_${currentCountyId}_V8`;
+    const cacheKey = `SWD_EXACT_STATIONS_${currentCountyId}_V9`;
     try {
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
             const parsed = JSON.parse(cached);
             Object.keys(parsed).forEach(uName => {
                 if (unitExactLocations[uName] && !unitExactLocations[uName].locked && parsed[uName].lat && parsed[uName].lng) {
-                    unitExactLocations[uName].lat = parsed[uName].lat;
-                    unitExactLocations[uName].lng = parsed[uName].lng;
+                    unitExactLocations[uName].lat = parsed[uName].lat; unitExactLocations[uName].lng = parsed[uName].lng;
                 }
             });
-            updateMapMarkers();
-            return;
+            updateMapMarkers(); return;
         }
     } catch (e) {}
 
     const unitNames = Object.keys(unitExactLocations).filter(u => !unitExactLocations[u].locked);
     const cacheToSave = {};
-
     await Promise.all(unitNames.map(async (uName) => {
         const info = unitExactLocations[uName];
         const coords = await resolveExactCoordinates(info.address, info.town);
-        if (coords) {
-            info.lat = coords.lat; info.lng = coords.lng;
-            cacheToSave[uName] = { lat: info.lat, lng: info.lng };
-        }
+        if (coords) { info.lat = coords.lat; info.lng = coords.lng; cacheToSave[uName] = { lat: info.lat, lng: info.lng }; }
     }));
-
-    try {
-        if (Object.keys(cacheToSave).length > 2) localStorage.setItem(cacheKey, JSON.stringify(cacheToSave));
-    } catch (e) {}
-
+    try { if (Object.keys(cacheToSave).length > 2) localStorage.setItem(cacheKey, JSON.stringify(cacheToSave)); } catch (e) {}
     updateMapMarkers();
 }
 
@@ -166,18 +277,15 @@ function focusEventOnMap(evId) {
     }, 250);
 }
 
-// --- INICJALIZACJA I RYSOWANIE MAPY LEAFLET ---
+// --- MAPA LEAFLET ---
 function ensureLeafletLoaded(callback) {
     if (window.L) { callback(); return; }
     if (!document.querySelector('link[href*="leaflet.css"]')) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
         document.head.appendChild(link);
     }
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = callback;
-    document.head.appendChild(script);
+    const script = document.createElement('script'); script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = callback; document.head.appendChild(script);
 }
 
 function initLeafletMap() {
