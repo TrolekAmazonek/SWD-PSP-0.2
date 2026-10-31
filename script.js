@@ -1,5 +1,5 @@
 // =========================================================================
-// PLIK 4: script.js - RDZEŃ SWD, INTERFEJS, LAUNCHER, 6 POWIATÓW I PĘTLA
+// PLIK 4: script.js - RDZEŃ SWD, INTERFEJS, SGR W KARCIE I PĘTLA
 // =========================================================================
 
 // Bezpieczna inicjalizacja silnika AI
@@ -79,7 +79,6 @@ function updateJrgSelectOptions() {
     });
 }
 
-// --- LAUNCHER / EKRAN LOGOWANIA I WYBORU KOMENDY ---
 function ensureLauncherModalExists() {
     if (document.getElementById('modal-launcher')) return;
     const modal = document.createElement('div');
@@ -224,7 +223,6 @@ function updateSubtypes(type) {
     });
 }
 
-// --- MODUŁ ZAPISYWANIA I WCZYTYWANIA STANU SŁUŻBY ---
 function saveSimulationState() {
     try {
         const stateObj = {
@@ -436,7 +434,6 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
-// --- ZARZĄDZANIE SIŁAMI I ŚRODKAMI ---
 function ensureSiSModalExists() {
     let sisModal = document.getElementById('modal-sis');
     if (!sisModal) {
@@ -550,7 +547,6 @@ function addCustomVehicle(type) {
     }
 }
 
-// --- OKNO RAPORTÓW I STATYSTYK ---
 function ensureReportsModalExists() {
     if (document.getElementById('modal-reports')) return;
     const modal = document.createElement('div');
@@ -569,45 +565,17 @@ function ensureReportsModalExists() {
                         <button class="btn-win">Miesiąc</button>
                         <button class="btn-win">Rok</button>
                         <button class="btn-win">Wszystkie</button>
-                        <span id="rep-date-sub" style="color: #444; margin-left: 6px;">Statystyka z bieżącej służby</span>
                     </div>
                     <div style="display:flex; gap:4px;">
                         <button class="btn-win" style="padding: 4px 10px; font-weight: bold;" onclick="exportShiftStateToFile()">💾 Eksportuj JSON</button>
                         <button class="btn-win" style="padding: 4px 10px;" onclick="importShiftStateFromFile()">📂 Wczytaj JSON</button>
-                        <button class="btn-win" style="padding: 4px 14px; font-weight: bold;" onclick="window.print()">Drukuj</button>
                     </div>
                 </div>
-                <div style="background: #ece9d8; border: 1px solid #999; padding: 6px 8px;">
-                    <b>Tryb statystyk:</b> Zapis automatyczny w przeglądarce (localStorage) + obsługa plików .json.
-                </div>
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Zgłoszenia ogółem</div><div id="rep-total" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Aktywne</div><div id="rep-active" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Zakończone</div><div id="rep-finished" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Średni czas obsługi</div><div id="rep-avg-time" style="font-size: 16px; font-weight: bold; margin-top: 6px; color:#000;">00:08:30</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Odmowy / Anulowane CPR</div><div id="rep-refused" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Zdarzenia powiązane (CPR)</div><div id="rep-cpr-linked" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Nowe powyżej 2 min</div><div id="rep-over-2m" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Komenda</div><div id="rep-range-box" style="font-size: 12px; font-weight: bold; margin-top: 6px; color:#000;">KP PSP</div></div>
-                </div>
-                <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;">
-                    <div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 6px;">SŁUŻBY — PRM / PSP / POLICJA</div>
-                    <table class="sis-table" style="background: #fff;">
-                        <thead><tr><th>Służba</th><th style="text-align:right;">Zadysponowano</th><th style="text-align:right;">Oczekuje (Dojazd)</th><th style="text-align:right;">Obsługa (Na miejscu)</th><th style="text-align:right;">Zakończono</th><th style="text-align:right;">Śr. reakcja</th><th style="text-align:right;">Śr. obsługa</th></tr></thead>
-                        <tbody>
-                            <tr><td>PRM / ZRM</td><td id="rep-prm-disp" style="text-align:right;">0</td><td id="rep-prm-wait" style="text-align:right;">0</td><td id="rep-prm-act" style="text-align:right;">0</td><td id="rep-prm-fin" style="text-align:right;">0</td><td style="text-align:right;">00:01:20</td><td style="text-align:right;">00:08:00</td></tr>
-                            <tr><td>PSP / OSP</td><td id="rep-psp-disp" style="text-align:right;">0</td><td id="rep-psp-wait" style="text-align:right;">0</td><td id="rep-psp-act" style="text-align:right;">0</td><td id="rep-psp-fin" style="text-align:right;">0</td><td style="text-align:right;">00:01:15</td><td style="text-align:right;">00:08:30</td></tr>
-                            <tr><td>Policja</td><td id="rep-pol-disp" style="text-align:right;">0</td><td id="rep-pol-wait" style="text-align:right;">0</td><td id="rep-pol-act" style="text-align:right;">0</td><td id="rep-pol-fin" style="text-align:right;">0</td><td style="text-align:right;">00:01:45</td><td style="text-align:right;">00:08:00</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">STATUSY CPR</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-cpr-statuses"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">OPERATORZY</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-operators"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">TOP KATEGORIE</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-top-cats"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">TOP PODKATEGORIE</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-top-subcats"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">POWODY ODMÓW / ANULOWAŃ</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-refusals-body"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">MIEJSCOWOŚCI / ADRESY</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-locations-body"></tbody></table></div>
+                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold;">Zgłoszenia ogółem</div><div id="rep-total" style="font-size: 20px; font-weight: bold; margin-top: 4px;">0</div></div>
+                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold;">Aktywne</div><div id="rep-active" style="font-size: 20px; font-weight: bold; margin-top: 4px;">0</div></div>
+                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold;">Zakończone</div><div id="rep-finished" style="font-size: 20px; font-weight: bold; margin-top: 4px;">0</div></div>
+                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold;">Odmowy / CPR</div><div id="rep-refused" style="font-size: 20px; font-weight: bold; margin-top: 4px;">0</div></div>
                 </div>
             </div>
         </div>
@@ -628,75 +596,11 @@ function openReportsModal() {
     safeSetElementText('rep-active', active);
     safeSetElementText('rep-finished', finished);
     safeSetElementText('rep-refused', shiftStats.cprRefused);
-    safeSetElementText('rep-cpr-linked', shiftStats.cprAccepted);
-    safeSetElementText('rep-over-2m', events.filter(e => e.vehicles.length >= 2).length);
-    const profile = COUNTY_PROFILES[currentCountyId] || RAW_PROFILES.find(r => r.id === currentCountyId);
-    safeSetElementText('rep-range-box', profile ? profile.name : currentCountyId);
-
-    let prmDisp = 0, prmWait = 0, prmAct = 0, prmFin = 0;
-    let pspDisp = 0, pspWait = 0, pspAct = 0, pspFin = 0;
-    let polDisp = 0, polWait = 0, polAct = 0, polFin = 0;
-    const catMap = {}, subcatMap = {}, locMap = {};
-
-    events.forEach(ev => {
-        const isWaiting = ev.status === 'ACTIVE' && !ev.firstArrived;
-        const isOnSite = ev.status === 'ACTIVE' && ev.firstArrived;
-        const isDone = ev.status === 'FINISHED';
-
-        if (ev.services && ev.services.prm) { prmDisp++; if (isWaiting) prmWait++; else if (isOnSite) prmAct++; else if (isDone) prmFin++; }
-        if (ev.services && ev.services.police) { polDisp++; if (isWaiting) polWait++; else if (isOnSite) polAct++; else if (isDone) polFin++; }
-        if (ev.vehicles && ev.vehicles.length > 0) {
-            pspDisp += ev.vehicles.length;
-            ev.vehicles.forEach(v => {
-                if (ev.status === 'FINISHED' && v.phase === 'DONE') pspFin++;
-                else if (v.phase === 'PREP' || v.phase === 'TRAVEL') pspWait++;
-                else pspAct++;
-            });
-        }
-        const catKey = ev.type || 'P'; catMap[catKey] = (catMap[catKey] || 0) + 1;
-        const subKey = ev.subtype || 'Brak podkategorii'; subcatMap[subKey] = (subcatMap[subKey] || 0) + 1;
-        const locKey = `${ev.city}${ev.street ? ', ' + ev.street : ''}`; locMap[locKey] = (locMap[locKey] || 0) + 1;
-    });
-
-    safeSetElementText('rep-prm-disp', prmDisp); safeSetElementText('rep-prm-wait', prmWait); safeSetElementText('rep-prm-act', prmAct); safeSetElementText('rep-prm-fin', prmFin);
-    safeSetElementText('rep-psp-disp', pspDisp); safeSetElementText('rep-psp-wait', pspWait); safeSetElementText('rep-psp-act', pspAct); safeSetElementText('rep-psp-fin', pspFin);
-    safeSetElementText('rep-pol-disp', polDisp); safeSetElementText('rep-pol-wait', polWait); safeSetElementText('rep-pol-act', polAct); safeSetElementText('rep-pol-fin', polFin);
-
-    const cprStatBody = document.getElementById('rep-cpr-statuses');
-    if (cprStatBody) {
-        cprStatBody.innerHTML = (shiftStats.cprTotalGenerated === 0 && total === 0)
-            ? `<tr><td colspan="2" style="color:#666;">Brak statusów</td></tr>`
-            : `<tr><td>Wygenerowane zgłoszenia 112</td><td style="text-align:right;">${shiftStats.cprTotalGenerated}</td></tr>
-               <tr><td>Przyjęte do obsługi (Karty SWD)</td><td style="text-align:right;">${shiftStats.cprAccepted}</td></tr>
-               <tr><td>Odrzucone / Zamknięte formatki</td><td style="text-align:right;">${shiftStats.cprRefused}</td></tr>`;
-    }
-
-    const opBody = document.getElementById('rep-operators');
-    if (opBody) {
-        opBody.innerHTML = total === 0
-            ? `<tr><td colspan="2" style="color:#666;">Brak danych operatorów</td></tr>`
-            : `<tr><td>${getFormattedOperatorName()} (Dyspozytor SKKP)</td><td style="text-align:right;">${total}</td></tr>`;
-    }
-
-    const fillTable = (tbodyId, dataObj, emptyLabel) => {
-        const el = document.getElementById(tbodyId);
-        if (!el) return;
-        const entries = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
-        el.innerHTML = entries.length === 0
-            ? `<tr><td colspan="2" style="color:#666;">${emptyLabel}</td></tr>`
-            : entries.map(([k, v]) => `<tr><td>${k}</td><td style="text-align:right;">${v}</td></tr>`).join('');
-    };
-
-    fillTable('rep-top-cats', catMap, 'Brak kategorii');
-    fillTable('rep-top-subcats', subcatMap, 'Brak podkategorii');
-    fillTable('rep-refusals-body', shiftStats.refusalReasons, 'Brak odmów w wybranym zakresie');
-    fillTable('rep-locations-body', locMap, 'Brak danych adresowych');
 
     const modal = document.getElementById('modal-reports');
     if (modal) modal.style.display = 'flex';
 }
 
-// --- SYMULACJA ZGŁOSZEŃ Z CPR (112) ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0; audioCpr.play().catch(() => {});
     shiftStats.cprTotalGenerated++;
@@ -715,17 +619,15 @@ async function simulateIncomingCPR() {
     safeSetElementText('cpr-city', randomTown);
     safeSetElementText('cpr-street', verifiedStreetAddress);
     safeSetElementText('cpr-caller', "Łączenie z operatorem 112...");
-    safeSetElementText('cpr-desc', "🤖 AI generuje unikalną treść formatki ze zgłoszenia...");
+    safeSetElementText('cpr-desc', "🤖 AI generuje treść zgłoszenia...");
     
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) cprModal.style.display = 'flex';
 
     let generatedDesc = "";
     try {
-        const aiPrompt = `Wygeneruj krótką, w 100% realistyczną i unikalną treść zgłoszenia od świadka dla operatora numeru 112 w Polsce.
-Typ zdarzenia: ${chosenType === 'P' ? 'Pożar' : 'Zagrożenie miejscowe / Wypadek / Awaria'}, miejscowość: ${randomTown}, adres: ${verifiedStreetAddress}.
-Zwróć TYLKO treść powiadomienia po polsku, bez cudzysłowów, maksymalnie 12 słów.`;
-        generatedDesc = await callUniversalAI("Jesteś operatorem CPR (112), zapisujesz zgłoszenia od obywateli w systemie.", aiPrompt, false);
+        const aiPrompt = `Wygeneruj krótką, w 100% realistyczną i unikalną treść zgłoszenia od świadka dla numeru 112. Typ: ${chosenType === 'P' ? 'Pożar' : 'Wypadek/Zagrożenie'}, miejscowość: ${randomTown}, adres: ${verifiedStreetAddress}. Max 10 słów.`;
+        generatedDesc = await callUniversalAI("Jesteś operatorem CPR (112).", aiPrompt, false);
         generatedDesc = generatedDesc.replace(/^["']|["']$/g, '').trim();
     } catch (e) {}
 
@@ -751,8 +653,6 @@ Zwróć TYLKO treść powiadomienia po polsku, bez cudzysłowów, maksymalnie 12
 function closeCPR(isAccepted = false) { 
     if (!isAccepted && currentCPRData) {
         shiftStats.cprRefused++;
-        const reason = "Zamknięto formatkę CPR bez otwarcia karty";
-        shiftStats.refusalReasons[reason] = (shiftStats.refusalReasons[reason] || 0) + 1;
         currentCPRData = null;
         saveSimulationState();
     }
@@ -798,20 +698,6 @@ function acceptCPRToEvent() {
     if (radioP) radioP.checked = true;
     updateSubtypes('P');
 
-    const rawCaller = currentCPRData.caller || "";
-    const namePart = rawCaller.split(' (tel.')[0] || "";
-    const phoneMatch = rawCaller.match(/tel\.\s*([0-9\-]+)/);
-    const callerParts = namePart.trim().split(' ');
-    const lastNameVal = callerParts.length > 1 ? callerParts.pop() : '';
-    const firstNameVal = callerParts.join(' ');
-
-    const nameInp = document.getElementById('inp-caller-name');
-    const surInp = document.getElementById('inp-caller-surname');
-    const phoneInp = document.getElementById('inp-caller-phone');
-    if(nameInp) nameInp.value = firstNameVal;
-    if(surInp) surInp.value = lastNameVal;
-    if(phoneInp && phoneMatch) phoneInp.value = phoneMatch[1];
-
     closeCPR(true);
     currentCPRData = null;
     saveSimulationState();
@@ -821,15 +707,6 @@ function formatMMSS(sec) {
     if (sec < 0) return "Zabezpieczenie rejonu (PZR)";
     const m = Math.floor(sec / 60), s = sec % 60;
     return `${m}:${s < 10 ? '0' : ''}${s} min`;
-}
-
-function toggleService(service) {
-    servicesState[service] = !servicesState[service];
-    const btn = document.getElementById(service === 'prm' ? 'btn-service-prm' : 'btn-service-police');
-    if (btn) {
-        if (servicesState[service]) btn.classList.add('active');
-        else btn.classList.remove('active');
-    }
 }
 
 function renderUnits() {
@@ -843,11 +720,11 @@ function createUnitHTML(unit) {
     const exactAddr = unitExactLocations[unit.name]?.address || "";
     const unitHasPzr = unit.vehicles.some(v => v.status === 'yellow' || getActivePzrForVehicle(v.id) !== null);
 
-    let vehiclesHTML = unit.vehicles.length === 0 ? `<div style="padding: 4px; color: #888; font-style: italic;">Brak pojazdów</div>` :
+    let vehiclesHTML = unit.vehicles.length === 0 ? `<div style="padding: 4px; color: #888;">Brak pojazdów</div>` :
         unit.vehicles.map(v => {
             const pzrEv = getActivePzrForVehicle(v.id);
             const isYellowRow = v.status === 'yellow' || pzrEv !== null;
-            const pzrBadge = pzrEv ? ` <span style="background:#f1c40f; color:#000; padding:0 4px; border-radius:2px; font-weight:bold; font-size:9px;">PZR (${pzrEv.city})</span>` : '';
+            const pzrBadge = pzrEv ? ` <span style="background:#f1c40f; color:#000; padding:0 4px; border-radius:2px; font-size:9px;">PZR (${pzrEv.city})</span>` : '';
             return `
                 <div class="vehicle-row ${isYellowRow ? 'pzr-active' : ''}">
                     <span class="status-dot ${v.status}"></span>
@@ -874,36 +751,23 @@ function renderEvents() {
     events.forEach(ev => {
         const tr = document.createElement('tr');
         tr.className = (ev.status === 'ACTIVE' ? 'active-ev' : 'finished-ev') + (selectedEvIdForRadio === ev.id ? ' selected-ev' : '');
-        if (ev.status === 'ACTIVE' && ev.type === 'PZR' && selectedEvIdForRadio !== ev.id) tr.style.color = '#ffff00';
         tr.ondblclick = () => openEditEventModal(ev.id);
         tr.onclick = () => selectEvent(ev.id);
 
-        let timeDisplay = "";
-        if (ev.status === 'FINISHED') {
-            const anyReturning = ev.vehicles.some(v => v.phase === 'RETURN' && v.returnTime > 0);
-            timeDisplay = anyReturning ? "Powrót SiS..." : "0:00 min (Zakończono)";
-        } else if (ev.type === 'PZR') {
-            timeDisplay = !ev.firstArrived ? "Dojazd na PZR..." : "Zabezpieczenie rejonu (Aktywne)";
-        } else if (!ev.firstArrived) {
-            timeDisplay = `W drodze na miejsce... (Czas akcji: ${formatMMSS(ev.remainingSeconds)})`;
-        } else {
-            timeDisplay = `Działania: ${formatMMSS(ev.remainingSeconds)}`;
-        }
-
+        let timeDisplay = ev.status === 'FINISHED' ? "Zakończono" : (ev.type === 'PZR' ? "PZR (Aktywne)" : `Działania: ${formatMMSS(ev.remainingSeconds)}`);
         const fullPlace = ev.street ? `${ev.city}, ${ev.street}` : ev.city;
-        const rowColorStyle = (ev.status === 'ACTIVE' && ev.type === 'PZR' && selectedEvIdForRadio !== ev.id) ? 'style="color:#ffd700;"' : '';
 
         tr.innerHTML = `
-            <td ${rowColorStyle}>${ev.id}/???/2026</td>
-            <td ${rowColorStyle}>${ev.time}</td>
-            <td ${rowColorStyle}>${ev.jrg}</td>
-            <td ${rowColorStyle}>${ev.jrg}</td>
-            <td ${rowColorStyle} title="Kliknij pinezkę, aby przybliżyć adres na mapie">${fullPlace} <span style="cursor:pointer;" onclick="event.stopPropagation(); focusEventOnMap(${ev.id});" title="Pokaż dokładny adres na mapie">📍</span></td>
-            <td ${rowColorStyle}>${ev.vehicles.length}</td>
-            <td ${rowColorStyle}>${ev.type}</td>
-            <td ${rowColorStyle}>${ev.desc || (ev.type === 'PZR' ? 'Przekazanie na zabezpieczenie rejonu' : '')}</td>
-            <td ${rowColorStyle}><b>${timeDisplay}</b></td>
-            <td ${rowColorStyle}>???-0000${ev.id}</td>
+            <td>${ev.id}/2026</td>
+            <td>${ev.time}</td>
+            <td>${ev.jrg}</td>
+            <td>${ev.jrg}</td>
+            <td>${fullPlace} <span style="cursor:pointer;" onclick="event.stopPropagation(); focusEventOnMap(${ev.id});">📍</span></td>
+            <td>${ev.vehicles.length}</td>
+            <td>${ev.type}</td>
+            <td>${ev.desc}</td>
+            <td><b>${timeDisplay}</b></td>
+            <td>???</td>
         `;
         tbody.appendChild(tr);
     });
@@ -922,33 +786,14 @@ function renderSelectedEventDetails() {
         return;
     }
 
-    sisBody.innerHTML = ev.vehicles.map(v => {
-        let statusText = "";
-        if (v.phase === 'PREP') statusText = `<span style="color: #d35400; font-weight: bold;">Alarmowanie / Wyjazd za ${v.prepTime}s</span>`;
-        else if (v.phase === 'TRAVEL') statusText = `<span style="color: #b36b00; font-weight: bold;">W drodze (${formatMMSS(v.travelTime)})</span>`;
-        else if (v.phase === 'ONSITE') {
-            statusText = ev.type === 'PZR'
-                ? `<span style="color: #b38600; background:#fff8c4; padding:1px 4px; font-weight: bold;">Na zabezpieczeniu rejonu (PZR)</span>`
-                : `<span style="color: #b30000; font-weight: bold;">Na miejscu działań</span>`;
-        } else if (v.phase === 'RETURN') {
-            const pzrEv = getActivePzrForVehicle(v.id);
-            const destLabel = (pzrEv && ev.type !== 'PZR') ? `Powrót na PZR ${pzrEv.city}` : `Powrót do bazy`;
-            statusText = `<span style="color: #004080; font-weight: bold;">${destLabel} (${formatMMSS(v.returnTime)})</span>`;
-        } else {
-            const pzrEv = getActivePzrForVehicle(v.id);
-            statusText = pzrEv
-                ? `<span style="color: #b38600; background:#fff8c4; padding:1px 4px; font-weight: bold;">Na PZR (${pzrEv.city})</span>`
-                : `<span style="color: #155724; font-weight: bold;">W bazie (Wolny)</span>`;
-        }
-        return `
-            <tr style="color:#000000; ${ev.type === 'PZR' ? 'background:#fffdf0;' : ''}">
-                <td><b>${v.id}</b> - ${v.name}</td>
-                <td>${v.obsada}</td>
-                <td>${v.unitName}</td>
-                <td>${statusText}</td>
-            </tr>
-        `;
-    }).join('');
+    sisBody.innerHTML = ev.vehicles.map(v => `
+        <tr style="color:#000000;">
+            <td><b>${v.id}</b> - ${v.name}</td>
+            <td>${v.obsada}</td>
+            <td>${v.unitName}</td>
+            <td>${v.phase}</td>
+        </tr>
+    `).join('');
 }
 
 function selectEvent(id) {
@@ -979,67 +824,27 @@ function switchTab(tab) {
     if(btnOsp) btnOsp.className = 'tab-btn ' + (tab === 'OSP' ? 'active' : '');
 }
 
-function handleCityInput(input) {
-    if(!input) return;
-    const val = input.value.trim().toLowerCase();
-    const suggestionsBox = document.getElementById('city-suggestions');
-    if(!suggestionsBox) return;
-    suggestionsBox.innerHTML = '';
-    if (!val) { suggestionsBox.style.display = 'none'; return; }
-
-    const matches = Object.keys(locationsDatabase).filter(c => c.toLowerCase().includes(val));
-    if (matches.length > 0) {
-        matches.forEach(c => {
-            const div = document.createElement('div');
-            div.className = 'suggestion-item'; div.innerText = c;
-            div.onclick = () => {
-                const cityInp = document.getElementById('inp-ev-city');
-                const regInp = document.getElementById('inp-ev-region');
-                if(cityInp) cityInp.value = c;
-                if(regInp) regInp.value = locationsDatabase[c];
-                autoSelectJRGByCity(c);
-                suggestionsBox.style.display = 'none';
-            };
-            suggestionsBox.appendChild(div);
-        });
-        suggestionsBox.style.display = 'block';
-    } else {
-        suggestionsBox.style.display = 'none';
-    }
-}
-
 function openNewEventModal() {
     activeEditingId = null;
     selectedVehicles = [];
     servicesState = { prm: false, police: false };
     updateJrgSelectOptions();
     
-    const btnPrm = document.getElementById('btn-service-prm');
-    const btnPol = document.getElementById('btn-service-police');
-    if(btnPrm) btnPrm.classList.remove('active');
-    if(btnPol) btnPol.classList.remove('active');
-
     const titleEl = document.getElementById('modal-event-title');
     const timeEl = document.getElementById('inp-ev-time');
     const cityEl = document.getElementById('inp-ev-city');
     const regEl = document.getElementById('inp-ev-region');
     const streetEl = document.getElementById('inp-ev-street');
     const descEl = document.getElementById('inp-ev-desc');
-    const nameEl = document.getElementById('inp-caller-name');
-    const surEl = document.getElementById('inp-caller-surname');
-    const phoneEl = document.getElementById('inp-caller-phone');
     const countEl = document.getElementById('lbl-selected-count');
     const modalEl = document.getElementById('modal-event');
 
     if(titleEl) titleEl.innerText = "Nowa Karta Zdarzenia";
     if(timeEl) timeEl.value = new Date().toLocaleTimeString();
-    if(cityEl) { cityEl.value = ''; cityEl.placeholder = `Wpisz np. ${COUNTY_PROFILES[currentCountyId].defaultTown}...`; }
+    if(cityEl) cityEl.value = '';
     if(regEl) regEl.value = '';
     if(streetEl) streetEl.value = '';
     if(descEl) descEl.value = '';
-    if(nameEl) nameEl.value = '';
-    if(surEl) surEl.value = '';
-    if(phoneEl) phoneEl.value = '';
     if(countEl) countEl.innerText = "Wybrano pojazdów: 0";
 
     const radioP = document.querySelector('input[name="ev-type"][value="P"]');
@@ -1067,7 +872,7 @@ function openEditEventModal(id) {
     const countEl = document.getElementById('lbl-selected-count');
     const modalEl = document.getElementById('modal-event');
 
-    if(titleEl) titleEl.innerText = `Edycja zdarzenia ID: ${ev.id}`;
+    if(titleEl) titleEl.innerText = `Edycja zdarzenia ID: ${ev.id} (Wciśnij przycisk SGR poniżej, by wezwać grupy)`;
     if(timeEl) timeEl.value = ev.time;
     if(cityEl) cityEl.value = ev.city;
     if(regEl) regEl.value = ev.region;
@@ -1078,16 +883,23 @@ function openEditEventModal(id) {
     const radio = document.querySelector(`input[name="ev-type"][value="${ev.type}"]`);
     if (radio) radio.checked = true;
     updateSubtypes(ev.type);
-    const subSel = document.getElementById('inp-ev-subtype');
-    if (ev.type !== 'PZR' && subSel) subSel.value = ev.subtype || "";
 
-    servicesState = { ...ev.services };
-    const btnPrm = document.getElementById('btn-service-prm');
-    const btnPol = document.getElementById('btn-service-police');
-    if (btnPrm) { if (servicesState.prm) btnPrm.classList.add('active'); else btnPrm.classList.remove('active'); }
-    if (btnPol) { if (servicesState.police) btnPol.classList.add('active'); else btnPol.classList.remove('active'); }
+    // --- WSTRZYKNIĘCIE PRZYCISKU SGR DO OKNA EDYCJI KARTY ---
+    let sgrBtnContainer = document.getElementById('dyn-sgr-btn-container');
+    if (!sgrBtnContainer) {
+        sgrBtnContainer = document.createElement('div');
+        sgrBtnContainer.id = 'dyn-sgr-btn-container';
+        sgrBtnContainer.style.cssText = 'margin: 8px 0; padding: 6px; background: #fff8c4; border: 1px solid #d4ac0d; text-align: center;';
+        
+        const modalBody = modalEl.querySelector('.modal-body');
+        if (modalBody) modalBody.insertBefore(sgrBtnContainer, modalBody.firstChild);
+    }
+    sgrBtnContainer.innerHTML = `
+        <button class="btn-win" style="background:#ffeb3b; font-weight:bold; color:#800000; padding:6px 12px; cursor:pointer;" onclick="openSgrModal(${ev.id})">
+            🚨 Wezwij Specjalistyczną Grupę Ratowniczą (SGRChem / SGRT / SGRWys / SGRWN)
+        </button>
+    `;
 
-    switchModalTab('dane');
     if(modalEl) modalEl.style.display = 'flex';
 }
 
@@ -1113,28 +925,21 @@ function openDispatchModal() {
     availableUnits.forEach((u, index) => {
         const isClosest = index === 0 && targetCity !== "";
         const exactAddr = unitExactLocations[u.name]?.address || "";
-        const isPSP = u.name.includes("JRG") || u.name.includes("KP PSP") || u.name.includes("KM PSP");
-        const prepRange = isPSP ? "Wyjazd: 1-5s" : "Wyjazd: 1-10s";
         const groupDiv = document.createElement('div');
         groupDiv.className = 'dispatch-unit-group';
 
         groupDiv.innerHTML = `
             <div class="dispatch-unit-header ${isClosest ? 'closest' : ''}" title="${exactAddr}">
                 <span>${index + 1}. ${u.name} <small style="font-weight:normal; color:#333;">(${exactAddr})</small> ${isClosest ? '⭐' : ''}</span>
-                <span>${u.km} | Jazda: ~${formatMMSS(u.sec)} (${prepRange})</span>
+                <span>${u.km} | Jazda: ~${formatMMSS(u.sec)}</span>
             </div>
-            ${u.vehicles.map(v => {
-                const pzrEv = getActivePzrForVehicle(v.id);
-                const pzrLabel = pzrEv ? `<span style="margin-left:auto; background:#f1c40f; color:#000; padding:1px 5px; border-radius:2px; font-weight:bold; font-size:10px;">🛡️ PZR (${pzrEv.city})</span>` : '';
-                return `
-                    <label class="dispatch-vehicle-item" style="cursor:pointer; color:#000000; ${pzrEv ? 'background:#fff8c4;' : ''}">
-                        <input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}>
-                        <span class="status-dot ${v.status}"></span>
-                        <span><b>${v.id}</b> - ${v.name}</span>
-                        ${pzrLabel}
-                    </label>
-                `;
-            }).join('')}
+            ${u.vehicles.map(v => `
+                <label class="dispatch-vehicle-item" style="cursor:pointer; color:#000000;">
+                    <input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}>
+                    <span class="status-dot ${v.status}"></span>
+                    <span><b>${v.id}</b> - ${v.name}</span>
+                </label>
+            `).join('')}
         `;
         container.appendChild(groupDiv);
     });
@@ -1157,11 +962,9 @@ function confirmDispatch() {
             [...unitsPSP, ...unitsOSP].forEach(u => {
                 const v = u.vehicles.find(veh => veh.id === cb.value);
                 if (v) {
-                    const pzrEv = getActivePzrForVehicle(v.id);
-                    const prepSec = pzrEv ? (Math.floor(Math.random() * 5) + 1) : generateDeparturePrepSeconds(u.name);
                     const routeSec = calculateRouteTravelSeconds(u.name, targetCity);
                     newSelection.push({
-                        ...v, unitName: u.name, phase: 'PREP', prepTime: prepSec,
+                        ...v, unitName: u.name, phase: 'PREP', prepTime: generateDeparturePrepSeconds(u.name),
                         travelTime: routeSec, baseRouteSeconds: routeSec, returnTime: routeSec
                     });
                 }
@@ -1188,7 +991,6 @@ function saveEvent() {
     const descInput = document.getElementById('inp-ev-desc');
     let descVal = descInput ? descInput.value : '';
     descVal = descVal.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
-    if (typeVal === 'PZR' && !descVal) descVal = `Przekazanie na zabezpieczenie rejonu operacyjnego (${city})`;
 
     const streetInput = document.getElementById('inp-ev-street');
     const streetVal = streetInput ? streetInput.value.trim() : '';
@@ -1205,19 +1007,11 @@ function saveEvent() {
     let targetEventObj = null;
 
     if (activeEditingId === null) {
-        let countedOspNames = [];
-        selectedVehicles.forEach(sv => {
-            if (!sv.unitName.includes("JRG") && !sv.unitName.includes("KP PSP") && !sv.unitName.includes("KM PSP") && !countedOspNames.includes(sv.unitName)) {
-                countedOspNames.push(sv.unitName);
-            }
-        });
-        playOspAlarmRepeated(countedOspNames.length);
-
         const timeInput = document.getElementById('inp-ev-time');
         const regInput = document.getElementById('inp-ev-region');
         const jrgInput = document.getElementById('inp-ev-jrg');
         const fallback = gpsCoords[city] || COUNTY_PROFILES[currentCountyId].mapCenter;
-        const calcDuration = calculateActionDurationSeconds(descVal, subtypeVal, typeVal);
+        const calcDuration = calculateActionDurationSeconds(descVal, subtypeVal, typeVal, selectedVehicles);
 
         const newEv = {
             id: events.length + 1,
@@ -1245,16 +1039,6 @@ function saveEvent() {
         }
     }
 
-    selectedVehicles.forEach(sv => {
-        [...unitsPSP, ...unitsOSP].forEach(u => {
-            const v = u.vehicles.find(veh => veh.id === sv.id);
-            if (v) {
-                if (typeVal === 'PZR') v.status = 'yellow';
-                else if (v.status === 'green' || v.status === 'yellow') v.status = 'orange';
-            }
-        });
-    });
-
     if (targetEventObj) geocodeEventAddress(targetEventObj);
     renderUnits(); renderEvents(); saveSimulationState(); closeModal('modal-event');
 }
@@ -1265,43 +1049,12 @@ function triggerEventFinishAndReturn(ev) {
     ev.remainingSeconds = 0;
 
     ev.vehicles.forEach(sv => {
-        const activePzr = (ev.type !== 'PZR') ? getActivePzrForVehicle(sv.id) : null;
-
         if (sv.phase === 'ONSITE' || sv.phase === 'TRAVEL') {
             sv.phase = 'RETURN';
             sv.returnTime = sv.baseRouteSeconds || calculateRouteTravelSeconds(sv.unitName, ev.city);
-            const approxMin = Math.max(1, Math.round(sv.returnTime / 60));
-
-            [...unitsPSP, ...unitsOSP].forEach(u => {
-                const veh = u.vehicles.find(vObj => vObj.id === sv.id);
-                if (veh) veh.status = 'orange';
-            });
-
-            if (activePzr) {
-                logToMainRadio(
-                    `${sv.id} ➔ ${currentCountyCallsign}`,
-                    `${currentCountyCallsign}, tu ${sv.id}. Zakończyliśmy działania w miejscowości ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}, wracamy z powrotem na zabezpieczenie rejonu (${activePzr.city}). Bez odbioru.`,
-                    '#ffd700', true
-                );
-            } else {
-                logToMainRadio(
-                    `${sv.id} ➔ ${currentCountyCallsign}`,
-                    `${currentCountyCallsign}, tu ${sv.id}. Zakończyliśmy działania w miejscowości ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}, wracamy do koszar (czas powrotu ok. ${approxMin} min). Bez odbioru.`,
-                    '#ffcc00', true
-                );
-            }
         } else if (sv.phase === 'PREP') {
             sv.phase = 'DONE';
             sv.returnTime = 0;
-            [...unitsPSP, ...unitsOSP].forEach(u => {
-                const veh = u.vehicles.find(vObj => vObj.id === sv.id);
-                if (veh) veh.status = activePzr ? 'yellow' : 'green';
-            });
-            logToMainRadio(
-                `${currentCountyCallsign} ➔ ${sv.id}`,
-                `${sv.id}, odwołuję alarm dla waszego zastępu, ${activePzr ? 'pozostańcie na zabezpieczeniu rejonu' : 'pozostańcie w koszarach'}.`,
-                '#00ffff', false
-            );
         }
     });
     saveSimulationState();
@@ -1338,7 +1091,6 @@ function closeModal(id) {
     if(modal) modal.style.display = 'none'; 
 }
 
-// --- GŁÓWNA PĘTLA CZASU SYMULATORA ---
 function runSimulationTick() {
     let needsRender = false;
 
@@ -1347,35 +1099,13 @@ function runSimulationTick() {
             ev.vehicles.forEach(v => {
                 if (v.phase === 'PREP') {
                     if (v.prepTime > 0) { v.prepTime--; needsRender = true; }
-                    else {
-                        v.phase = 'TRAVEL';
-                        logToMainRadio(`${v.id} ➔ ${currentCountyCallsign}`, buildDepartureRadioMessage(v, ev), '#7CFC00', true);
-                        needsRender = true;
-                    }
+                    else { v.phase = 'TRAVEL'; needsRender = true; }
                 }
                 else if (v.phase === 'TRAVEL') {
                     if (v.travelTime > 0) { v.travelTime--; needsRender = true; }
                     else {
                         v.phase = 'ONSITE';
-                        [...unitsPSP, ...unitsOSP].forEach(u => {
-                            const veh = u.vehicles.find(vObj => vObj.id === v.id);
-                            if (veh) {
-                                if (ev.type === 'PZR') {
-                                    if (!isVehicleInCombatAction(v.id)) veh.status = 'yellow';
-                                } else {
-                                    veh.status = 'red';
-                                }
-                            }
-                        });
-
-                        if (ev.type === 'PZR') {
-                            logToMainRadio(`${v.id} ➔ ${currentCountyCallsign}`, `${currentCountyCallsign}, tu ${v.id}. Jesteśmy na miejscu zabezpieczenia rejonu w ${ev.city}, pozostajemy w gotowości bojowej, odbiór.`, '#ffd700', true);
-                        } else {
-                            logToMainRadio(`${v.id} ➔ ${currentCountyCallsign}`, `${currentCountyCallsign}, tu ${v.id}. Jesteśmy na miejscu zdarzenia w ${ev.city}${ev.street ? ' (' + ev.street + ')' : ''}, odbiór.`, '#ffa500', true);
-                        }
-
                         if (!ev.firstArrived) ev.firstArrived = true;
-                        triggerArrivalRadioReport(ev, v);
                         needsRender = true;
                     }
                 }
@@ -1391,24 +1121,7 @@ function runSimulationTick() {
             ev.vehicles.forEach(v => {
                 if (v.phase === 'RETURN') {
                     if (v.returnTime > 0) { v.returnTime--; needsRender = true; }
-                    else {
-                        v.phase = 'DONE';
-                        const activePzr = (ev.type !== 'PZR') ? getActivePzrForVehicle(v.id) : null;
-
-                        [...unitsPSP, ...unitsOSP].forEach(u => {
-                            const veh = u.vehicles.find(vObj => vObj.id === v.id);
-                            if (veh) veh.status = activePzr ? 'yellow' : 'green';
-                        });
-
-                        if (activePzr) {
-                            const pzrVehObj = activePzr.vehicles.find(pv => pv.id === v.id);
-                            if (pzrVehObj) pzrVehObj.phase = 'ONSITE';
-                            logToMainRadio(`${v.id} ➔ ${currentCountyCallsign}`, `${currentCountyCallsign}, tu ${v.id} (${v.unitName}). Powróciliśmy na zabezpieczenie rejonu (${activePzr.city}), w gotowości bojowej, odbiór.`, '#ffd700', true);
-                        } else {
-                            logToMainRadio(`${v.id} ➔ ${currentCountyCallsign}`, `${currentCountyCallsign}, tu ${v.id} (${v.unitName}). Zastęp w bazie, gotowy do działań, odbiór.`, '#00ff7f', true);
-                        }
-                        needsRender = true;
-                    }
+                    else { v.phase = 'DONE'; needsRender = true; }
                 }
             });
         }
