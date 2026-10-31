@@ -1,18 +1,6 @@
 // =========================================================================
-// PLIK 4: script.js - KOMPLETNY KOD STERUJĄCY SWD (POPRAWIONE CZASY I PĘTLA)
+// PLIK 4: script.js - PEŁNY RDZEŃ SWD, INTERFEJS, LAUNCHER, POGODA I PĘTLA
 // =========================================================================
-
-if (typeof window !== 'undefined') {
-    if ('speechSynthesis' in window) {
-        try {
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak = function() {};
-        } catch (e) {}
-    }
-    window.speakRadioText = function() {};
-    window.speakText = function() {};
-    window.playRadioTTS = function() {};
-}
 
 if (typeof window.callUniversalAI !== 'function') {
     window._swdKeys = {
@@ -60,12 +48,6 @@ if (typeof window.callUniversalAI !== 'function') {
     };
 }
 
-let weatherTimeoutId = null;
-
-function getAllUnitsIncludingSgr() {
-    return [...unitsPSP, ...unitsOSP, ...getCurrentRegionSgrGroups()];
-}
-
 function getStorageKeyForCounty(countyId) {
     return `SWDST_SAVED_SHIFT_STATE_${countyId}_V1`;
 }
@@ -96,35 +78,7 @@ function updateJrgSelectOptions() {
     });
 }
 
-function ensureSgrButtonInEventModal() {
-    if (document.getElementById('btn-open-sgr-modal')) return;
-    const lblCount = document.getElementById('lbl-selected-count');
-    const modalEv = document.getElementById('modal-event');
-    if (!modalEv) return;
-
-    const allBtns = modalEv.querySelectorAll('button');
-    let dispBtn = null;
-    allBtns.forEach(b => {
-        if (b.innerText.trim().includes('Dyspozycja') || (b.getAttribute('onclick') || '').includes('openDispatchModal')) {
-            dispBtn = b;
-        }
-    });
-
-    const sgrBtn = document.createElement('button');
-    sgrBtn.type = 'button';
-    sgrBtn.id = 'btn-open-sgr-modal';
-    sgrBtn.className = 'btn-win';
-    sgrBtn.style.cssText = 'background: #fff3a1; border: 1.5px solid #b30000; color: #800000; font-weight: bold; margin-right: 6px; cursor: pointer;';
-    sgrBtn.innerHTML = '🚨 Dysponuj SGR (KW PSP)';
-    sgrBtn.onclick = () => openSgrModal();
-
-    if (dispBtn && dispBtn.parentElement) {
-        dispBtn.parentElement.insertBefore(sgrBtn, dispBtn);
-    } else if (lblCount && lblCount.parentElement) {
-        lblCount.parentElement.appendChild(sgrBtn);
-    }
-}
-
+// --- LAUNCHER / EKRAN LOGOWANIA I WYBORU KOMENDY ---
 function ensureLauncherModalExists() {
     if (document.getElementById('modal-launcher')) return;
     const modal = document.createElement('div');
@@ -232,16 +186,10 @@ function applyCountyProfile(countyId) {
         u.vehicles.forEach(v => { v.obsada = Math.floor(Math.random() * 4) + 3; });
     });
 
-    getCurrentRegionSgrGroups().forEach(g => {
-        g.vehicles.forEach(v => { v.status = "green"; });
-    });
-
     events = []; selectedEvIdForRadio = null; activeEditingId = null;
     mainRadioLogs = []; cprCounter = 101;
     shiftStats = { cprTotalGenerated: 0, cprAccepted: 0, cprRefused: 0, refusalReasons: {} };
-    if (typeof closeRadioWindow === 'function') {
-        Object.keys(openRadioWindows).forEach(k => closeRadioWindow(k));
-    }
+    Object.keys(openRadioWindows).forEach(k => closeRadioWindow(k));
 
     loadSimulationState();
     updateJrgSelectOptions();
@@ -249,7 +197,7 @@ function applyCountyProfile(countyId) {
 
     const mainHdr = document.querySelector('#main-radio-modal .main-radio-header span');
     if (mainHdr) mainHdr.innerText = `📻 Główne Radio SKKP (${currentCountyCallsign})`;
-    if (typeof updateMainRadioChat === 'function') updateMainRadioChat();
+    updateMainRadioChat();
 
     stationsGeocoded = false;
     geocodeAllFireStationsExact();
@@ -275,6 +223,7 @@ function updateSubtypes(type) {
     });
 }
 
+// --- MODUŁ ZAPISYWANIA I WCZYTYWANIA STANU SŁUŻBY ---
 function saveSimulationState() {
     try {
         const stateObj = {
@@ -294,8 +243,8 @@ function loadSimulationState() {
         if (!data || !Array.isArray(data.events)) return false;
 
         events = data.events;
-        if (Array.isArray(data.unitsPSP) && data.unitsPSP.length >= 2) unitsPSP = data.unitsPSP;
-        if (Array.isArray(data.unitsOSP) && data.unitsOSP.length >= 2) unitsOSP = data.unitsOSP;
+        if (Array.isArray(data.unitsPSP) && data.unitsPSP.length > 0) unitsPSP = data.unitsPSP;
+        if (Array.isArray(data.unitsOSP) && data.unitsOSP.length > 0) unitsOSP = data.unitsOSP;
         if (data.unitExactLocations) {
             Object.keys(data.unitExactLocations).forEach(k => {
                 if (!unitExactLocations[k]) unitExactLocations[k] = data.unitExactLocations[k];
@@ -349,7 +298,7 @@ function importShiftStateFromFile() {
 }
 
 function resetShiftState() {
-    if (!confirm("Czy na pewno chcesz zresetować obecną służbę i przywrócić pełny podział bojowy w wybranym rejonie?")) return;
+    if (!confirm("Czy na pewno chcesz zresetować obecną służbę w wybranym rejonie?")) return;
     localStorage.removeItem(getStorageKeyForCounty(currentCountyId));
     applyCountyProfile(currentCountyId);
     const sisBody = document.getElementById('details-sis-body');
@@ -449,29 +398,18 @@ function makeDraggable(elmnt, header) {
 }
 
 function ensureVersionBadgeInStatusBar() {
-    const clockBox = document.getElementById('clock-box');
-    if (!clockBox || !clockBox.parentElement) return;
-
-    let weatherBadge = document.getElementById('weather-status-badge');
-    if (!weatherBadge) {
-        weatherBadge = document.createElement('div');
-        weatherBadge.id = 'weather-status-badge';
-        weatherBadge.style.cssText = 'display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: bold; color: #004080; background: #eef4ff; border: 1px solid #7f9db9; margin-left: 4px; vertical-align: middle; cursor: pointer;';
-        weatherBadge.title = "Aktualna pogoda w powiecie (kliknij, aby wylosować zmianę pogody)";
-        weatherBadge.onclick = () => triggerWeatherChange();
-        weatherBadge.innerText = currentWeatherData.label;
-        clockBox.parentElement.insertBefore(weatherBadge, clockBox);
-    }
-
     let badge = document.getElementById('swdst-version-badge');
     if (!badge) {
-        badge = document.createElement('div');
-        badge.id = 'swdst-version-badge';
-        badge.style.cssText = 'display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #000; background: #ece9d8; border: 1px solid #7f9db9; margin-left: 4px; vertical-align: middle; cursor: pointer;';
-        badge.title = "Kliknij, aby zmienić komendę / przelogować operatora";
-        badge.onclick = () => openLauncherModal();
-        badge.innerText = `${APP_VERSION} (${simSpeed}x)`;
-        clockBox.parentElement.insertBefore(badge, clockBox);
+        const clockBox = document.getElementById('clock-box');
+        if (clockBox && clockBox.parentElement) {
+            badge = document.createElement('div');
+            badge.id = 'swdst-version-badge';
+            badge.style.cssText = 'display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: bold; color: #000; background: #ece9d8; border: 1px solid #7f9db9; margin-left: 4px; vertical-align: middle; cursor: pointer;';
+            badge.title = "Kliknij, aby zmienić komendę / przelogować operatora";
+            badge.onclick = () => openLauncherModal();
+            badge.innerText = `${APP_VERSION} (${simSpeed}x)`;
+            clockBox.parentElement.insertBefore(badge, clockBox);
+        }
     } else {
         badge.innerText = `${APP_VERSION} (${simSpeed}x)`;
     }
@@ -497,6 +435,7 @@ function safeSetElementText(id, text) {
     if (el) el.innerText = text;
 }
 
+// --- ZARZĄDZANIE SIŁAMI I ŚRODKAMI ---
 function ensureSiSModalExists() {
     let sisModal = document.getElementById('modal-sis');
     if (!sisModal) {
@@ -572,7 +511,7 @@ function renderSiSManagerList() {
 }
 
 function setVehicleStatusManual(vehId, newStatus) {
-    getAllUnitsIncludingSgr().forEach(u => {
+    [...unitsPSP, ...unitsOSP].forEach(u => {
         const v = u.vehicles.find(x => x.id === vehId);
         if (v) v.status = newStatus;
     });
@@ -610,6 +549,7 @@ function addCustomVehicle(type) {
     }
 }
 
+// --- OKNO RAPORTÓW I STATYSTYK ---
 function ensureReportsModalExists() {
     if (document.getElementById('modal-reports')) return;
     const modal = document.createElement('div');
@@ -628,45 +568,17 @@ function ensureReportsModalExists() {
                         <button class="btn-win">Miesiąc</button>
                         <button class="btn-win">Rok</button>
                         <button class="btn-win">Wszystkie</button>
-                        <span id="rep-date-sub" style="color: #444; margin-left: 6px;">Statystyka z bieżącej służby</span>
                     </div>
                     <div style="display:flex; gap:4px;">
                         <button class="btn-win" style="padding: 4px 10px; font-weight: bold;" onclick="exportShiftStateToFile()">💾 Eksportuj JSON</button>
                         <button class="btn-win" style="padding: 4px 10px;" onclick="importShiftStateFromFile()">📂 Wczytaj JSON</button>
-                        <button class="btn-win" style="padding: 4px 14px; font-weight: bold;" onclick="window.print()">Drukuj</button>
                     </div>
                 </div>
-                <div style="background: #ece9d8; border: 1px solid #999; padding: 6px 8px;">
-                    <b>Tryb statystyk:</b> Zapis automatyczny w przeglądarce (localStorage) + obsługa plików .json.
-                </div>
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Zgłoszenia ogółem</div><div id="rep-total" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Aktywne</div><div id="rep-active" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Zakończone</div><div id="rep-finished" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Średni czas obsługi</div><div id="rep-avg-time" style="font-size: 16px; font-weight: bold; margin-top: 6px; color:#000;">00:08:30</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Odmowy / Anulowane CPR</div><div id="rep-refused" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Zdarzenia powiązane (CPR)</div><div id="rep-cpr-linked" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Nowe powyżej 2 min</div><div id="rep-over-2m" style="font-size: 20px; font-weight: bold; margin-top: 4px; color:#000;">0</div></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold; color: #222;">Komenda</div><div id="rep-range-box" style="font-size: 12px; font-weight: bold; margin-top: 6px; color:#000;">KP PSP</div></div>
-                </div>
-                <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;">
-                    <div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 6px;">SŁUŻBY — PRM / PSP / POLICJA</div>
-                    <table class="sis-table" style="background: #fff;">
-                        <thead><tr><th>Służba</th><th style="text-align:right;">Zadysponowano</th><th style="text-align:right;">Oczekuje (Dojazd)</th><th style="text-align:right;">Obsługa (Na miejscu)</th><th style="text-align:right;">Zakończono</th><th style="text-align:right;">Śr. reakcja</th><th style="text-align:right;">Śr. obsługa</th></tr></thead>
-                        <tbody>
-                            <tr><td>PRM / ZRM</td><td id="rep-prm-disp" style="text-align:right;">0</td><td id="rep-prm-wait" style="text-align:right;">0</td><td id="rep-prm-act" style="text-align:right;">0</td><td id="rep-prm-fin" style="text-align:right;">0</td><td style="text-align:right;">00:01:20</td><td style="text-align:right;">00:08:00</td></tr>
-                            <tr><td>PSP / OSP</td><td id="rep-psp-disp" style="text-align:right;">0</td><td id="rep-psp-wait" style="text-align:right;">0</td><td id="rep-psp-act" style="text-align:right;">0</td><td id="rep-psp-fin" style="text-align:right;">0</td><td style="text-align:right;">00:01:15</td><td style="text-align:right;">00:08:30</td></tr>
-                            <tr><td>Policja</td><td id="rep-pol-disp" style="text-align:right;">0</td><td id="rep-pol-wait" style="text-align:right;">0</td><td id="rep-pol-act" style="text-align:right;">0</td><td id="rep-pol-fin" style="text-align:right;">0</td><td style="text-align:right;">00:01:45</td><td style="text-align:right;">00:08:00</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">STATUSY CPR</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-cpr-statuses"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">OPERATORZY</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-operators"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">TOP KATEGORIE</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-top-cats"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">TOP PODKATEGORIE</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-top-subcats"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">POWODY ODMÓW / ANULOWAŃ</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-refusals-body"></tbody></table></div>
-                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px;"><div style="background: #cccccc; padding: 4px 6px; font-weight: bold; border: 1px solid #aaa; margin-bottom: 4px;">MIEJSCOWOŚCI / ADRESY</div><table class="sis-table" style="background: #fff;"><thead><tr><th>Nazwa</th><th style="width:70px; text-align:right;">Liczba</th></tr></thead><tbody id="rep-locations-body"></tbody></table></div>
+                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold;">Zgłoszenia ogółem</div><div id="rep-total" style="font-size: 20px; font-weight: bold; margin-top: 4px;">0</div></div>
+                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold;">Aktywne</div><div id="rep-active" style="font-size: 20px; font-weight: bold; margin-top: 4px;">0</div></div>
+                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold;">Zakończone</div><div id="rep-finished" style="font-size: 20px; font-weight: bold; margin-top: 4px;">0</div></div>
+                    <div style="background: #e6e6e6; border: 1px solid #999; padding: 6px 8px;"><div style="font-weight: bold;">Odmowy / CPR</div><div id="rep-refused" style="font-size: 20px; font-weight: bold; margin-top: 4px;">0</div></div>
                 </div>
             </div>
         </div>
@@ -687,75 +599,11 @@ function openReportsModal() {
     safeSetElementText('rep-active', active);
     safeSetElementText('rep-finished', finished);
     safeSetElementText('rep-refused', shiftStats.cprRefused);
-    safeSetElementText('rep-cpr-linked', shiftStats.cprAccepted);
-    safeSetElementText('rep-over-2m', events.filter(e => e.vehicles.length >= 2).length);
-    const profile = COUNTY_PROFILES[currentCountyId] || RAW_PROFILES.find(r => r.id === currentCountyId);
-    safeSetElementText('rep-range-box', profile ? profile.name : currentCountyId);
-
-    let prmDisp = 0, prmWait = 0, prmAct = 0, prmFin = 0;
-    let pspDisp = 0, pspWait = 0, pspAct = 0, pspFin = 0;
-    let polDisp = 0, polWait = 0, polAct = 0, polFin = 0;
-    const catMap = {}, subcatMap = {}, locMap = {};
-
-    events.forEach(ev => {
-        const isWaiting = ev.status === 'ACTIVE' && !ev.firstArrived;
-        const isOnSite = ev.status === 'ACTIVE' && ev.firstArrived;
-        const isDone = ev.status === 'FINISHED';
-
-        if (ev.services && ev.services.prm) { prmDisp++; if (isWaiting) prmWait++; else if (isOnSite) prmAct++; else if (isDone) prmFin++; }
-        if (ev.services && ev.services.police) { polDisp++; if (isWaiting) polWait++; else if (isOnSite) polAct++; else if (isDone) polFin++; }
-        if (ev.vehicles && ev.vehicles.length > 0) {
-            pspDisp += ev.vehicles.length;
-            ev.vehicles.forEach(v => {
-                if (ev.status === 'FINISHED' && v.phase === 'DONE') pspFin++;
-                else if (v.phase === 'PREP' || v.phase === 'TRAVEL') pspWait++;
-                else pspAct++;
-            });
-        }
-        const catKey = ev.type || 'P'; catMap[catKey] = (catMap[catKey] || 0) + 1;
-        const subKey = ev.subtype || 'Brak podkategorii'; subcatMap[subKey] = (subcatMap[subKey] || 0) + 1;
-        const locKey = `${ev.city}${ev.street ? ', ' + ev.street : ''}`; locMap[locKey] = (locMap[locKey] || 0) + 1;
-    });
-
-    safeSetElementText('rep-prm-disp', prmDisp); safeSetElementText('rep-prm-wait', prmWait); safeSetElementText('rep-prm-act', prmAct); safeSetElementText('rep-prm-fin', prmFin);
-    safeSetElementText('rep-psp-disp', pspDisp); safeSetElementText('rep-psp-wait', pspWait); safeSetElementText('rep-psp-act', pspAct); safeSetElementText('rep-psp-fin', pspFin);
-    safeSetElementText('rep-pol-disp', polDisp); safeSetElementText('rep-pol-wait', polWait); safeSetElementText('rep-pol-act', polAct); safeSetElementText('rep-pol-fin', polFin);
-
-    const cprStatBody = document.getElementById('rep-cpr-statuses');
-    if (cprStatBody) {
-        cprStatBody.innerHTML = (shiftStats.cprTotalGenerated === 0 && total === 0)
-            ? `<tr><td colspan="2" style="color:#666;">Brak statusów</td></tr>`
-            : `<tr><td>Wygenerowane zgłoszenia 112</td><td style="text-align:right;">${shiftStats.cprTotalGenerated}</td></tr>
-               <tr><td>Przyjęte do obsługi (Karty SWD)</td><td style="text-align:right;">${shiftStats.cprAccepted}</td></tr>
-               <tr><td>Odrzucone / Zamknięte formatki</td><td style="text-align:right;">${shiftStats.cprRefused}</td></tr>`;
-    }
-
-    const opBody = document.getElementById('rep-operators');
-    if (opBody) {
-        opBody.innerHTML = total === 0
-            ? `<tr><td colspan="2" style="color:#666;">Brak danych operatorów</td></tr>`
-            : `<tr><td>${getFormattedOperatorName()} (Dyspozytor SKKP)</td><td style="text-align:right;">${total}</td></tr>`;
-    }
-
-    const fillTable = (tbodyId, dataObj, emptyLabel) => {
-        const el = document.getElementById(tbodyId);
-        if (!el) return;
-        const entries = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
-        el.innerHTML = entries.length === 0
-            ? `<tr><td colspan="2" style="color:#666;">${emptyLabel}</td></tr>`
-            : entries.map(([k, v]) => `<tr><td>${k}</td><td style="text-align:right;">${v}</td></tr>`).join('');
-    };
-
-    fillTable('rep-top-cats', catMap, 'Brak kategorii');
-    fillTable('rep-top-subcats', subcatMap, 'Brak podkategorii');
-    fillTable('rep-refusals-body', shiftStats.refusalReasons, 'Brak odmów w wybranym zakresie');
-    fillTable('rep-locations-body', locMap, 'Brak danych adresowych');
 
     const modal = document.getElementById('modal-reports');
     if (modal) modal.style.display = 'flex';
 }
 
-// --- SYMULACJA ZGŁOSZEŃ Z CPR (112) ---
 async function simulateIncomingCPR() {
     audioCpr.currentTime = 0; audioCpr.play().catch(() => {});
     shiftStats.cprTotalGenerated++;
@@ -770,27 +618,25 @@ async function simulateIncomingCPR() {
     const houseNum = Math.floor(Math.random() * 25) + 1;
     const verifiedStreetAddress = `${baseStreet} ${houseNum}`;
 
-    const arr = chosenType === 'P' ? fallbackPhrasesP : fallbackPhrasesMZ;
-    let generatedDesc = arr[Math.floor(Math.random() * arr.length)];
+    safeSetElementText('cpr-id', newCprId);
+    safeSetElementText('cpr-city', randomTown);
+    safeSetElementText('cpr-street', verifiedStreetAddress);
+    safeSetElementText('cpr-caller', "Łączenie z operatorem 112...");
+    safeSetElementText('cpr-desc', "🤖 AI generuje treść zgłoszenia...");
+    
+    const cprModal = document.getElementById('cpr-modal');
+    if (cprModal) cprModal.style.display = 'flex';
 
-    if (Math.random() < 0.3) {
-        safeSetElementText('cpr-id', newCprId);
-        safeSetElementText('cpr-city', randomTown);
-        safeSetElementText('cpr-street', verifiedStreetAddress);
-        safeSetElementText('cpr-caller', "Łączenie z operatorem 112...");
-        safeSetElementText('cpr-desc', "Odbieranie formatki z CPR...");
-        const cprModal = document.getElementById('cpr-modal');
-        if (cprModal) cprModal.style.display = 'flex';
+    let generatedDesc = "";
+    try {
+        const aiPrompt = `Wygeneruj krótką, w 100% realistyczną i unikalną treść zgłoszenia od świadka dla numeru 112. Typ: ${chosenType === 'P' ? 'Pożar' : 'Wypadek/Zagrożenie'}, miejscowość: ${randomTown}, adres: ${verifiedStreetAddress}. Max 10 słów.`;
+        generatedDesc = await callUniversalAI("Jesteś operatorem CPR (112).", aiPrompt, false);
+        generatedDesc = generatedDesc.replace(/^["']|["']$/g, '').trim();
+    } catch (e) {}
 
-        try {
-            const aiPrompt = `Wygeneruj krótką, w 100% realistyczną i unikalną treść zgłoszenia od świadka dla operatora numeru 112 w Polsce.
-Typ zdarzenia: ${chosenType === 'P' ? 'Pożar' : 'Zagrożenie miejscowe / Wypadek / Awaria'}, miejscowość: ${randomTown}, adres: ${verifiedStreetAddress}.
-Zwróć TYLKO treść powiadomienia po polsku, bez cudzysłowów, maksymalnie 12 słów.`;
-            const aiRes = await callUniversalAI("Jesteś operatorem CPR (112), zapisujesz zgłoszenia od obywateli w systemie.", aiPrompt, false);
-            if (aiRes && aiRes.trim().length > 5) {
-                generatedDesc = aiRes.replace(/^["']|["']$/g, '').trim();
-            }
-        } catch (e) {}
+    if (!generatedDesc) {
+        const arr = chosenType === 'P' ? fallbackPhrasesP : fallbackPhrasesMZ;
+        generatedDesc = arr[Math.floor(Math.random() * arr.length)];
     }
 
     const finalCaller = generateRandomPolishCaller();
@@ -805,16 +651,11 @@ Zwróć TYLKO treść powiadomienia po polsku, bez cudzysłowów, maksymalnie 12
     safeSetElementText('cpr-street', currentCPRData.street);
     safeSetElementText('cpr-caller', currentCPRData.caller);
     safeSetElementText('cpr-desc', currentCPRData.desc);
-
-    const cprModal = document.getElementById('cpr-modal');
-    if (cprModal) cprModal.style.display = 'flex';
 }
 
 function closeCPR(isAccepted = false) { 
     if (!isAccepted && currentCPRData) {
         shiftStats.cprRefused++;
-        const reason = "Zamknięto formatkę CPR bez otwarcia karty";
-        shiftStats.refusalReasons[reason] = (shiftStats.refusalReasons[reason] || 0) + 1;
         currentCPRData = null;
         saveSimulationState();
     }
@@ -856,23 +697,9 @@ function acceptCPRToEvent() {
 
     autoSelectJRGByCity(currentCPRData.city);
 
-    const radioType = document.querySelector(`input[name="ev-type"][value="${currentCPRData.type || 'P'}"]`);
-    if (radioType) radioType.checked = true;
-    updateSubtypes(currentCPRData.type || 'P');
-
-    const rawCaller = currentCPRData.caller || "";
-    const namePart = rawCaller.split(' (tel.')[0] || "";
-    const phoneMatch = rawCaller.match(/tel\.\s*([0-9\-]+)/);
-    const callerParts = namePart.trim().split(' ');
-    const lastNameVal = callerParts.length > 1 ? callerParts.pop() : '';
-    const firstNameVal = callerParts.join(' ');
-
-    const nameInp = document.getElementById('inp-caller-name');
-    const surInp = document.getElementById('inp-caller-surname');
-    const phoneInp = document.getElementById('inp-caller-phone');
-    if(nameInp) nameInp.value = firstNameVal;
-    if(surInp) surInp.value = lastNameVal;
-    if(phoneInp && phoneMatch) phoneInp.value = phoneMatch[1];
+    const radioP = document.querySelector('input[name="ev-type"][value="P"]');
+    if (radioP) radioP.checked = true;
+    updateSubtypes('P');
 
     closeCPR(true);
     currentCPRData = null;
@@ -885,11 +712,430 @@ function formatMMSS(sec) {
     return `${m}:${s < 10 ? '0' : ''}${s} min`;
 }
 
-// --- HARMONOGRAM ZGŁOSZEŃ CPR: OD 1 DO 10 MINUT ---
+function renderUnits() {
+    const pspGrid = document.getElementById('grid-psp');
+    const ospGrid = document.getElementById('grid-osp');
+    if(pspGrid) pspGrid.innerHTML = unitsPSP.map(u => createUnitHTML(u)).join('');
+    if(ospGrid) ospGrid.innerHTML = unitsOSP.map(u => createUnitHTML(u)).join('');
+}
+
+function createUnitHTML(unit) {
+    const exactAddr = unitExactLocations[unit.name]?.address || "";
+    const unitHasPzr = unit.vehicles.some(v => v.status === 'yellow' || getActivePzrForVehicle(v.id) !== null);
+
+    let vehiclesHTML = unit.vehicles.length === 0 ? `<div style="padding: 4px; color: #888;">Brak pojazdów</div>` :
+        unit.vehicles.map(v => {
+            const pzrEv = getActivePzrForVehicle(v.id);
+            const isYellowRow = v.status === 'yellow' || pzrEv !== null;
+            const pzrBadge = pzrEv ? ` <span style="background:#f1c40f; color:#000; padding:0 4px; border-radius:2px; font-size:9px;">PZR (${pzrEv.city})</span>` : '';
+            return `
+                <div class="vehicle-row ${isYellowRow ? 'pzr-active' : ''}">
+                    <span class="status-dot ${v.status}"></span>
+                    <span style="color:#000000;"><b>${v.id}</b> - ${v.name}${pzrBadge}</span>
+                </div>
+            `;
+        }).join('');
+
+    return `
+        <div class="unit-box ${unitHasPzr ? 'unit-on-pzr' : ''}">
+            <div class="unit-header ${unitHasPzr ? 'header-on-pzr' : ''}" style="color:#000000; font-weight:bold;" title="Adres: ${exactAddr}">
+                ${unit.name} ${unitHasPzr ? '🛡️ [PZR]' : ''}
+            </div>
+            <div>${vehiclesHTML}</div>
+        </div>
+    `;
+}
+
+function renderEvents() {
+    const tbody = document.getElementById('events-body');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+
+    events.forEach(ev => {
+        const tr = document.createElement('tr');
+        tr.className = (ev.status === 'ACTIVE' ? 'active-ev' : 'finished-ev') + (selectedEvIdForRadio === ev.id ? ' selected-ev' : '');
+        tr.ondblclick = () => openEditEventModal(ev.id);
+        tr.onclick = () => selectEvent(ev.id);
+
+        let timeDisplay = ev.status === 'FINISHED' ? "Zakończono" : (ev.type === 'PZR' ? "PZR (Aktywne)" : `Działania: ${formatMMSS(ev.remainingSeconds)}`);
+        const fullPlace = ev.street ? `${ev.city}, ${ev.street}` : ev.city;
+
+        tr.innerHTML = `
+            <td>${ev.id}/2026</td>
+            <td>${ev.time}</td>
+            <td>${ev.jrg}</td>
+            <td>${ev.jrg}</td>
+            <td>${fullPlace} <span style="cursor:pointer;" onclick="event.stopPropagation(); focusEventOnMap(${ev.id});">📍</span></td>
+            <td>${ev.vehicles.length}</td>
+            <td>${ev.type}</td>
+            <td>${ev.desc}</td>
+            <td><b>${timeDisplay}</b></td>
+            <td>???</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    updateMapMarkers();
+}
+
+function renderSelectedEventDetails() {
+    if (selectedEvIdForRadio === null) return;
+    const ev = events.find(e => e.id === selectedEvIdForRadio);
+    if (!ev) return;
+    const sisBody = document.getElementById('details-sis-body');
+    if (!sisBody) return;
+
+    if (ev.vehicles.length === 0) {
+        sisBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">Brak zadysponowanych SiS</td></tr>';
+        return;
+    }
+
+    sisBody.innerHTML = ev.vehicles.map(v => `
+        <tr style="color:#000000;">
+            <td><b>${v.id}</b> - ${v.name}</td>
+            <td>${v.obsada}</td>
+            <td>${v.unitName}</td>
+            <td>${v.phase}</td>
+        </tr>
+    `).join('');
+}
+
+function selectEvent(id) {
+    const ev = events.find(e => e.id === id);
+    if (!ev) return;
+    selectedEvIdForRadio = ev.id;
+    const btnOpen = document.getElementById('btn-open-radio');
+    const detailsTitle = document.getElementById('details-title');
+    if(btnOpen) btnOpen.style.display = 'block';
+    if(detailsTitle) detailsTitle.innerText = `ID: ${ev.id} - ${ev.city}${ev.street ? ', ' + ev.street : ''}`;
+    renderEvents();
+    renderSelectedEventDetails();
+}
+
+function switchTab(tab) {
+    const pspGrid = document.getElementById('grid-psp');
+    const ospGrid = document.getElementById('grid-osp');
+    const mapContainer = document.getElementById('view-map-container');
+    const btnPsp = document.getElementById('btn-tab-psp');
+    const btnOsp = document.getElementById('btn-tab-osp');
+    const btnMap = document.getElementById('btn-tab-map');
+
+    if(mapContainer) mapContainer.style.display = 'none';
+    if(btnMap) btnMap.classList.remove('active');
+    if(pspGrid) pspGrid.style.display = tab === 'PSP' ? 'grid' : 'none';
+    if(ospGrid) ospGrid.style.display = tab === 'OSP' ? 'grid' : 'none';
+    if(btnPsp) btnPsp.className = 'tab-btn ' + (tab === 'PSP' ? 'active' : '');
+    if(btnOsp) btnOsp.className = 'tab-btn ' + (tab === 'OSP' ? 'active' : '');
+}
+
+function openNewEventModal() {
+    activeEditingId = null;
+    selectedVehicles = [];
+    servicesState = { prm: false, police: false };
+    updateJrgSelectOptions();
+    
+    const titleEl = document.getElementById('modal-event-title');
+    const timeEl = document.getElementById('inp-ev-time');
+    const cityEl = document.getElementById('inp-ev-city');
+    const regEl = document.getElementById('inp-ev-region');
+    const streetEl = document.getElementById('inp-ev-street');
+    const descEl = document.getElementById('inp-ev-desc');
+    const countEl = document.getElementById('lbl-selected-count');
+    const modalEl = document.getElementById('modal-event');
+
+    if(titleEl) titleEl.innerText = "Nowa Karta Zdarzenia";
+    if(timeEl) timeEl.value = new Date().toLocaleTimeString();
+    if(cityEl) cityEl.value = '';
+    if(regEl) regEl.value = '';
+    if(streetEl) streetEl.value = '';
+    if(descEl) descEl.value = '';
+    if(countEl) countEl.innerText = "Wybrano pojazdów: 0";
+
+    const radioP = document.querySelector('input[name="ev-type"][value="P"]');
+    if (radioP) radioP.checked = true;
+    updateSubtypes('P');
+
+    switchModalTab('dane');
+    if(modalEl) modalEl.style.display = 'flex';
+}
+
+function openEditEventModal(id) {
+    const ev = events.find(e => e.id === id);
+    if (!ev) return;
+
+    activeEditingId = id;
+    selectedVehicles = [...ev.vehicles];
+    updateJrgSelectOptions();
+
+    const titleEl = document.getElementById('modal-event-title');
+    const timeEl = document.getElementById('inp-ev-time');
+    const cityEl = document.getElementById('inp-ev-city');
+    const regEl = document.getElementById('inp-ev-region');
+    const streetEl = document.getElementById('inp-ev-street');
+    const descEl = document.getElementById('inp-ev-desc');
+    const countEl = document.getElementById('lbl-selected-count');
+    const modalEl = document.getElementById('modal-event');
+
+    if(titleEl) titleEl.innerText = `Edycja zdarzenia ID: ${ev.id}`;
+    if(timeEl) timeEl.value = ev.time;
+    if(cityEl) cityEl.value = ev.city;
+    if(regEl) regEl.value = ev.region;
+    if(streetEl) streetEl.value = ev.street;
+    if(descEl) descEl.value = ev.desc;
+    if(countEl) countEl.innerText = "Wybrano pojazdów: " + selectedVehicles.length;
+
+    const radio = document.querySelector(`input[name="ev-type"][value="${ev.type}"]`);
+    if (radio) radio.checked = true;
+    updateSubtypes(ev.type);
+
+    switchModalTab('dane');
+    if(modalEl) modalEl.style.display = 'flex';
+}
+
+function openDispatchModal() {
+    const container = document.getElementById('dispatch-list');
+    const infoBar = document.getElementById('dispatch-info-bar');
+    const cityInput = document.getElementById('inp-ev-city');
+    const modalDisp = document.getElementById('modal-dispatch');
+    
+    if(!container) return;
+    const targetCity = cityInput ? cityInput.value.trim() : "";
+    container.innerHTML = '';
+
+    if(infoBar) {
+        infoBar.innerHTML = targetCity ? `📍 Kolejność wg odległości dla: <span style="color:#b30000;">${targetCity}</span>` : `⚠️ Brak miejscowości`;
+    }
+
+    const availableUnits = [...unitsPSP, ...unitsOSP]
+        .filter(u => u.vehicles.length > 0)
+        .map(u => ({ ...u, ...getUnitProximity(u.name, targetCity) }))
+        .sort((a, b) => a.sec - b.sec);
+
+    availableUnits.forEach((u, index) => {
+        const isClosest = index === 0 && targetCity !== "";
+        const exactAddr = unitExactLocations[u.name]?.address || "";
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'dispatch-unit-group';
+
+        groupDiv.innerHTML = `
+            <div class="dispatch-unit-header ${isClosest ? 'closest' : ''}" title="${exactAddr}">
+                <span>${index + 1}. ${u.name} <small style="font-weight:normal; color:#333;">(${exactAddr})</small> ${isClosest ? '⭐' : ''}</span>
+                <span>${u.km} | Jazda: ~${formatMMSS(u.sec)}</span>
+            </div>
+            ${u.vehicles.map(v => `
+                <label class="dispatch-vehicle-item" style="cursor:pointer; color:#000000;">
+                    <input type="checkbox" value="${v.id}" ${selectedVehicles.some(sv => sv.id === v.id) ? 'checked' : ''}>
+                    <span class="status-dot ${v.status}"></span>
+                    <span><b>${v.id}</b> - ${v.name}</span>
+                </label>
+            `).join('')}
+        `;
+        container.appendChild(groupDiv);
+    });
+
+    if(modalDisp) modalDisp.style.display = 'flex';
+}
+
+function confirmDispatch() {
+    const checkboxes = document.querySelectorAll('#dispatch-list input:checked');
+    const cityInput = document.getElementById('inp-ev-city');
+    const defTown = COUNTY_PROFILES[currentCountyId].defaultTown;
+    const targetCity = (cityInput && cityInput.value.trim()) ? cityInput.value.trim() : defTown;
+    const newSelection = [];
+
+    checkboxes.forEach(cb => {
+        const existing = selectedVehicles.find(sv => sv.id === cb.value);
+        if (existing) {
+            newSelection.push(existing);
+        } else {
+            [...unitsPSP, ...unitsOSP].forEach(u => {
+                const v = u.vehicles.find(veh => veh.id === cb.value);
+                if (v) {
+                    const routeSec = calculateRouteTravelSeconds(u.name, targetCity);
+                    newSelection.push({
+                        ...v, unitName: u.name, phase: 'PREP', prepTime: generateDeparturePrepSeconds(u.name),
+                        travelTime: routeSec, baseRouteSeconds: routeSec, returnTime: routeSec
+                    });
+                }
+            });
+        }
+    });
+
+    selectedVehicles = newSelection;
+    const countLbl = document.getElementById('lbl-selected-count');
+    if(countLbl) countLbl.innerText = "Wybrano pojazdów: " + selectedVehicles.length;
+    closeModal('modal-dispatch');
+}
+
+function saveEvent() {
+    const cityInput = document.getElementById('inp-ev-city');
+    const city = cityInput ? cityInput.value.trim() : "";
+    if (!city) { alert('Proszę podać miejscowość!'); return; }
+
+    const typeChecked = document.querySelector('input[name="ev-type"]:checked');
+    const typeVal = typeChecked ? typeChecked.value : 'P';
+    const subSel = document.getElementById('inp-ev-subtype');
+    const subtypeVal = typeVal === 'PZR' ? 'Zabezpieczenie rejonu' : (subSel && subSel.value ? subSel.value : 'Zgłoszenie operacyjne');
+    
+    const descInput = document.getElementById('inp-ev-desc');
+    let descVal = descInput ? descInput.value : '';
+    descVal = descVal.replace(/^(P|MZ|AF|CW|WG|BL|ZPR)\s*-\s*/i, "").trim();
+
+    const streetInput = document.getElementById('inp-ev-street');
+    const streetVal = streetInput ? streetInput.value.trim() : '';
+
+    selectedVehicles.forEach(sv => {
+        if (!sv.phase) {
+            sv.phase = 'PREP';
+            sv.prepTime = generateDeparturePrepSeconds(sv.unitName);
+            const routeSec = calculateRouteTravelSeconds(sv.unitName, city);
+            sv.travelTime = routeSec; sv.baseRouteSeconds = routeSec; sv.returnTime = routeSec;
+        }
+    });
+
+    let targetEventObj = null;
+
+    if (activeEditingId === null) {
+        const timeInput = document.getElementById('inp-ev-time');
+        const regInput = document.getElementById('inp-ev-region');
+        const jrgInput = document.getElementById('inp-ev-jrg');
+        const fallback = gpsCoords[city] || COUNTY_PROFILES[currentCountyId].mapCenter;
+        const calcDuration = calculateActionDurationSeconds(descVal, subtypeVal, typeVal, selectedVehicles);
+
+        const newEv = {
+            id: events.length + 1,
+            time: timeInput && timeInput.value ? timeInput.value : new Date().toLocaleTimeString(),
+            city: city,
+            region: regInput ? regInput.value : (locationsDatabase[city] || ''),
+            street: streetVal,
+            lat: fallback[0], lng: fallback[1],
+            desc: descVal, type: typeVal, subtype: subtypeVal,
+            remainingSeconds: calcDuration, firstArrived: false, radioReported: false, radioLogs: [],
+            jrg: jrgInput ? jrgInput.value : COUNTY_PROFILES[currentCountyId].jrgList[0],
+            services: { ...servicesState },
+            vehicles: [...selectedVehicles],
+            status: 'ACTIVE'
+        };
+        events.push(newEv);
+        targetEventObj = newEv;
+        selectEvent(newEv.id);
+    } else {
+        const ev = events.find(e => e.id === activeEditingId);
+        if (ev) {
+            ev.city = city; ev.street = streetVal; ev.desc = descVal; ev.type = typeVal;
+            ev.subtype = subtypeVal; ev.services = { ...servicesState }; ev.vehicles = [...selectedVehicles];
+            targetEventObj = ev;
+        }
+    }
+
+    if (targetEventObj) geocodeEventAddress(targetEventObj);
+    renderUnits(); renderEvents(); saveSimulationState(); closeModal('modal-event');
+}
+
+function triggerEventFinishAndReturn(ev) {
+    if (!ev || ev.status === 'FINISHED') return;
+    ev.status = 'FINISHED';
+    ev.remainingSeconds = 0;
+
+    ev.vehicles.forEach(sv => {
+        if (sv.phase === 'ONSITE' || sv.phase === 'TRAVEL') {
+            sv.phase = 'RETURN';
+            sv.returnTime = sv.baseRouteSeconds || calculateRouteTravelSeconds(sv.unitName, ev.city);
+        } else if (sv.phase === 'PREP') {
+            sv.phase = 'DONE';
+            sv.returnTime = 0;
+        }
+    });
+    saveSimulationState();
+}
+
+function finishCurrentEvent() {
+    const targetId = activeEditingId !== null ? activeEditingId : selectedEvIdForRadio;
+    if (targetId === null) return;
+    const ev = events.find(e => e.id === targetId);
+    if (ev) triggerEventFinishAndReturn(ev);
+    renderUnits(); renderEvents(); closeModal('modal-event');
+}
+
+function switchModalTab(tab) {
+    const daneContent = document.getElementById('modal-tab-dane-content');
+    const czasyContent = document.getElementById('modal-tab-czasy-content');
+    const tabDane = document.getElementById('tab-modal-dane');
+    const tabCzasy = document.getElementById('tab-modal-czasy');
+
+    if(daneContent) daneContent.style.display = tab === 'dane' ? 'block' : 'none';
+    if(czasyContent) czasyContent.style.display = tab === 'czasy' ? 'block' : 'none';
+    if(tabDane) tabDane.className = 'tab-btn ' + (tab === 'dane' ? 'active' : '');
+    if(tabCzasy) tabCzasy.className = 'tab-btn ' + (tab === 'czasy' ? 'active' : '');
+}
+
+function openSiSModal() { 
+    ensureSiSModalExists(); renderSiSManagerList();
+    const modal = document.getElementById('modal-sis');
+    if(modal) modal.style.display = 'flex'; 
+}
+
+function closeModal(id) { 
+    const modal = document.getElementById(id);
+    if(modal) modal.style.display = 'none'; 
+}
+
+function runSimulationTick() {
+    let needsRender = false;
+
+    events.forEach(ev => {
+        if (ev.status === 'ACTIVE') {
+            ev.vehicles.forEach(v => {
+                if (v.phase === 'PREP') {
+                    if (v.prepTime > 0) { v.prepTime--; needsRender = true; }
+                    else { v.phase = 'TRAVEL'; needsRender = true; }
+                }
+                else if (v.phase === 'TRAVEL') {
+                    if (v.travelTime > 0) { v.travelTime--; needsRender = true; }
+                    else {
+                        v.phase = 'ONSITE';
+                        if (!ev.firstArrived) ev.firstArrived = true;
+                        needsRender = true;
+                    }
+                }
+            });
+
+            if (ev.type !== 'PZR' && ev.firstArrived && ev.remainingSeconds > 0) {
+                ev.remainingSeconds--; needsRender = true;
+            } else if (ev.type !== 'PZR' && ev.firstArrived && ev.remainingSeconds === 0) {
+                triggerEventFinishAndReturn(ev); needsRender = true;
+            }
+        }
+        else if (ev.status === 'FINISHED') {
+            ev.vehicles.forEach(v => {
+                if (v.phase === 'RETURN') {
+                    if (v.returnTime > 0) { v.returnTime--; needsRender = true; }
+                    else { v.phase = 'DONE'; needsRender = true; }
+                }
+            });
+        }
+    });
+
+    if (needsRender) { renderUnits(); renderEvents(); saveSimulationState(); }
+    renderSelectedEventDetails();
+    ensureVersionBadgeInStatusBar();
+
+    const clockEl = document.getElementById('clock-box');
+    if (clockEl) {
+        const now = new Date();
+        clockEl.innerText = now.toISOString().slice(0, 10) + ' ' + now.toLocaleTimeString();
+    }
+}
+
+function startSimulationLoop() {
+    if (simIntervalId) clearInterval(simIntervalId);
+    const intervalMs = Math.max(200, Math.round(1000 / simSpeed));
+    simIntervalId = setInterval(runSimulationTick, intervalMs);
+}
+
 function scheduleNextAutoCPR() {
     if (autoCprTimeoutId) clearTimeout(autoCprTimeoutId);
-    const baseRandomTime = Math.floor(Math.random() * (600000 - 60000 + 1)) + 60000;
-    const scaledTime = Math.max(15000, Math.round(baseRandomTime / (simSpeed * (currentWeatherData.cprFreqMultiplier || 1))));
+    const baseRandomTime = Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000;
+    const scaledTime = Math.max(8000, Math.round(baseRandomTime / simSpeed));
 
     autoCprTimeoutId = setTimeout(() => {
         const cprModal = document.getElementById('cpr-modal');
@@ -902,12 +1148,82 @@ function scheduleNextAutoCPR() {
     }, scaledTime);
 }
 
-// --- HARMONOGRAM ZMIAN POGODY: OD 10 DO 20 MINUT ---
-function scheduleNextWeatherChange() {
-    if (weatherTimeoutId) clearTimeout(weatherTimeoutId);
-    const randomWeatherMs = Math.floor(Math.random() * (1200000 - 600000 + 1)) + 600000;
-    weatherTimeoutId = setTimeout(() => {
-        triggerWeatherChange();
-        scheduleNextWeatherChange();
-    }, randomWeatherMs);
-}
+window.addEventListener('DOMContentLoaded', () => {
+    injectPzrStyles();
+
+    try {
+        const savedSession = localStorage.getItem('SWDST_USER_SESSION');
+        if (savedSession) {
+            const parsed = JSON.parse(savedSession);
+            if (parsed.rank) currentUserRank = parsed.rank;
+            if (typeof parsed.username === 'string') currentUserName = parsed.username;
+            if (parsed.countyId && COUNTY_PROFILES[parsed.countyId]) currentCountyId = parsed.countyId;
+        }
+    } catch (e) {}
+
+    applyCountyProfile(currentCountyId);
+    updateStatusBarUserDisplay();
+    ensureMainRadioWindow();
+    ensureVersionBadgeInStatusBar();
+    ensureSubtypeDOMIntegration();
+    ensureLauncherModalExists();
+
+    document.querySelectorAll('.top-menu .menu-item').forEach(item => {
+        const txt = item.innerText.trim().toLowerCase();
+        if (txt.includes('system')) item.onclick = () => openLauncherModal();
+        else if (txt.includes('siły i środki')) item.onclick = () => openSiSModal();
+        else if (txt.includes('mapy')) item.onclick = () => switchMainView('map');
+        else if (txt.includes('podział bojowy') || txt.includes('widok')) item.onclick = () => switchMainView('table');
+        else if (txt.includes('zestawienia') || txt.includes('raporty') || txt.includes('rejestr')) item.onclick = () => openReportsModal();
+        else if (txt.includes('komunikator') || txt.includes('urządzenia')) item.onclick = () => openMainRadio();
+    });
+
+    const tabsBar = document.querySelector('.workspace .tabs-bar');
+    if (tabsBar && !document.getElementById('btn-tab-map')) {
+        const mapTabBtn = document.createElement('button');
+        mapTabBtn.className = 'tab-btn'; mapTabBtn.id = 'btn-tab-map';
+        mapTabBtn.innerHTML = '🗺️ Mapa Operacyjna';
+        mapTabBtn.onclick = () => switchMainView('map');
+        tabsBar.appendChild(mapTabBtn);
+
+        const repTabBtn = document.createElement('button');
+        repTabBtn.className = 'tab-btn';
+        repTabBtn.innerHTML = '📊 Zestawienia i Raporty';
+        repTabBtn.onclick = () => openReportsModal();
+        tabsBar.appendChild(repTabBtn);
+    }
+
+    const btnOpenRadio = document.getElementById('btn-open-radio');
+    if (btnOpenRadio && btnOpenRadio.parentElement && !document.getElementById('btn-open-main-radio')) {
+        const mainRadBtn = document.createElement('button');
+        mainRadBtn.className = 'btn-win'; mainRadBtn.id = 'btn-open-main-radio';
+        mainRadBtn.style.cssText = 'background: #fff0f0; border-color: #800000; font-weight: bold; color: #800000;';
+        mainRadBtn.innerHTML = '📻 Główne Radio SKKP';
+        mainRadBtn.onclick = () => openMainRadio();
+        btnOpenRadio.parentElement.appendChild(mainRadBtn);
+    }
+
+    injectSpeedAndSaveControls();
+
+    const pspGrid = document.getElementById('grid-psp');
+    if (pspGrid && !document.getElementById('view-map-container')) {
+        const mapWrap = document.createElement('div');
+        mapWrap.id = 'view-map-container';
+        mapWrap.style.cssText = 'flex: 1; display: none; width: 100%; min-height: 260px; border: 1px solid #7f9db9; position: relative;';
+        mapWrap.innerHTML = '<div id="leaflet-map" style="width: 100%; height: 100%;"></div>';
+        pspGrid.parentNode.insertBefore(mapWrap, pspGrid);
+    }
+
+    ensureSiSModalExists();
+    ensureReportsModalExists();
+
+    const eventModal = document.querySelector('#modal-event .modal-window');
+    if (eventModal) makeDraggable(eventModal, document.querySelector('#modal-event .modal-header'));
+
+    const cprModal = document.getElementById('cpr-modal');
+    if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
+});
+
+startSimulationLoop();
+scheduleNextAutoCPR();
+renderUnits();
