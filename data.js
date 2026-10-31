@@ -2,7 +2,15 @@
 // PLIK 1: data.js - PEŁNA BAZA DANYCH (6 POWIATÓW, WSZYSTKIE OSP, POGODA, SGR)
 // =========================================================================
 
-const APP_VERSION = "SWDST 0.40";
+const APP_VERSION = "SWDST 0.41";
+
+// Całkowita blokada głosowego czytania komunikatów radiowych (TTS)
+if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak = function() {};
+    } catch (e) {}
+}
 
 const audioSelekt = new Audio('selekt.wav');
 const audioCpr = new Audio('nowe zdarzenie odbierz.mp3');
@@ -52,9 +60,9 @@ function triggerWeatherChange() {
     const badge = document.getElementById('weather-status-badge');
     if (badge) badge.innerText = nextW.label;
 
+    // Komunikat z KW PSP bez dźwięku nowego zdarzenia
     if (nextW.alert && typeof logToMainRadio === 'function') {
-        audioCpr.currentTime = 0; audioCpr.play().catch(() => {});
-        logToMainRadio("STANOWISKO KIEROWANIA KW PSP", nextW.alert, "#ff00ff", true);
+        logToMainRadio("STANOWISKO KIEROWANIA KW PSP", nextW.alert, "#ff00ff", false);
     }
 }
 
@@ -560,15 +568,64 @@ const callersMaleLast = ["Kowalski", "Nowak", "Wiśniewski", "Wójcik", "Kowalcz
 const callersFemaleFirst = ["Anna", "Katarzyna", "Magdalena", "Agnieszka", "Małgorzata", "Krystyna", "Barbara", "Ewa", "Elżbieta", "Zofia", "Teresa", "Joanna", "Monika", "Danuta", "Natalia", "Karolina", "Marta", "Beata", "Dorota", "Halina", "Jadwiga", "Aleksandra", "Irena", "Alicja", "Paulina", "Justyna", "Renata", "Bożena", "Urszula", "Weronika", "Sylwia", "Agata", "Patrycja", "Izabela", "Aneta", "Emilia", "Ewelina", "Kinga", "Martyna", "Klaudia", "Dominika", "Julia", "Zuzanna", "Maja", "Hanna", "Oliwia", "Wiktoria", "Kamila", "Edyta", "Marzena"];
 const callersFemaleLast = ["Kowalska", "Nowak", "Wiśniewska", "Wójcik", "Kowalczyk", "Kamińska", "Lewandowska", "Zielińska", "Szymańska", "Woźniak", "Dąbrowska", "Kozłowska", "Jankowska", "Mazur", "Kwiatkowska", "Wojciechowska", "Krawczyk", "Kaczmarek", "Piotrowska", "Grabowska", "Zając", "Pawłowska", "Michalska", "Król", "Wieczorek", "Jabłońska", "Wróbel", "Nowakowska", "Majewska", "Olszewska", "Stępień", "Malinowska", "Jaworska", "Adamczyk", "Dudek", "Nowicka", "Pawlak", "Górska", "Witkowska", "Walczak", "Sikora", "Baran", "Rutkowska", "Michalak", "Szewczyk", "Ostrowska", "Tomaszewska", "Pietrzak", "Zalewska", "Wróblewska", "Kreft", "Formela", "Kwidzińska", "Labuda", "Hirsz", "Damps", "Treder", "Gaffke", "Kunkel", "Rohde", "Bistram", "Bojke", "Ceynowa", "Dettlaff", "Gruba", "Kohnke", "Liedtke", "Miotk", "Płotka", "Richert"];
 
+// --- ROZBUDOWANA PULA REALISTYCZNYCH ZGŁOSZEŃ POŻAROWYCH (P) ---
 const fallbackPhrasesP = [
-    "Pali się sadza w kominie, z komina lecą iskry na dach", "Mieszkaniec zgłasza gęsty czarny dym z budynku gospodarczego",
-    "Widzę płomienie wydostające się przez dach pustostanu", "Właściciel zgłasza pożar trawy i suchego ścierniska blisko lasu",
-    "Pożar samochodu osobowego na poboczu drogi, ogień pod maską", "Pali się altana śmietnikowa przy budynku mieszkalnym"
+    "Pali się sadza w kominie, z komina lecą iskry na dach budynku",
+    "Mieszkaniec zgłasza gęsty czarny dym z budynku gospodarczego",
+    "Widzę płomienie wydostające się przez dach pustostanu",
+    "Właściciel zgłasza pożar trawy i suchego ścierniska blisko lasu",
+    "Pożar samochodu osobowego na poboczu drogi, ogień pod maską",
+    "Pali się altana śmietnikowa przy budynku wielorodzinnym",
+    "Zadymienie na klatce schodowej w bloku, czuć spaleniznę z mieszkania na parterze",
+    "Pożar poddasza w domu jednorodzinnym, domownicy ewakuowali się na zewnątrz",
+    "Pali się sterta gałęzi i drewniana szopa na terenie ogródków działkowych",
+    "Pożar ciągnika rolniczego podczas prac polowych, ogień obejmuje kabinę",
+    "Z okna mieszkania na drugim piętrze wydobywa się gęsty szary dym, brak kontaktu z lokatorem",
+    "Pali się rozdzielnia elektryczna na korytarzu budynku usługowego",
+    "Pożar poszycia leśnego, ogień szybko przesuwa się z wiatrem w stronę młodnika",
+    "Płonie stodoła wypełniona słomą, zagrożony sąsiedni budynek mieszkalny",
+    "Pożar kotłowni na paliwo stałe w piwnicy domu jednorodzinnego, silne zadymienie",
+    "Pali się kuchnia w mieszkaniu, zapalił się olej na kuchence gazowej",
+    "Pożar naczepy samochodu ciężarowego na drodze, palą się opony",
+    "Zauważono ogień w opuszczonej hali magazynowej, słychać trzask pękającego eternitu",
+    "Pali się kontener budowlany oraz składowane obok materiały styropianowe",
+    "Pożar instalacji fotowoltaicznej na dachu budynku mieszkalnego, widać iskrzenie i dym",
+    "Płonie garaż blaszany przy posesji, w środku znajduje się samochód i butla z gazem",
+    "Pożar bel słomy złożonych na skraju pola, silne zadymienie widoczne z kilku kilometrów",
+    "Dym wydobywający się spod maski autobusu komunikacji lokalnej, pasażerowie opuścili pojazd",
+    "Pali się drewniana wiata rekreacyjna oraz składowane pod nią drewno opałowe",
+    "Pożar w warsztacie samochodowym, gęsty czarny dym wydostaje się przez bramę wjazdową",
+    "Wzbudzenie czujki dymu oraz wyczuwalny zapach spalenizny w piwnicy budynku mieszkalnego"
 ];
 
+// --- ROZBUDOWANA PULA REALISTYCZNYCH ZGŁOSZEŃ MIEJSCOWYCH ZAGROŻEŃ (MZ) ---
 const fallbackPhrasesMZ = [
-    "Samochód uderzył w przydrożne drzewo, kierowca zakleszczony", "Silny wiatr zerwał połowę dachu z budynku mieszkalnego",
-    "Podejrzenie silnego wycieku gazu z instalacji w piwnicy", "Duże drzewo całkowicie zablokowało pas ruchu na drodze"
+    "Samochód uderzył w przydrożne drzewo, kierowca zakleszczony w pojeździe",
+    "Silny wiatr zerwał połowę dachu z budynku mieszkalnego, blacha zwisa nad chodnikiem",
+    "Podejrzenie silnego wycieku gazu z instalacji w piwnicy budynku",
+    "Duże drzewo całkowicie zablokowało oba pasy ruchu na drodze powiatowej",
+    "Zderzenie dwóch samochodów osobowych na skrzyżowaniu, wyciek płynów eksploatacyjnych, jedna osoba ranna",
+    "Czujnik tlenku węgla włączył się w łazience, dziecko skarży się na zawroty głowy i nudności",
+    "Starsza osoba nie otwiera drzwi od wczoraj, słychać wołanie o pomoc z wnętrza mieszkania",
+    "Plama oleju napędowego ciągnąca się na długości około 400 metrów na łuku drogi",
+    "Samochód dostawczy wjechał do przydrożnego rowu i przewrócił się na bok, kierowca nie może wyjść",
+    "Nadłamany gruby konar drzewa wisi bezpośrednio nad linią energetyczną i placem zabaw",
+    "Zalana piwnica oraz kotłownia w budynku mieszkalnym po gwałtownej ulewie",
+    "Gniazdo szerszeni pod podbitką dachową tuż nad wejściem do budynku mieszkalnego",
+    "Wywrócona łódka wędkarska na jeziorze, dwie osoby w wodzie trzymają się kadłuba",
+    "Rozszczelnienie mauzera z nieznaną substancją chemiczną na terenie bazy transportowej",
+    "Potrącenie pieszego na przejściu, poszkodowany nieprzytomny, brak wolnej karetki PRM w rejonie",
+    "Koń wpadł do głębokiego rowu melioracyjnego i nie jest w stanie samodzielnie wyjść",
+    "Uszkodzona rura gazowa średniego ciśnienia podczas prac koparką na posesji",
+    "Zatrzaśnięte małe dziecko w samochodzie osobowym na parkingu przed sklepem",
+    "Zawalenie się części stropu w remontowanym starym budynku, jedna osoba przygnieciona gruzem",
+    "Zespół Ratownictwa Medycznego prosi o pomoc w zniesieniu otyłego pacjenta z trzeciego piętra",
+    "Pęknięta ściana nośna w starej kamienicy, słychać trzaski konstrukcji, mieszkańcy obawiają się zawalenia",
+    "Samochód ciężarowy uszkodził barierki energochłonne, rozbity zbiornik paliwa, wyciek ropy do rowu",
+    "Mężczyzna spadł z rusztowania podczas prac elewacyjnych na wysokości około 6 metrów",
+    "Zaginiona starsza osoba chora na alzheimera wyszła z domu w kierunku kompleksu leśnego",
+    "Zerwana linia niskiego napięcia iskrzy na mokrej nawierzchni drogi po uderzeniu wiatru",
+    "Sarna uwięziona między metalowymi przęsłami ogrodzenia posesji, rani się próbując uwolnić"
 ];
 
 function generateRandomPolishCaller() {
