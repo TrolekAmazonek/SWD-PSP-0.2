@@ -1,8 +1,8 @@
 // =========================================================================
-// PLIK 1: data.js - BAZA DANYCH, 6 POWIATÓW, POGODA, SGR ORAZ ZAKTUALIZOWANE OSP
+// PLIK 1: data.js - PEŁNA BAZA DANYCH (6 POWIATÓW, WSZYSTKIE OSP, POGODA, SGR)
 // =========================================================================
 
-const APP_VERSION = "SWDST 0.42";
+const APP_VERSION = "SWDST 0.41";
 
 // Całkowita blokada głosowego czytania komunikatów radiowych (TTS)
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -60,6 +60,7 @@ function triggerWeatherChange() {
     const badge = document.getElementById('weather-status-badge');
     if (badge) badge.innerText = nextW.label;
 
+    // Komunikat z KW PSP bez dźwięku nowego zdarzenia
     if (nextW.alert && typeof logToMainRadio === 'function') {
         logToMainRadio("STANOWISKO KIEROWANIA KW PSP", nextW.alert, "#ff00ff", false);
     }
@@ -86,8 +87,8 @@ const EXTERNAL_SPECIAL_GROUPS = {
             vehicles: [
                 { id: "401[G]43", name: "SCRt Volvo (Ciężki Ratownictwa Technicznego)", status: "green", obsada: 3 },
                 { id: "401[G]49", name: "SCRt MEGA-CITY Volvo (Ciężki Techniczny)", status: "green", obsada: 3 },
-                { id: "401[G]71", name: "SCDz 70 Liebherr (Ciężki Dźwig Samochodowy)", status: "green", obsada: 2 },[cite: 1]
-                { id: "401[G]90", name: "SLOp Nissan Qashqai (Operacyjny Dowódcy)", status: "green", obsada: 2 }[cite: 1]
+                { id: "401[G]71", name: "SCDz 70 Liebherr (Ciężki Dźwig Samochodowy)", status: "green", obsada: 2 },
+                { id: "401[G]90", name: "SLOp Nissan Qashqai (Operacyjny Dowódcy)", status: "green", obsada: 2 }
             ]
         },
         {
@@ -104,7 +105,7 @@ const EXTERNAL_SPECIAL_GROUPS = {
             unitName: "JRG 2 Gdańsk (SGRWN)",
             town: "Gdańsk", address: "ul. Siennicka 29, Gdańsk", lat: 54.3522, lng: 18.6752,
             vehicles: [
-                { id: "302[G]71", name: "SRw Mercedes Atego 4x4 (Wodno-Nurkowy)", status: "green", obsada: 4 },[cite: 3]
+                { id: "302[G]71", name: "SRw Mercedes Atego 4x4 (Wodno-Nurkowy)", status: "green", obsada: 4 },
                 { id: "302[G]Ł1", name: "Łódź pontonowa z silnikiem śrubowym", status: "green", obsada: 0 }
             ]
         },
@@ -113,10 +114,10 @@ const EXTERNAL_SPECIAL_GROUPS = {
             unitName: "JRG Kościerzyna (SGRWN)",
             town: "Kościerzyna", address: "ul. Traugutta 6, Kościerzyna", lat: 54.1215, lng: 17.9812,
             vehicles: [
-                { id: "441[G]81", name: "SRW Iveco (Specjalistyczny Wodno-Nurkowy)", status: "green", obsada: 3 },[cite: 4]
-                { id: "441[G]90", name: "SLKw Nissan Navara (Lekki Kwatermistrzowski)", status: "green", obsada: 2 },[cite: 4]
-                { id: "441[G]Ł1", name: "Łódź 6-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 },[cite: 4]
-                { id: "441[G]Ł2", name: "Łódź 5-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 }[cite: 4]
+                { id: "441[G]81", name: "SRW Iveco (Specjalistyczny Wodno-Nurkowy)", status: "green", obsada: 3 },
+                { id: "441[G]90", name: "SLKw Nissan Navara (Lekki Kwatermistrzowski)", status: "green", obsada: 2 },
+                { id: "441[G]Ł1", name: "Łódź 6-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 },
+                { id: "441[G]Ł2", name: "Łódź 5-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 }
             ]
         }
     ],
@@ -195,7 +196,7 @@ function unpackProfile(raw) {
 const RAW_PROFILES = [
     {
         id: "wejherowski", name: "KP PSP Wejherowo (Powiat Wejherowski)", radioCallsign: "Wejherowo 998",
-        desc: "Woj. pomorskie • JRG 1 Wejherowo, JRG 2 Rumia, OSP Rumia + 36 jednostek OSP",
+        desc: "Woj. pomorskie • JRG 1 Wejherowo, JRG 2 Rumia + 36 jednostek OSP",
         voivodeship: "pomorskie", countyName: "pow. wejherowski", mapCenter: [54.6052, 18.2345], bbox: "17.65,54.38,18.50,54.85",
         jrgList: ["JRG 1 Wejherowo", "JRG 2 Rumia"], defaultTown: "Bolszewo",
         towns: [
@@ -253,15 +254,15 @@ const RAW_PROFILES = [
             ]]
         ],
         osp: [
-            [".OSP KSRG Bolszewo", "Bolszewo", "ul. Zamostna 4A, 84-239 Bolszewo", 54.6156, 18.1772, true, [["559[G]56", "GBA 2,5/16 Star 12.185/Stolarczyk", 6], ["559[G]57", "SLRr Toyota Hilux", 3], ["559[G]58", "GCBA 5/32 MB Atego/Mototruck", 4], ["559[G]59", "SLKw Ford Transit/Stolarczyk", 2], ["559[G]Q01", "Quad CF MOTO 500-2A", 1], ["559[G]P17", "Przyczepa pompowa", 0]]],
+            [".OSP KSRG Bolszewo", "Bolszewo", "ul. Zamostna 4A, 84-239 Bolszewo", 54.6156, 18.1772, true, [["559[G]56", "GBA 2,5/16 Star 12.185/Stolarczyk", 6], ["559[G]57", "SLRr Toyota Hilux", 3], ["559[G]58", "GCBA 5/32 MB Atego/Mototruck", 4], ["559[G]59", "SLKw Ford Transit/Stolarczyk", 2], ["559[G]Q01", "Quad CF MOTO 500-2A", 1]]],
             [".OSP KSRG Gościcino", "Gościcino", "ul. Drzewiarza 22, 84-241 Gościcino", 54.5975, 18.1458, false, [["559[G]63", "GBA 2,5/16 Volvo/Bocar", 6]]],
-            [".OSP KSRG Wejherowo", "Wejherowo", "ul. 3 Maja 2, 84-200 Wejherowo", 54.6014, 18.2333, true, [["559[G]66", "GBA Scania", 6], ["559[G]67", "SLRr Nissan Navara", 3], ["559[G]68", "GBA 2,5/24 Renault Midlum/WISS", 6], ["559[G]69", "SLKw Mitsubishi Canter/Szczęśniak", 3], ["559[G]89", "SD-30 Iveco Magirus", 2]]],
-            [".OSP KSRG Reda", "Reda", "ul. Pucka 1, 84-240 Reda", 54.6053, 18.3478, false, [["559[G]41", "GBA 2,5/16 MB Atego/Mototruck", 6], ["559[G]42", "GBA 2,5/16 Star 12.185/Stolarczyk", 6], ["559[G]43", "GCBA 5/36 Scania P420 XT", 6]]],
-            [".OSP KSRG Luzino", "Luzino", "ul. Ofiar Stutthofu 39, 84-242 Luzino", 54.5608, 18.1038, false, [["559[G]26", "GBA 3,5/25 Man TGM/Mototruck", 6], ["559[G]27", "GCBA 5/32 Man TGM/Mototruck", 6], ["559[G]28", "SLRt Ford Transit/Stolarczyk", 3], ["559[G]29", "SLOp Toyota Avensis", 2], ["559[G]Q02", "Quad ratowniczy ATV", 1]]],
+            [".OSP KSRG Wejherowo", "Wejherowo", "ul. 3 Maja 2, 84-200 Wejherowo", 54.6014, 18.2333, true, [["559[G]66", "GBA Scania", 6], ["559[G]67", "SLRr Nissan Navara", 3], ["559[G]68", "GBA 2,5/24 Renault Midlum/WISS", 6], ["559[G]69", "SLKw Mitsubishi Canter/Szczęśniak", 3]]],
+            [".OSP KSRG Reda", "Reda", "ul. Pucka 1, 84-240 Reda", 54.6053, 18.3478, false, [["559[G]41", "GBA 2,5/16 MB Atego/Mototruck", 6], ["559[G]42", "GBA 2,5/16 Star 12.185/Stolarczyk", 6], ["559[G]43", "GCBA Scania", 6]]],
+            [".OSP KSRG Luzino", "Luzino", "ul. Ofiar Stutthofu 39, 84-242 Luzino", 54.5608, 18.1038, false, [["559[G]26", "GBA 3,5/25 Man TGM/Mototruck", 6], ["559[G]27", "GCBA 5/32 Man TGM/Mototruck", 6], ["559[G]28", "SLRt Ford Transit/Stolarczyk", 3], ["559[G]29", "SLOp Toyota Avensis", 2]]],
             [".OSP KSRG Zelewo", "Zelewo", "ul. Długa 31, 84-252 Zelewo", 54.6146, 18.0825, false, [["559[G]87", "GBA Man TGM/Mototruck", 6]]],
-            [".OSP KSRG Szemud", "Szemud", "ul. Samorządowa 3, 84-217 Szemud", 54.4862, 18.2278, false, [["559[G]51", "GBA 2,5/25 Man 13.290/Stolarczyk", 6], ["559[G]52", "GBA 2,5/16 Man TGL/Stolarczyk", 6], ["559[G]53", "GCBA 5/32 Scania P400/WISS", 6], ["559[G]54", "SLOp", 2]]],
-            [".OSP KSRG Kielno", "Kielno", "ul. Oliwska 85, 84-208 Kielno", 54.4552, 18.3475, false, [["559[G]46", "GCBA 5/42 MB Axor/Mototruck", 6], ["559[G]47", "GCBA 8,3/60 MAN KAT.1 Buffalo", 3], ["559[G]48", "GBA 3/24 Man TGM/Mototruck", 6], ["559[G]49", "SLRr Mitsubishi L200", 3]]],
-            [".OSP KSRG Bojano", "Bojano", "ul. Józefa Wybickiego 16, 84-207 Bojano", 54.4776, 18.3842, false, [["559[G]76", "GCBA 5/32 Man TGM/Stolarczyk", 6], ["559[G]77", "GBA Man TGM/Stolarczyk", 6], ["559[G]78", "SLRr Nissan Navara", 3], ["559[G]Q04", "Quad ratowniczy ATV", 1]]],
+            [".OSP KSRG Szemud", "Szemud", "ul. Samorządowa 3, 84-217 Szemud", 54.4862, 18.2278, false, [["559[G]51", "GBA 2,5/25 Man 13.290/Stolarczyk", 6], ["559[G]52", "GBA 2,5/16 Man TGL/Stolarczyk", 6], ["559[G]53", "GCBA 5/32 Scania P400/WISS", 6]]],
+            [".OSP KSRG Kielno", "Kielno", "ul. Oliwska 85, 84-208 Kielno", 54.4552, 18.3475, false, [["559[G]46", "GCBA 5/42 MB Axor/Mototruck", 6], ["559[G]47", "GCBA 8,3/60 MAN KAT.1 Buffalo", 3], ["559[G]48", "GBA 3/24 Man TGM/Mototruck", 6]]],
+            [".OSP KSRG Bojano", "Bojano", "ul. Józefa Wybickiego 16, 84-207 Bojano", 54.4776, 18.3842, false, [["559[G]76", "GCBA 5/32 Man TGM/Stolarczyk", 6], ["559[G]77", "GBA Man TGM/Stolarczyk", 6], ["559[G]78", "SLRr Nissan Navara", 3]]],
             [".OSP KSRG Choczewo", "Choczewo", "ul. Świerkowa 8, 84-210 Choczewo", 54.7422, 17.8915, false, [["559[G]01", "GCBA 5/32 Man TGM/Mototruck", 6], ["559[G]02", "GBA 2,5/16 Star 244/JZS", 6], ["559[G]03", "SLRt Ford Transit/Bocar", 3]]],
             [".OSP KSRG Słajszewo", "Słajszewo", "ul. Bursztynowa 67, 84-210 Słajszewo", 54.7695, 17.8048, false, [["559[G]81", "GBA 4,5/30 Man TGM/Moto-Truck", 6]]],
             [".OSP KSRG Sasino", "Sasino", "ul. Brukowa 3, 84-210 Sasino", 54.7628, 17.7562, false, [["559[G]91", "GBA Volvo FL280/Bocar", 6], ["559[G]92", "SLRr Ford Ranger", 3]]],
@@ -271,14 +272,13 @@ const RAW_PROFILES = [
             [".OSP KSRG Linia", "Linia", "ul. Turystyczna 3, 84-223 Linia", 54.4503, 17.9355, false, [["559[G]16", "GBA 2,5/16 Volvo FL280/Bocar", 6], ["559[G]17", "GCBA 5/35 Man TGM/Stolarczyk", 6], ["559[G]18", "SLRt Lublin III", 3]]],
             [".OSP KSRG Strzepcz", "Strzepcz", "ul. Ks. Józefa Rotty 15, 84-223 Strzepcz", 54.4590, 18.0398, false, [["559[G]21", "GBA 2,5/16 MB Atego/Mototruck", 6], ["559[G]22", "SLRt Ford Transit", 3]]],
             [".OSP KSRG Bożepole Wielkie", "Bożepole Wielkie", "ul. Chmieleniecka 40, 84-214 Bożepole Wielkie", 54.5745, 17.9682, false, [["559[G]31", "GBA 2,5/16 MB Atego/Mototruck", 6], ["559[G]32", "SLRt Iveco Daily", 3]]],
-            [".OSP KSRG Łęczyce", "Łęczyce", "ul. Sportowa 5, 84-218 Łęczyce", 54.5992, 17.8685, false, [["559[G]36", "GCBA 5/32 Man TGM/Mototruck", 6], ["559[G]37", "GBA Man TGM", 6], ["559[G]38", "SLOp VW Polo", 2], ["559[G]Q03", "Quad ratowniczy ATV", 1]]],
+            [".OSP KSRG Łęczyce", "Łęczyce", "ul. Sportowa 5, 84-218 Łęczyce", 54.5992, 17.8685, false, [["559[G]36", "GCBA 5/32 Man TGM/Mototruck", 6], ["559[G]37", "GBA Man TGM", 6]]],
             [".OSP KSRG Rozłazino", "Rozłazino", "ul. Długa 26, 84-218 Rozłazino", 54.5445, 17.8615, false, [["559[G]96", "GBA Volvo FL280/Bocar", 6]]],
-            ["OSP Rumia", "Rumia", "ul. Świętego Floriana 1, 84-230 Rumia", 54.5798, 18.3973, false, [["557[G]06", "GBA 3/16 Volvo FL 320 4x4", 6]]],
-            ["OSP Gowino", "Gowino", "ul. Wejherowska 58, 84-215 Gowino", 54.5682, 18.2025, false, [["557[G]66", "GBA 4,5/32 Scania P370/Szczęśniak", 6], ["557[G]67", "GLBA Iveco Daily/Bocar", 6], ["557[G]Q01", "Quad ratowniczy ATV", 1]]],
-            ["OSP Orle", "Orle", "ul. Strażacka 2, 84-252 Orle", 54.6295, 18.1765, false, [["557[G]76", "GCBA 5/37 MB Atego/Szczęśniak", 6], ["557[G]77", "SLRr Mitsubishi L200", 3], ["557[G]Q02", "Quad ratowniczy ATV", 1]]],
-            ["OSP Kniewo", "Kniewo", "al. Lipowa 14, 84-252 Kniewo", 54.6548, 18.1408, false, [["557[G]71", "GBA Mercedes Benz 1124/Ziegler", 6], ["557[G]Q03", "Quad ratowniczy ATV", 1]]],
+            ["OSP Gowino", "Gowino", "ul. Wejherowska 58, 84-215 Gowino", 54.5682, 18.2025, false, [["557[G]66", "GBA 4,5/32 Scania P370/Szczęśniak", 6], ["557[G]67", "GLBA Iveco Daily/Bocar", 6]]],
+            ["OSP Orle", "Orle", "ul. Strażacka 2, 84-252 Orle", 54.6295, 18.1765, false, [["557[G]76", "GCBA 5/37 MB Atego/Szczęśniak", 6], ["557[G]77", "SLRr Mitsubishi L200", 3]]],
+            ["OSP Kniewo", "Kniewo", "al. Lipowa 14, 84-252 Kniewo", 54.6548, 18.1408, false, [["557[G]71", "GBA Mercedes Benz 1124/Ziegler", 6]]],
             ["OSP Zbychowo", "Zbychowo", "ul. Kamienna 2, 84-206 Zbychowo", 54.5528, 18.3275, false, [["557[G]81", "GBA 2,5/16 MB Atego/Mototruck", 6]]],
-            ["OSP Gniewowo", "Gniewowo", "ul. Jakuba Wejhera 16, 84-240 Gniewowo", 54.5655, 18.2995, false, [["557[G]86", "GBA 2/20 Renault Midliner M210", 6], ["557[G]87", "GBM 2,5/8 Star 244", 6]]],
+            ["OSP Gniewowo", "Gniewowo", "ul. Jakuba Wejhera 16, 84-240 Gniewowo", 54.5655, 18.2995, false, [["557[G]86", "GBA 2/20 Renault Midliner", 6], ["557[G]87", "GBM 2,5/8 Star 244", 6]]],
             ["OSP Góra", "Góra", "ul. Wiejska 14, 84-252 Góra", 54.6368, 18.1492, false, [["557[G]91", "GBA Iveco Eurocargo/Sides", 6]]],
             ["OSP Nowy Dwór Wejherowski", "Nowy Dwór Wejherowski", "ul. Kwiatowa 16, 84-206 Nowy Dwór Wejherowski", 54.5365, 18.2575, false, [["558[G]01", "GLM 8 Volkswagen T4", 6], ["558[G]02", "GLBA Iveco Daily", 6]]],
             ["OSP Rybno", "Rybno", "ul. Dębowa 7, 84-251 Rybno", 54.6775, 18.1055, false, [["557[G]11", "GBA 2,5/16 Mercedes Atego", 6]]],
@@ -288,7 +288,7 @@ const RAW_PROFILES = [
             ["OSP Milwino", "Milwino", "ul. Strażacka 5, 84-242 Milwino", 54.5185, 18.1345, false, [["557[G]26", "GBA 2,5/16 Renault Midlum", 6]]],
             ["OSP Kaczkowo", "Kaczkowo", "Kaczkowo 18B, 84-218 Kaczkowo", 54.6215, 17.8925, false, [["557[G]36", "GBA Renault Range D", 6]]],
             ["OSP Częstkowo", "Częstkowo", "ul. Strażacka 1, 84-217 Częstkowo", 54.5045, 18.1745, false, [["557[G]51", "GCBA Scania", 6]]],
-            ["OSP Łebno", "Łebno", "ul. Kartuska 10, 84-217 Łebno", 54.4555, 18.1365, false, [["557[G]56", "GBA 3,6/16 Mercedes Atego", 6]]],
+            ["OSP Łebno", "Łebno", "ul. Kartuska 10, 84-217 Łebno", 54.4555, 18.1365, false, [["557[G]56", "GBA 2,5/16 Mercedes Atego", 6]]],
             ["OSP Przetoczyno", "Przetoczyno", "ul. Pomorska 21, 84-217 Przetoczyno", 54.5345, 18.2045, false, [["557[G]61", "GBA 2,5/16 Magirus", 6]]]
         ]
     },
@@ -478,7 +478,7 @@ const RAW_PROFILES = [
     },
     {
         id: "raciborski", name: "KP PSP Racibórz (Powiat Raciborski)", radioCallsign: "Racibórz 998",
-        desc: "Woj. śląskie • JRG Racibórz, KP PSP Racibórz + pełny wykaz OSP KSRG powiatu raciborskiego",
+        desc: "Woj. śląskie • JRG Racibórz, KP PSP Racibórz + 21 jednostek OSP KSRG",
         voivodeship: "śląskie", countyName: "pow. raciborski", mapCenter: [50.0919, 18.2198], bbox: "17.95,49.90,18.55,50.25",
         jrgList: ["JRG Racibórz"], defaultTown: "Racibórz",
         towns: [
@@ -568,6 +568,7 @@ const callersMaleLast = ["Kowalski", "Nowak", "Wiśniewski", "Wójcik", "Kowalcz
 const callersFemaleFirst = ["Anna", "Katarzyna", "Magdalena", "Agnieszka", "Małgorzata", "Krystyna", "Barbara", "Ewa", "Elżbieta", "Zofia", "Teresa", "Joanna", "Monika", "Danuta", "Natalia", "Karolina", "Marta", "Beata", "Dorota", "Halina", "Jadwiga", "Aleksandra", "Irena", "Alicja", "Paulina", "Justyna", "Renata", "Bożena", "Urszula", "Weronika", "Sylwia", "Agata", "Patrycja", "Izabela", "Aneta", "Emilia", "Ewelina", "Kinga", "Martyna", "Klaudia", "Dominika", "Julia", "Zuzanna", "Maja", "Hanna", "Oliwia", "Wiktoria", "Kamila", "Edyta", "Marzena"];
 const callersFemaleLast = ["Kowalska", "Nowak", "Wiśniewska", "Wójcik", "Kowalczyk", "Kamińska", "Lewandowska", "Zielińska", "Szymańska", "Woźniak", "Dąbrowska", "Kozłowska", "Jankowska", "Mazur", "Kwiatkowska", "Wojciechowska", "Krawczyk", "Kaczmarek", "Piotrowska", "Grabowska", "Zając", "Pawłowska", "Michalska", "Król", "Wieczorek", "Jabłońska", "Wróbel", "Nowakowska", "Majewska", "Olszewska", "Stępień", "Malinowska", "Jaworska", "Adamczyk", "Dudek", "Nowicka", "Pawlak", "Górska", "Witkowska", "Walczak", "Sikora", "Baran", "Rutkowska", "Michalak", "Szewczyk", "Ostrowska", "Tomaszewska", "Pietrzak", "Zalewska", "Wróblewska", "Kreft", "Formela", "Kwidzińska", "Labuda", "Hirsz", "Damps", "Treder", "Gaffke", "Kunkel", "Rohde", "Bistram", "Bojke", "Ceynowa", "Dettlaff", "Gruba", "Kohnke", "Liedtke", "Miotk", "Płotka", "Richert"];
 
+// --- ROZBUDOWANA PULA REALISTYCZNYCH ZGŁOSZEŃ POŻAROWYCH (P) ---
 const fallbackPhrasesP = [
     "Pali się sadza w kominie, z komina lecą iskry na dach budynku",
     "Mieszkaniec zgłasza gęsty czarny dym z budynku gospodarczego",
@@ -597,6 +598,7 @@ const fallbackPhrasesP = [
     "Wzbudzenie czujki dymu oraz wyczuwalny zapach spalenizny w piwnicy budynku mieszkalnego"
 ];
 
+// --- ROZBUDOWANA PULA REALISTYCZNYCH ZGŁOSZEŃ MIEJSCOWYCH ZAGROŻEŃ (MZ) ---
 const fallbackPhrasesMZ = [
     "Samochód uderzył w przydrożne drzewo, kierowca zakleszczony w pojeździe",
     "Silny wiatr zerwał połowę dachu z budynku mieszkalnego, blacha zwisa nad chodnikiem",
