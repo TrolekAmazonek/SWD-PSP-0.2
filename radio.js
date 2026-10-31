@@ -2,7 +2,6 @@
 // PLIK 3: radio.js - GŁÓWNE RADIO SKKP, OKNA RADIA I TAKTYKA KDR
 // =========================================================================
 
-// --- GŁÓWNE RADIO OGÓLNOPOWIATOWE SKKP ---
 function ensureMainRadioWindow() {
     if (mainRadioModalEl) return mainRadioModalEl;
     const modal = document.createElement('div');
@@ -88,7 +87,6 @@ function sendMainRadioCustom() {
     inp.value = '';
 }
 
-// --- TAKTYKA I OCENA SIŁ I ŚRODKÓW KDR ---
 function evaluateTacticalForces(ev) {
     const text = ((ev.desc || "") + " " + (ev.subtype || "")).toLowerCase();
     const vehicles = ev.vehicles || [];
@@ -150,7 +148,6 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     return `${currentCountyCallsign}, tu ${kdrCallsign}. Sytuacja na miejscu pod kontrolą, prowadzimy działania pod adresem ${ev.street || ev.city}. Bez odbioru.`;
 }
 
-// --- OKNO RADIA ZDARZENIA ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
         openRadioWindows[evId].style.display = 'block';
