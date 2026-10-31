@@ -2,7 +2,6 @@
 // PLIK 4: script.js - RDZEŃ SWD, INTERFEJS, SGR W KARCIE I PĘTLA
 // =========================================================================
 
-// Bezpieczna inicjalizacja silnika AI
 if (typeof window.callUniversalAI !== 'function') {
     window._swdKeys = {
         g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM="
@@ -851,6 +850,10 @@ function openNewEventModal() {
     if (radioP) radioP.checked = true;
     updateSubtypes('P');
 
+    // Usunięcie przycisku SGR w nowej karcie (dopiero po zapisaniu i edycji)
+    const sgrBtnContainer = document.getElementById('dyn-sgr-btn-container');
+    if (sgrBtnContainer) sgrBtnContainer.innerHTML = '';
+
     switchModalTab('dane');
     if(modalEl) modalEl.style.display = 'flex';
 }
@@ -872,7 +875,7 @@ function openEditEventModal(id) {
     const countEl = document.getElementById('lbl-selected-count');
     const modalEl = document.getElementById('modal-event');
 
-    if(titleEl) titleEl.innerText = `Edycja zdarzenia ID: ${ev.id} (Wciśnij przycisk SGR poniżej, by wezwać grupy)`;
+    if(titleEl) titleEl.innerText = `Edycja zdarzenia ID: ${ev.id}`;
     if(timeEl) timeEl.value = ev.time;
     if(cityEl) cityEl.value = ev.city;
     if(regEl) regEl.value = ev.region;
@@ -900,6 +903,7 @@ function openEditEventModal(id) {
         </button>
     `;
 
+    switchModalTab('dane');
     if(modalEl) modalEl.style.display = 'flex';
 }
 
