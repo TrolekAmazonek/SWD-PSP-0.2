@@ -2,6 +2,19 @@
 // PLIK 4: script.js - PEŁNY RDZEŃ SWD, INTERFEJS, LAUNCHER, POGODA I PĘTLA
 // =========================================================================
 
+// Upewnienie się, że czytanie głosowe (TTS) jest całkowicie wyłączone
+if (typeof window !== 'undefined') {
+    if ('speechSynthesis' in window) {
+        try {
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak = function() {};
+        } catch (e) {}
+    }
+    window.speakRadioText = function() {};
+    window.speakText = function() {};
+    window.playRadioTTS = function() {};
+}
+
 if (typeof window.callUniversalAI !== 'function') {
     window._swdKeys = {
         g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM="
@@ -47,6 +60,8 @@ if (typeof window.callUniversalAI !== 'function') {
         throw new Error("AI Offline");
     };
 }
+
+let weatherTimeoutId = null;
 
 function getAllUnitsIncludingSgr() {
     return [...unitsPSP, ...unitsOSP, ...getCurrentRegionSgrGroups()];
@@ -761,27 +776,28 @@ async function simulateIncomingCPR() {
     const houseNum = Math.floor(Math.random() * 25) + 1;
     const verifiedStreetAddress = `${baseStreet} ${houseNum}`;
 
-    safeSetElementText('cpr-id', newCprId);
-    safeSetElementText('cpr-city', randomTown);
-    safeSetElementText('cpr-street', verifiedStreetAddress);
-    safeSetElementText('cpr-caller', "Łączenie z operatorem 112...");
-    safeSetElementText('cpr-desc', "🤖 AI generuje unikalną treść formatki ze zgłoszenia...");
-    
-    const cprModal = document.getElementById('cpr-modal');
-    if (cprModal) cprModal.style.display = 'flex';
+    const arr = chosenType === 'P' ? fallbackPhrasesP : fallbackPhrasesMZ;
+    let generatedDesc = arr[Math.floor(Math.random() * arr.length)];
 
-    let generatedDesc = "";
-    try {
-        const aiPrompt = `Wygeneruj krótką, w 100% realistyczną i unikalną treść zgłoszenia od świadka dla operatora numeru 112 w Polsce.
+    // Zawsze używamy dużej, realistycznej puli zgłoszeń (lub AI jako opcjonalnego urozmaicenia w 30% przypadków)
+    if (Math.random() < 0.3) {
+        safeSetElementText('cpr-id', newCprId);
+        safeSetElementText('cpr-city', randomTown);
+        safeSetElementText('cpr-street', verifiedStreetAddress);
+        safeSetElementText('cpr-caller', "Łączenie z operatorem 112...");
+        safeSetElementText('cpr-desc', "Odbieranie formatki z CPR...");
+        const cprModal = document.getElementById('cpr-modal');
+        if (cprModal) cprModal.style.display = 'flex';
+
+        try {
+            const aiPrompt = `Wygeneruj krótką, w 100% realistyczną i unikalną treść zgłoszenia od świadka dla operatora numeru 112 w Polsce.
 Typ zdarzenia: ${chosenType === 'P' ? 'Pożar' : 'Zagrożenie miejscowe / Wypadek / Awaria'}, miejscowość: ${randomTown}, adres: ${verifiedStreetAddress}.
 Zwróć TYLKO treść powiadomienia po polsku, bez cudzysłowów, maksymalnie 12 słów.`;
-        generatedDesc = await callUniversalAI("Jesteś operatorem CPR (112), zapisujesz zgłoszenia od obywateli w systemie.", aiPrompt, false);
-        generatedDesc = generatedDesc.replace(/^["']|["']$/g, '').trim();
-    } catch (e) {}
-
-    if (!generatedDesc) {
-        const arr = chosenType === 'P' ? fallbackPhrasesP : fallbackPhrasesMZ;
-        generatedDesc = arr[Math.floor(Math.random() * arr.length)];
+            const aiRes = await callUniversalAI("Jesteś operatorem CPR (112), zapisujesz zgłoszenia od obywateli w systemie.", aiPrompt, false);
+            if (aiRes && aiRes.trim().length > 5) {
+                generatedDesc = aiRes.replace(/^["']|["']$/g, '').trim();
+            }
+        } catch (e) {}
     }
 
     const finalCaller = generateRandomPolishCaller();
@@ -796,6 +812,9 @@ Zwróć TYLKO treść powiadomienia po polsku, bez cudzysłowów, maksymalnie 12
     safeSetElementText('cpr-street', currentCPRData.street);
     safeSetElementText('cpr-caller', currentCPRData.caller);
     safeSetElementText('cpr-desc', currentCPRData.desc);
+
+    const cprModal = document.getElementById('cpr-modal');
+    if (cprModal) cprModal.style.display = 'flex';
 }
 
 function closeCPR(isAccepted = false) { 
@@ -1171,7 +1190,7 @@ function openDispatchModal() {
         const isClosest = index === 0 && targetCity !== "";
         const exactAddr = unitExactLocations[u.name]?.address || "";
         const isPSP = u.name.includes("JRG") || u.name.includes("KP PSP") || u.name.includes("KM PSP");
-        const prepRange = isPSP ? "Wyjazd: 1-5s" : "Wyjazd: 1-10s";
+        const prepRange = isPSP ? "Wyjazd: 30-90s" : "Wyjazd: 1-3 min";
         const groupDiv = document.createElement('div');
         groupDiv.className = 'dispatch-unit-group';
 
@@ -1219,7 +1238,7 @@ function confirmDispatch() {
                 const v = u.vehicles.find(veh => veh.id === cb.value);
                 if (v) {
                     const pzrEv = getActivePzrForVehicle(v.id);
-                    const prepSec = pzrEv ? (Math.floor(Math.random() * 5) + 1) : generateDeparturePrepSeconds(u.name);
+                    const prepSec = pzrEv ? (Math.floor(Math.random() * 61) + 30) : generateDeparturePrepSeconds(u.name);
                     const routeSec = calculateRouteTravelSeconds(u.name, targetCity);
                     newSelection.push({
                         ...v, unitName: u.name, phase: 'PREP', prepTime: prepSec,
@@ -1502,10 +1521,11 @@ function startSimulationLoop() {
     simIntervalId = setInterval(runSimulationTick, intervalMs);
 }
 
+// --- HARMONOGRAM ZGŁOSZEŃ CPR: OD 1 DO 10 MINUT (60 000 - 600 000 ms) ---
 function scheduleNextAutoCPR() {
     if (autoCprTimeoutId) clearTimeout(autoCprTimeoutId);
-    const baseRandomTime = Math.floor(Math.random() * (90000 - 45000 + 1)) + 45000;
-    const scaledTime = Math.max(8000, Math.round(baseRandomTime / (simSpeed * (currentWeatherData.cprFreqMultiplier || 1))));
+    const baseRandomTime = Math.floor(Math.random() * (600000 - 60000 + 1)) + 60000;
+    const scaledTime = Math.max(15000, Math.round(baseRandomTime / (simSpeed * (currentWeatherData.cprFreqMultiplier || 1))));
 
     autoCprTimeoutId = setTimeout(() => {
         const cprModal = document.getElementById('cpr-modal');
@@ -1516,6 +1536,16 @@ function scheduleNextAutoCPR() {
         }
         scheduleNextAutoCPR();
     }, scaledTime);
+}
+
+// --- HARMONOGRAM ZMIAN POGODY: OD 10 DO 20 MINUT (600 000 - 1 200 000 ms) ---
+function scheduleNextWeatherChange() {
+    if (weatherTimeoutId) clearTimeout(weatherTimeoutId);
+    const randomWeatherMs = Math.floor(Math.random() * (1200000 - 600000 + 1)) + 600000;
+    weatherTimeoutId = setTimeout(() => {
+        triggerWeatherChange();
+        scheduleNextWeatherChange();
+    }, randomWeatherMs);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -1594,10 +1624,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const cprModal = document.getElementById('cpr-modal');
     if (cprModal) makeDraggable(cprModal, cprModal.querySelector('.cpr-header'));
 
-    // Automatyczna zmiana pogody co 4 minuty
-    setInterval(() => {
-        triggerWeatherChange();
-    }, 240000);
+    scheduleNextWeatherChange();
 });
 
 startSimulationLoop();
