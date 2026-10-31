@@ -1,7 +1,28 @@
 // =========================================================================
-// PLIK 3: radio.js - GŁÓWNE RADIO SKKP, OKNA RADIA I TAKTYKA KDR
+// PLIK 3: radio.js - GŁÓWNE RADIO SKKP, SYNTETYZATOR MOWY I TAKTYKA KDR
 // =========================================================================
 
+// --- SYNTETYZATOR MOWY (GŁOSOWE RADIO) ---
+function speakRadioMessage(text) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel(); // Przerwij poprzednią wypowiedź, jeśli gra
+    
+    // Czyszczenie tekstu z formatowania HTML i cudzysłowów do syntezatora
+    const cleanText = text.replace(/<[^>]*>?/gm, '').replace(/["„”]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'pl-PL';
+    utterance.pitch = 0.85; // Niższy ton – bardziej radiowy
+    utterance.rate = 1.15;  // Nieco szybsze tempo (styl korespondencji służbowej)
+
+    // Wybór polskiego głosu, jeśli jest dostępny w systemie
+    const voices = window.speechSynthesis.getVoices();
+    const polishVoice = voices.find(v => v.lang === 'pl-PL' || v.lang === 'pl');
+    if (polishVoice) utterance.voice = polishVoice;
+
+    window.speechSynthesis.speak(utterance);
+}
+
+// --- GŁÓWNE RADIO OGÓLNOPOWIATOWE SKKP ---
 function ensureMainRadioWindow() {
     if (mainRadioModalEl) return mainRadioModalEl;
     const modal = document.createElement('div');
@@ -58,7 +79,12 @@ function minimizeMainRadio() {
 
 function logToMainRadio(callsign, messageText, color = '#7CFC00', playBeep = true) {
     ensureMainRadioWindow();
-    if (playBeep) { audioMotorola.currentTime = 0; audioMotorola.play().catch(() => {}); }
+    if (playBeep) {
+        audioMotorola.currentTime = 0;
+        audioMotorola.play().catch(() => {});
+        // Odczytaj komunikat głosem po krótkim opóźnieniu na dźwięk Motoroli
+        setTimeout(() => speakRadioMessage(`${callsign}: ${messageText}`), 600);
+    }
     const timeStr = new Date().toLocaleTimeString();
     mainRadioLogs.push(`<div style="margin-bottom: 6px; color: ${color}; border-bottom: 1px dashed #333; padding-bottom: 3px;"><span style="color:#cccccc;">[${timeStr}]</span> <b>${callsign}:</b><br>"${messageText}"</div>`);
     updateMainRadioChat();
@@ -87,6 +113,7 @@ function sendMainRadioCustom() {
     inp.value = '';
 }
 
+// --- TAKTYKA I OCENA SIŁ I ŚRODKÓW KDR ---
 function evaluateTacticalForces(ev) {
     const text = ((ev.desc || "") + " " + (ev.subtype || "")).toLowerCase();
     const vehicles = ev.vehicles || [];
@@ -148,6 +175,7 @@ function generateSmartKdrResponse(kdrCallsign, userQuestion, ev) {
     return `${currentCountyCallsign}, tu ${kdrCallsign}. Sytuacja na miejscu pod kontrolą, prowadzimy działania pod adresem ${ev.street || ev.city}. Bez odbioru.`;
 }
 
+// --- OKNO RADIA ZDARZENIA ---
 function createRadioWindow(evId) {
     if (openRadioWindows[evId]) {
         openRadioWindows[evId].style.display = 'block';
