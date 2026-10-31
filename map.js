@@ -1,5 +1,5 @@
 // =========================================================================
-// PLIK 2: map.js - MAPA, GEOKODER ORAZ WZYWANIE CAŁYCH ZESPOŁÓW SGR
+// PLIK 2: map.js - MAPA LEAFLET, GEOKODER ORAZ OSOBNE OKIENKO DYSPOZYCJI SGR
 // =========================================================================
 
 let leafletMap = null;
@@ -13,8 +13,17 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 function getUnitProximity(unitName, city) {
-    const firstUnitKey = Object.keys(unitExactLocations)[0];
-    const unitLoc = unitExactLocations[unitName] || unitExactLocations[firstUnitKey];
+    let unitLoc = unitExactLocations[unitName];
+    if (!unitLoc) {
+        const sgrList = getCurrentRegionSgrGroups();
+        const sgrFound = sgrList.find(g => g.unitName === unitName || g.groupName === unitName);
+        if (sgrFound) unitLoc = { town: sgrFound.town, address: sgrFound.address, lat: sgrFound.lat, lng: sgrFound.lng };
+    }
+    if (!unitLoc) {
+        const firstUnitKey = Object.keys(unitExactLocations)[0];
+        unitLoc = unitExactLocations[firstUnitKey];
+    }
+
     const defaultTown = COUNTY_PROFILES[currentCountyId].defaultTown;
     const targetTown = Object.keys(gpsCoords).find(c => c.toLowerCase() === (city || "").trim().toLowerCase()) || defaultTown;
 
@@ -30,7 +39,7 @@ function getUnitProximity(unitName, city) {
 }
 
 function generateDeparturePrepSeconds(unitName) {
-    const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP") || unitName.includes("KM PSP");
+    const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP") || unitName.includes("KM PSP") || unitName.includes("SGR");
     return isPSP ? (Math.floor(Math.random() * 5) + 1) : (Math.floor(Math.random() * 10) + 1);
 }
 
@@ -42,9 +51,9 @@ function calculateRouteTravelSeconds(unitName, city) {
 function calculateActionDurationSeconds(desc, subtype, type, vehicles = []) {
     if (type === 'PZR') return -1;
     const text = ((desc || "") + " " + (subtype || "")).toLowerCase();
-    
+
     const hasQuad = vehicles.some(v => v.name.toLowerCase().includes("quad") || v.id.includes("Q01"));
-    const hasBoat = vehicles.some(v => v.name.toLowerCase().includes("łodzi") || v.name.toLowerCase().includes("ponton") || v.id.includes("Ł01") || v.id.includes("Ł02"));
+    const hasBoat = vehicles.some(v => v.name.toLowerCase().includes("łódź") || v.name.toLowerCase().includes("łodzi") || v.name.toLowerCase().includes("ponton") || v.id.includes("Ł"));
     const hasSgrChem = vehicles.some(v => v.name.toLowerCase().includes("srchem") || v.name.toLowerCase().includes("chem"));
     const hasSgrt = vehicles.some(v => v.name.toLowerCase().includes("scrt") || v.name.toLowerCase().includes("scdz") || v.name.toLowerCase().includes("srt"));
 
@@ -86,123 +95,123 @@ function autoSelectJRGByCity(city) {
     });
 }
 
-// --- OKIENKO WYBORU CAŁYCH ZESPOŁÓW SGR ---
-function openSgrModal(evId) {
+// --- OSOBNE OKIENKO DYSPONOWANIA GRUP SPECJALISTYCZNYCH (WYBIERANIE POJAZDÓW JAK W DYSPOZYCJI) ---
+function openSgrModal() {
     let modal = document.getElementById('modal-sgr-select');
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'modal-sgr-select';
         modal.className = 'modal-overlay';
-        modal.style.cssText = 'display:flex; background:rgba(0,0,0,0.5); z-index:11000;';
+        modal.style.cssText = 'display:none; background:rgba(0,0,0,0.45); z-index:11000;';
         document.body.appendChild(modal);
     }
 
-    const regionKey = (currentCountyId === 'raciborski') ? 'slaskie' : 'pomorskie';
-    const groups = EXTERNAL_SPECIAL_GROUPS[regionKey];
+    const cityInput = document.getElementById('inp-ev-city');
+    const targetCity = cityInput && cityInput.value.trim() ? cityInput.value.trim() : COUNTY_PROFILES[currentCountyId].defaultTown;
+    const regionLabel = (currentCountyId === 'raciborski') ? 'Województwo Śląskie (KW PSP Katowice)' : 'Województwo Pomorskie (KW PSP Gdańsk)';
+    const groups = getCurrentRegionSgrGroups();
 
-    const chemOptions = groups.sgrchem.map((g, idx) => `<option value="chem_${idx}">${g.groupName} (${g.vehicles.map(v => v.id).join(', ')})</option>`).join('');
-    const sgrtOptions = groups.sgrt.map((g, idx) => `<option value="t_${idx}">${g.groupName} (${g.vehicles.map(v => v.id).join(', ')})</option>`).join('');
-    const sgrwysOptions = groups.sgrwys.map((g, idx) => `<option value="wys_${idx}">${g.groupName} (${g.vehicles.map(v => v.id).join(', ')})</option>`).join('');
-    const sgrwnOptions = groups.sgrwn.map((g, idx) => `<option value="wn_${idx}">${g.groupName} (${g.vehicles.map(v => v.id).join(', ')})</option>`).join('');
+    const groupsHtml = groups.map((g, gIdx) => {
+        const prox = getUnitProximity(g.unitName, targetCity);
+        const vehsHtml = g.vehicles.map(v => {
+            const isChecked = selectedVehicles.some(sv => sv.id === v.id);
+            return `
+                <label class="dispatch-vehicle-item" style="cursor:pointer; color:#000000; display:flex; align-items:center; gap:6px; padding:4px 8px; border-bottom:1px solid #eee;">
+                    <input type="checkbox" class="sgr-veh-cb sgr-group-cb-${gIdx}" value="${v.id}" ${isChecked ? 'checked' : ''}>
+                    <span class="status-dot ${v.status}"></span>
+                    <span><b>${v.id}</b> - ${v.name} <small style="color:#555;">(Obsada: ${v.obsada})</small></span>
+                </label>
+            `;
+        }).join('');
+
+        return `
+            <div class="dispatch-unit-group" style="margin-bottom:8px; border:1px solid #7f9db9; background:#fff;">
+                <div class="dispatch-unit-header" style="background:#dbe8f9; padding:5px 8px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+                    <span>🚨 ${g.groupName} <small style="font-weight:normal; color:#333;">(${g.address})</small></span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:11px; color:#0a246a;">${prox.km} | Dojazd: ~${formatMMSS(prox.sec)}</span>
+                        <button type="button" class="btn-win" style="font-size:10px; padding:1px 6px;" onclick="toggleAllSgrInGroup(${gIdx})">Zaznacz całą grupę</button>
+                    </div>
+                </div>
+                <div>${vehsHtml}</div>
+            </div>
+        `;
+    }).join('');
 
     modal.innerHTML = `
-        <div class="modal-window" style="width: 480px; background: #ece9d8; border: 2px solid #0a246a;">
-            <div class="modal-header" style="background: #0a246a; color: #fff; padding: 4px 8px;">
-                <span>🚨 Wezwanie Specjalistycznej Grupy Ratowniczej (KW / SGR)</span>
+        <div class="modal-window" style="width: 620px; background: #ece9d8; border: 2px solid #0a246a; box-shadow: 0 6px 20px rgba(0,0,0,0.5);">
+            <div class="modal-header" style="background: #0a246a; color: #fff; padding: 5px 10px;">
+                <span>🚨 Dysponowanie Specjalistycznych Grup Ratowniczych — ${regionLabel}</span>
                 <div class="modal-close" onclick="closeModal('modal-sgr-select')">×</div>
             </div>
-            <div class="modal-body" style="padding: 12px; display:flex; flex-direction:column; gap:10px;">
-                <div class="form-box" style="padding: 8px;">
-                    <div class="form-title" style="margin-bottom: 4px;">Wybierz profil grupy specjalistycznej:</div>
-                    <select id="sgr-type-select" style="width:100%; padding:5px;" onchange="toggleSgrDropdowns()">
-                        <option value="chem">SGRChem (Ratownictwo Chemiczne)</option>
-                        <option value="t">SGRT Tczew (Ratownictwo Techniczne / Dźwig Liebherr)</option>
-                        <option value="wys">SGRWys Rumia (Ratownictwo Wysokościowe)</option>
-                        <option value="wn">SGRWN Gdańsk / Kościerzyna (Wodno-Nurkowe)</option>
-                    </select>
+            <div class="modal-body" style="padding: 10px; display:flex; flex-direction:column; gap:8px;">
+                <div style="background:#fff8c4; border:1px solid #d4ac0d; padding:6px 10px; font-size:11px; color:#000;">
+                    📍 <b>Cel zadysponowania:</b> <span style="color:#b30000; font-weight:bold;">${targetCity}</span> — Wybierz konkretne zastępy specjalistyczne z listy poniżej (lub zaznacz całą grupę):
                 </div>
-                <div class="form-box" style="padding: 8px;" id="sgr-chem-box">
-                    <div class="form-title" style="margin-bottom: 4px;">Dostępne zespoły SGRChem:</div>
-                    <select id="sgr-chem-choice" style="width:100%; padding:5px;">${chemOptions}</select>
-                </div>
-                <div class="form-box" style="padding: 8px; display:none;" id="sgr-t-box">
-                    <div class="form-title" style="margin-bottom: 4px;">Dostępne zespoły SGRT:</div>
-                    <select id="sgr-t-choice" style="width:100%; padding:5px;">${sgrtOptions}</select>
-                </div>
-                <div class="form-box" style="padding: 8px; display:none;" id="sgr-wys-box">
-                    <div class="form-title" style="margin-bottom: 4px;">Dostępne zespoły SGRWys:</div>
-                    <select id="sgr-wys-choice" style="width:100%; padding:5px;">${sgrwysOptions}</select>
-                </div>
-                <div class="form-box" style="padding: 8px; display:none;" id="sgr-wn-box">
-                    <div class="form-title" style="margin-bottom: 4px;">Dostępne zespoły SGRWN (Nurkowe):</div>
-                    <select id="sgr-wn-choice" style="width:100%; padding:5px;">${sgrwnOptions}</select>
+                <div id="sgr-dispatch-list" style="max-height: 340px; overflow-y: auto; border: 1px solid #999; padding: 6px; background: #f5f5f5;">
+                    ${groupsHtml}
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px;">
-                    <button class="btn-win" style="padding: 5px 14px; font-weight: bold; background: #e2f0d9;" onclick="confirmDispatchSgr(${evId})">✔ Zadysponuj zespół</button>
-                    <button class="btn-win" style="padding: 5px 10px;" onclick="closeModal('modal-sgr-select')">Anuluj</button>
+                    <button type="button" class="btn-win" style="padding: 5px 16px; font-weight: bold; background: #e2f0d9; border:1px solid #155724; color:#155724;" onclick="confirmDispatchSgr()">✔ Zatwierdź wybrane zastępy SGR</button>
+                    <button type="button" class="btn-win" style="padding: 5px 12px;" onclick="closeModal('modal-sgr-select')">Anuluj</button>
                 </div>
             </div>
         </div>
     `;
+
+    modal.style.display = 'flex';
+    const win = modal.querySelector('.modal-window');
+    const hdr = modal.querySelector('.modal-header');
+    if (win && hdr && typeof makeDraggable === 'function') makeDraggable(win, hdr);
 }
 
-function toggleSgrDropdowns() {
-    const val = document.getElementById('sgr-type-select').value;
-    document.getElementById('sgr-chem-box').style.display = val === 'chem' ? 'block' : 'none';
-    document.getElementById('sgr-t-box').style.display = val === 't' ? 'block' : 'none';
-    document.getElementById('sgr-wys-box').style.display = val === 'wys' ? 'block' : 'none';
-    document.getElementById('sgr-wn-box').style.display = val === 'wn' ? 'block' : 'none';
+function toggleAllSgrInGroup(gIdx) {
+    const cbs = document.querySelectorAll(`.sgr-group-cb-${gIdx}`);
+    const allChecked = Array.from(cbs).every(cb => cb.checked);
+    cbs.forEach(cb => { cb.checked = !allChecked; });
 }
 
-function confirmDispatchSgr(evId) {
-    const ev = events.find(e => e.id === evId);
-    if (!ev) return;
+function confirmDispatchSgr() {
+    const cityInput = document.getElementById('inp-ev-city');
+    const targetCity = (cityInput && cityInput.value.trim()) ? cityInput.value.trim() : COUNTY_PROFILES[currentCountyId].defaultTown;
+    const groups = getCurrentRegionSgrGroups();
+    const sgrAllVehIds = new Set();
+    groups.forEach(g => g.vehicles.forEach(v => sgrAllVehIds.add(v.id)));
 
-    const typeVal = document.getElementById('sgr-type-select').value;
-    const selectId = typeVal === 'chem' ? 'sgr-chem-choice' : (typeVal === 't' ? 'sgr-t-choice' : (typeVal === 'wys' ? 'sgr-wys-choice' : 'sgr-wn-choice'));
-    const selEl = document.getElementById(selectId);
-    if (!selEl) return;
-    
-    const optVal = selEl.value;
-    const idx = parseInt(optVal.split('_')[1]);
+    // Zachowaj wybrane dotąd pojazdy zwykłe (PSP/OSP)
+    const keptRegularVehicles = selectedVehicles.filter(sv => !sgrAllVehIds.has(sv.id));
+    const checkedSgrIds = Array.from(document.querySelectorAll('#sgr-dispatch-list input.sgr-veh-cb:checked')).map(cb => cb.value);
 
-    const regionKey = (currentCountyId === 'raciborski') ? 'slaskie' : 'pomorskie';
-    const groupKey = typeVal === 'chem' ? 'sgrchem' : (typeVal === 't' ? 'sgrt' : (typeVal === 'wys' ? 'sgrwys' : 'sgrwn'));
-    const groupObj = EXTERNAL_SPECIAL_GROUPS[regionKey][groupKey][idx];
-
-    if (!groupObj || !groupObj.vehicles) return;
-
-    let addedCount = 0;
-    groupObj.vehicles.forEach(vehData => {
-        const already = ev.vehicles.some(v => v.id === vehData.id);
-        if (!already) {
-            const routeSec = calculateRouteTravelSeconds(vehData.unitName, ev.city);
-            ev.vehicles.push({
-                id: vehData.id,
-                name: vehData.name,
-                unitName: vehData.unitName,
-                obsada: vehData.obsada,
-                phase: 'PREP',
-                prepTime: generateDeparturePrepSeconds(vehData.unitName),
-                travelTime: routeSec,
-                baseRouteSeconds: routeSec,
-                returnTime: routeSec,
-                status: 'orange'
+    const newSgrSelection = [];
+    checkedSgrIds.forEach(vehId => {
+        const existing = selectedVehicles.find(sv => sv.id === vehId);
+        if (existing) {
+            newSgrSelection.push(existing);
+        } else {
+            groups.forEach(g => {
+                const v = g.vehicles.find(veh => veh.id === vehId);
+                if (v) {
+                    const prepSec = generateDeparturePrepSeconds(g.unitName);
+                    const routeSec = calculateRouteTravelSeconds(g.unitName, targetCity);
+                    newSgrSelection.push({
+                        ...v,
+                        unitName: g.unitName,
+                        phase: 'PREP',
+                        prepTime: prepSec,
+                        travelTime: routeSec,
+                        baseRouteSeconds: routeSec,
+                        returnTime: routeSec
+                    });
+                }
             });
-            addedCount++;
         }
     });
 
-    if (typeof renderSelectedEventDetails === 'function') renderSelectedEventDetails();
-    if (typeof renderEvents === 'function') renderEvents();
-    if (typeof saveSimulationState === 'function') saveSimulationState();
-
-    if (typeof logToMainRadio === 'function') {
-        logToMainRadio(`${currentCountyCallsign} ➔ KW PSP`, `Zadysponowano specjalistyczny zespół ${groupObj.groupName} (${groupObj.vehicles.map(v => v.id).join(', ')}) do zdarzenia ID ${ev.id} (${ev.city}).`, '#00ffff', true);
-    }
+    selectedVehicles = [...keptRegularVehicles, ...newSgrSelection];
+    const countLbl = document.getElementById('lbl-selected-count');
+    if (countLbl) countLbl.innerText = "Wybrano pojazdów: " + selectedVehicles.length;
 
     closeModal('modal-sgr-select');
-    alert(`✅ Pomyślnie zadysponowano zespół ${groupObj.groupName} (${addedCount} pojazdy)!`);
 }
 
 // --- GEOKODER ---
