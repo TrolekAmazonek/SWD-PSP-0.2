@@ -1,5 +1,5 @@
 // =========================================================================
-// PLIK 4: script.js - OBSŁUGA SGR W DYSPOZYCJI ORAZ CHECKBOXE PRM/POLICJA
+// PLIK 4: script.js - KOMPLETNY KOD STERUJĄCY SYMULATOREM SWD
 // =========================================================================
 
 if (typeof window.callUniversalAI !== 'function') {
@@ -215,6 +215,26 @@ function openEditEventModal(id) {
     document.getElementById('inp-ev-street').value = ev.street || '';
     document.getElementById('inp-ev-desc').value = ev.desc || '';
     document.getElementById('lbl-selected-count').innerText = "Wybrano pojazdów: " + selectedVehicles.length;
+
+    document.getElementById('modal-event').style.display = 'flex';
+}
+
+function openNewEventModal() {
+    activeEditingId = null;
+    selectedVehicles = [];
+    servicesState = { prm: false, police: false };
+    updateJrgSelectOptions();
+
+    const btnPrm = document.getElementById('btn-service-prm');
+    const btnPol = document.getElementById('btn-service-police');
+    if (btnPrm) btnPrm.classList.remove('active');
+    if (btnPol) btnPol.classList.remove('active');
+
+    document.getElementById('modal-event-title').innerText = "Nowa Karta Zdarzenia";
+    document.getElementById('inp-ev-city').value = '';
+    document.getElementById('inp-ev-street').value = '';
+    document.getElementById('inp-ev-desc').value = '';
+    document.getElementById('lbl-selected-count').innerText = "Wybrano pojazdów: 0";
 
     document.getElementById('modal-event').style.display = 'flex';
 }
