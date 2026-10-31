@@ -35,20 +35,19 @@ function getUnitProximity(unitName, city) {
         const roadDist = haversineKm(unitLoc.lat, unitLoc.lng, tCoords[0], tCoords[1]) * 1.25;
         kmRounded = Math.max(1.5, Math.round(roadDist * 10) / 10);
     }
-    // Szacowany czas dojazdu: ok. 30 sekund na każdy 1 km
-    return { sec: Math.max(15, Math.round(kmRounded * 30)), kmNum: kmRounded, km: `${kmRounded.toFixed(1)} km` };
+    return { sec: Math.max(15, Math.round(kmRounded * 15)), kmNum: kmRounded, km: `${kmRounded.toFixed(1)} km` };
 }
 
 function generateDeparturePrepSeconds(unitName) {
     const isPSP = unitName.includes("JRG") || unitName.includes("KP PSP") || unitName.includes("KM PSP") || unitName.includes("SGR");
-    // PSP: od 30 do 90 sekund | OSP: od 60 do 180 sekund (1 - 3 minuty)
-    return isPSP ? (Math.floor(Math.random() * 61) + 30) : (Math.floor(Math.random() * 121) + 60);
+    // PSP: od 20 do 45 sekund | OSP: od 40 do 80 sekund
+    return isPSP ? (Math.floor(Math.random() * 26) + 20) : (Math.floor(Math.random() * 41) + 40);
 }
 
 function calculateRouteTravelSeconds(unitName, city) {
     const prox = getUnitProximity(unitName, city);
-    // Czas dojazdu: ok. 30 sekund / 1 km (z naturalnym wahaniem 28 - 32 s/km)
-    return Math.max(15, Math.round(prox.kmNum * (28 + Math.random() * 4)));
+    // Czas dojazdu: ok. 15-20 sekund na 1 km
+    return Math.max(10, Math.round(prox.kmNum * (15 + Math.random() * 5)));
 }
 
 function calculateActionDurationSeconds(desc, subtype, type, vehicles = []) {
@@ -132,7 +131,7 @@ function openSgrModal() {
                 <div class="dispatch-unit-header" style="background:#dbe8f9; padding:5px 8px; font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
                     <span>🚨 ${g.groupName} <small style="font-weight:normal; color:#333;">(${g.address})</small></span>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:11px; color:#0a246a;">${prox.km} | Dojazd: ~${formatMMSS(prox.sec)} (Wyjazd: 30-90s)</span>
+                        <span style="font-size:11px; color:#0a246a;">${prox.km} | Dojazd: ~${formatMMSS(prox.sec)}</span>
                         <button type="button" class="btn-win" style="font-size:10px; padding:1px 6px;" onclick="toggleAllSgrInGroup(${gIdx})">Zaznacz całą grupę</button>
                     </div>
                 </div>
