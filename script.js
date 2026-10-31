@@ -1,8 +1,8 @@
 // =========================================================================
-// PLIK 4: script.js - RDZEŃ SWD, INTERFEJS, LAUNCHER, ZAPIS I PĘTLA CZASU
+// PLIK 4: script.js - RDZEŃ SWD, INTERFEJS, LAUNCHER, 6 POWIATÓW I PĘTLA
 // =========================================================================
 
-// Bezpieczna inicjalizacja silnika AI (gdyby nie został załadowany we wcześniejszym pliku)
+// Bezpieczna inicjalizacja silnika AI
 if (typeof window.callUniversalAI !== 'function') {
     window._swdKeys = {
         g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM="
@@ -62,14 +62,17 @@ function getFormattedOperatorName() {
 function updateStatusBarUserDisplay() {
     const firstSpan = document.querySelector('.status-bar span');
     if (!firstSpan) return;
-    const pName = COUNTY_PROFILES[currentCountyId].name;
+    const profile = COUNTY_PROFILES[currentCountyId] || RAW_PROFILES.find(r => r.id === currentCountyId);
+    const pName = profile ? profile.name : currentCountyId;
     firstSpan.innerHTML = (currentUserName && currentUserName.trim() !== "")
         ? `Zalogowano jako: <b>${currentUserRank} ${currentUserName.trim()}</b> <span style="color:#0a246a; font-weight:bold; margin-left:6px;">[${pName}]</span>`
         : `Zalogowano jako: <b style="color:#777; font-style:italic;">Nazwa Użytkownika</b> <span style="color:#0a246a; font-weight:bold; margin-left:6px;">[${pName}]</span>`;
 }
 
 function updateJrgSelectOptions() {
-    const jrgList = COUNTY_PROFILES[currentCountyId].jrgList;
+    const profile = COUNTY_PROFILES[currentCountyId];
+    if (!profile) return;
+    const jrgList = profile.jrgList;
     ['inp-ev-jrg', 'inp-ev-lead', 'inp-ev-area'].forEach(selId => {
         const el = document.getElementById(selId);
         if (el) el.innerHTML = jrgList.map(j => `<option value="${j}">${j}</option>`).join('');
@@ -627,7 +630,8 @@ function openReportsModal() {
     safeSetElementText('rep-refused', shiftStats.cprRefused);
     safeSetElementText('rep-cpr-linked', shiftStats.cprAccepted);
     safeSetElementText('rep-over-2m', events.filter(e => e.vehicles.length >= 2).length);
-    safeSetElementText('rep-range-box', COUNTY_PROFILES[currentCountyId].name);
+    const profile = COUNTY_PROFILES[currentCountyId] || RAW_PROFILES.find(r => r.id === currentCountyId);
+    safeSetElementText('rep-range-box', profile ? profile.name : currentCountyId);
 
     let prmDisp = 0, prmWait = 0, prmAct = 0, prmFin = 0;
     let pspDisp = 0, pspWait = 0, pspAct = 0, pspFin = 0;
