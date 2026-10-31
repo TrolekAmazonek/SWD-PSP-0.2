@@ -1,54 +1,6 @@
 // =========================================================================
-// PLIK 3: radio.js - SILNIK AI, GŁÓWNE RADIO SKKP, OKNA RADIA I TAKTYKA KDR
+// PLIK 3: radio.js - GŁÓWNE RADIO SKKP, OKNA RADIA I TAKTYKA KDR
 // =========================================================================
-
-const _k = {
-    g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
-    m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
-    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdqVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzMmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ="
-};
-function decodeKey(b64) { try { return atob(b64); } catch(e) { return ""; } }
-
-async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    try {
-        const response = await fetch('https://text.pollinations.ai/openai', {
-            method: 'POST',
-            signal: controller.signal,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'openai',
-                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.8,
-                jsonMode: jsonMode
-            })
-        });
-        clearTimeout(timeoutId);
-        if (response.ok) {
-            const data = await response.json();
-            if (data.choices && data.choices[0]?.message?.content) return data.choices[0].message.content.trim();
-        }
-    } catch (err) {}
-
-    try {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${decodeKey(_k.g)}` },
-            body: JSON.stringify({
-                model: 'llama-3.1-8b-instant',
-                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                temperature: 0.8,
-                max_tokens: 180,
-                ...(jsonMode ? { response_format: { type: "json_object" } } : {})
-            })
-        });
-        const data = await res.json();
-        if (data.choices && data.choices[0]?.message?.content) return data.choices[0].message.content.trim();
-    } catch (e) {}
-
-    throw new Error("AI Offline");
-}
 
 // --- GŁÓWNE RADIO OGÓLNOPOWIATOWE SKKP ---
 function ensureMainRadioWindow() {
@@ -247,11 +199,17 @@ function updateRadioChatDynamic(evId) {
     const ev = events.find(e => e.id === evId);
     if (!ev) return;
     const chat = document.getElementById(`radio-chat-${evId}`);
-    if (chat) { chat.innerHTML = (ev.radioLogs || []).join(''); chat.scrollTop = chat.scrollHeight; }
+    if (chat) {
+        chat.innerHTML = (ev.radioLogs || []).join('');
+        chat.scrollTop = chat.scrollHeight;
+    }
 }
 
 function closeRadioWindow(evId) {
-    if (openRadioWindows[evId]) { openRadioWindows[evId].remove(); delete openRadioWindows[evId]; }
+    if (openRadioWindows[evId]) {
+        openRadioWindows[evId].remove();
+        delete openRadioWindows[evId];
+    }
 }
 
 function minimizeRadioWindow(evId) {
@@ -260,9 +218,13 @@ function minimizeRadioWindow(evId) {
         const bar = document.getElementById('minimized-bar');
         if (bar) {
             const item = document.createElement('div');
-            item.className = 'minimized-item'; item.id = `min-radio-${evId}`;
+            item.className = 'minimized-item';
+            item.id = `min-radio-${evId}`;
             item.innerHTML = `📻 Radio (ID: ${evId})`;
-            item.onclick = () => { if (openRadioWindows[evId]) openRadioWindows[evId].style.display = 'block'; item.remove(); };
+            item.onclick = () => {
+                if (openRadioWindows[evId]) openRadioWindows[evId].style.display = 'block';
+                item.remove();
+            };
             bar.appendChild(item);
         }
     }
@@ -313,10 +275,14 @@ async function triggerArrivalRadioReport(ev, vehicle) {
     let takeoverText = "";
 
     if (!ev.kdrVehicleId) {
-        ev.kdrVehicleId = vehicle.id; ev.kdrUnitName = vehicle.unitName; ev.kdrRank = newRank;
+        ev.kdrVehicleId = vehicle.id;
+        ev.kdrUnitName = vehicle.unitName;
+        ev.kdrRank = newRank;
     } else if (newRank > prevRank) {
         takeoverText = ` Dowodzenie na miejscu zdarzenia przejmuje przybyły zastęp ${vehicle.id} (${vehicle.unitName}).`;
-        ev.kdrVehicleId = vehicle.id; ev.kdrUnitName = vehicle.unitName; ev.kdrRank = newRank;
+        ev.kdrVehicleId = vehicle.id;
+        ev.kdrUnitName = vehicle.unitName;
+        ev.kdrRank = newRank;
     }
 
     const vehiclesListStr = ev.vehicles.map(v => `${v.id} (${v.unitName})`).join(', ');
@@ -337,7 +303,8 @@ Rozpocznij od: "${currentCountyCallsign}, tu ${vehicle.id}." Zakończ: "Bez odbi
             : `${currentCountyCallsign}, tu ${vehicle.id}. Jesteśmy na miejscu (${ev.city}, ${ev.street || ''}) – potwierdzam dojazd, prowadzimy działania. Bez odbioru.`;
     }
 
-    audioMotorola.currentTime = 0; audioMotorola.play().catch(() => {});
+    audioMotorola.currentTime = 0;
+    audioMotorola.play().catch(() => {});
     const timeStr = new Date().toLocaleTimeString();
     ev.radioLogs.push(`<div style="margin-bottom: 6px; color: #ffcc00;">[${timeStr}] ${vehicle.id} ➔ ${currentCountyCallsign}:<br>"${reportText}"</div>`);
     updateRadioChatDynamic(ev.id);
@@ -353,7 +320,8 @@ async function sendRadioReplyDynamic(evId, text) {
     const ev = events.find(e => e.id === evId);
     if (!ev) return;
 
-    audioMotorola.currentTime = 0; audioMotorola.play().catch(() => {});
+    audioMotorola.currentTime = 0;
+    audioMotorola.play().catch(() => {});
     const kdrName = ev.kdrVehicleId || (ev.vehicles[0] ? ev.vehicles[0].id : 'KDR');
     const timeStr = new Date().toLocaleTimeString();
     if (!ev.radioLogs) ev.radioLogs = [];
@@ -386,7 +354,8 @@ Format: "${currentCountyCallsign}, tu ${kdrName}. [Krótka, konkretna odpowiedź
         if (!aiReply) aiReply = generateSmartKdrResponse(kdrName, text, ev);
     }
 
-    audioMotorola.currentTime = 0; audioMotorola.play().catch(() => {});
+    audioMotorola.currentTime = 0;
+    audioMotorola.play().catch(() => {});
     ev.radioLogs.push(`<div style="margin-bottom: 6px; color: #ffcc00;">[${new Date().toLocaleTimeString()}] ${kdrName} ➔ ${currentCountyCallsign}:<br>"${aiReply}"</div>`);
     updateRadioChatDynamic(evId);
     if (typeof saveSimulationState === 'function') saveSimulationState();
