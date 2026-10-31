@@ -1,8 +1,8 @@
 // =========================================================================
-// PLIK 1: data.js - BAZA DANYCH, 6 POWIATÓW, POGODA I WSZYSTKIE GRUPY SGR
+// PLIK 1: data.js - BAZA DANYCH, 6 POWIATÓW, POGODA I GRUPY SGR
 // =========================================================================
 
-const APP_VERSION = "SWDST 0.44";
+const APP_VERSION = "SWDST 0.45";
 
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     try {
@@ -69,12 +69,12 @@ const EXTERNAL_SPECIAL_GROUPS = {
         {
             groupName: "SGRChem Gdynia (JRG 1 Gdynia Śródmieście)",
             unitName: "JRG 1 Gdynia (SGRChem)",
-            town: "Gdynia", address: "ul. Władysława IV 12/14, Gdynia", lat: 54.5221, lng: 18.5364,
+            town: "Gdynia", address: "ul. Władysława IV 12, Gdynia", lat: 54.5221, lng: 18.5364,
             vehicles: [
                 { id: "431[G]60", name: "SRChem Iveco Eurocargo (Ciężki Chemiczny)", status: "green", obsada: 3 },
-                { id: "431[G]61", name: "SLRRChem Mercedes Sprinter (Rozpoznanie Chemiczne)", status: "green", obsada: 2 },
-                { id: "431[G]64", name: "SLRR Ford Ranger (Rozpoznawczo-Ratowniczy)", status: "green", obsada: 2 },
-                { id: "431[G]90", name: "SLRR Ford Ranger (Dowodzenie/Sztab)", status: "green", obsada: 2 }
+                { id: "431[G]61", name: "SLRRChem Mercedes Sprinter (Rozpoznanie)", status: "green", obsada: 2 },
+                { id: "431[G]64", name: "SLRR Ford Ranger (Ratowniczy)", status: "green", obsada: 2 },
+                { id: "431[G]90", name: "SLRR Ford Ranger (Sztab)", status: "green", obsada: 2 }
             ]
         },
         {
@@ -82,10 +82,9 @@ const EXTERNAL_SPECIAL_GROUPS = {
             unitName: "JRG Tczew (SGRT)",
             town: "Tczew", address: "ul. Lecha 11, Tczew", lat: 54.0912, lng: 18.7831,
             vehicles: [
-                { id: "401[G]43", name: "SCRt Volvo (Ciężki Ratownictwa Technicznego)", status: "green", obsada: 3 },
-                { id: "401[G]49", name: "SCRt MEGA-CITY Volvo (Ciężki Techniczny)", status: "green", obsada: 3 },
-                { id: "401[G]71", name: "SCDz 70 Liebherr (Ciężki Dźwig Samochodowy)", status: "green", obsada: 2 },
-                { id: "401[G]90", name: "SLOp Nissan Qashqai (Operacyjny Dowódcy)", status: "green", obsada: 2 }
+                { id: "401[G]43", name: "SCRt Volvo (Ciężki Techniczny)", status: "green", obsada: 3 },
+                { id: "401[G]71", name: "SCDz 70 Liebherr (Ciężki Dźwig Samochodowy)", status: "green", obsada: 2 },[cite: 1]
+                { id: "401[G]90", name: "SLOp Nissan Qashqai (Dowodzenie)", status: "green", obsada: 2 }[cite: 1]
             ]
         },
         {
@@ -93,69 +92,28 @@ const EXTERNAL_SPECIAL_GROUPS = {
             unitName: "JRG 2 Rumia (SGRWys)",
             town: "Rumia", address: "ul. Świętego Floriana 1, Rumia", lat: 54.5798, lng: 18.3973,
             vehicles: [
-                { id: "552[G]72", name: "SRWys Mercedes Atego/Bocar (Ratownictwo Wysokościowe)", status: "green", obsada: 3 },
-                { id: "552[G]51", name: "SD-32 Mercedes Atego/Rosenbauer (Drabina)", status: "green", obsada: 2 }
+                { id: "552[G]72", name: "SRWys Mercedes Atego (Wysokościowy)", status: "green", obsada: 3 },
+                { id: "552[G]51", name: "SD-32 Mercedes Atego (Podnośnik)", status: "green", obsada: 2 }
             ]
         },
         {
-            groupName: "SGRWN Gdańsk (JRG 2 Gdańsk Śródmieście)",
+            groupName: "SGRWN Gdańsk (JRG 2 Gdańsk)",
             unitName: "JRG 2 Gdańsk (SGRWN)",
             town: "Gdańsk", address: "ul. Siennicka 29, Gdańsk", lat: 54.3522, lng: 18.6752,
             vehicles: [
-                { id: "302[G]71", name: "SRw Mercedes Atego 4x4 (Wodno-Nurkowy)", status: "green", obsada: 4 },
-                { id: "302[G]Ł1", name: "Łódź pontonowa z silnikiem śrubowym", status: "green", obsada: 0 }
-            ]
-        },
-        {
-            groupName: "SGRWN Kościerzyna (JRG Kościerzyna)",
-            unitName: "JRG Kościerzyna (SGRWN)",
-            town: "Kościerzyna", address: "ul. Traugutta 6, Kościerzyna", lat: 54.1215, lng: 17.9812,
-            vehicles: [
-                { id: "441[G]81", name: "SRW Iveco (Specjalistyczny Wodno-Nurkowy)", status: "green", obsada: 3 },
-                { id: "441[G]90", name: "SLKw Nissan Navara (Lekki Kwatermistrzowski)", status: "green", obsada: 2 },
-                { id: "441[G]Ł1", name: "Łódź 6-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 },
-                { id: "441[G]Ł2", name: "Łódź 5-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 }
+                { id: "302[G]71", name: "SRw Mercedes Atego 4x4 (Nurkowy)", status: "green", obsada: 4 },[cite: 3]
+                { id: "302[G]Ł1", name: "Łódź pontonowa", status: "green", obsada: 0 }
             ]
         }
     ],
     slaskie: [
         {
-            groupName: "SGRChem Gliwice (JRG 2 Gliwice-Łabędy)",
+            groupName: "SGRChem Gliwice (JRG 2)",
             unitName: "JRG 2 Gliwice (SGRChem)",
             town: "Gliwice", address: "ul. Mechaników 9, Gliwice", lat: 50.3340, lng: 18.6180,
             vehicles: [
-                { id: "452[S]60", name: "SRChem MAN TGM (Ciężki Chemiczny)", status: "green", obsada: 3 },
-                { id: "452[S]64", name: "SLRRChem Mercedes Sprinter (Rozpoznanie Chemiczne)", status: "green", obsada: 2 },
-                { id: "452[S]90", name: "SLRR Isuzu D-Max (Dowodzenie SGRChem)", status: "green", obsada: 2 }
-            ]
-        },
-        {
-            groupName: "SGRT Gliwice / Wodzisław Śląski",
-            unitName: "JRG Wodzisław Śl. (SGRT)",
-            town: "Wodzisław Śląski", address: "ul. Pszowska 91, Wodzisław Śląski", lat: 50.0080, lng: 18.4450,
-            vehicles: [
-                { id: "681[S]43", name: "SCRt MAN TGM (Ciężki Ratownictwa Technicznego)", status: "green", obsada: 3 },
-                { id: "681[S]71", name: "SCDz Jelcz / Żuraw (Ciężki Dźwig Samochodowy)", status: "green", obsada: 2 },
-                { id: "681[S]90", name: "SLOp Ford Ranger (Dowodzenie SGRT)", status: "green", obsada: 2 }
-            ]
-        },
-        {
-            groupName: "SGRWys Jastrzębie-Zdrój (JRG Jastrzębie-Zdrój)",
-            unitName: "JRG Jastrzębie-Zdrój (SGRWys)",
-            town: "Jastrzębie-Zdrój", address: "ul. Jagiełły 3, Jastrzębie-Zdrój", lat: 49.9500, lng: 18.5750,
-            vehicles: [
-                { id: "471[S]72", name: "SRWys Iveco (Ratownictwo Wysokościowe)", status: "green", obsada: 3 },
-                { id: "471[S]51", name: "SD-37 Iveco Magirus (Drabina Mechaniczna)", status: "green", obsada: 2 }
-            ]
-        },
-        {
-            groupName: "SGRWN Bytom (JRG Bytom)",
-            unitName: "JRG Bytom (SGRWN)",
-            town: "Bytom", address: "ul. Strażacka 3, Bytom", lat: 50.3480, lng: 18.9150,
-            vehicles: [
-                { id: "411[S]71", name: "SRw Mercedes Atego (Wodno-Nurkowy)", status: "green", obsada: 4 },
-                { id: "411[S]90", name: "SLKw Ford Ranger (Wsparcie Nurkowe)", status: "green", obsada: 2 },
-                { id: "411[S]Ł1", name: "Łódź ratownicza z silnikiem zaburtowym", status: "green", obsada: 0 }
+                { id: "452[S]60", name: "SRChem MAN TGM (Chemiczny)", status: "green", obsada: 3 },
+                { id: "452[S]64", name: "SLRRChem Mercedes", status: "green", obsada: 2 }
             ]
         }
     ]
@@ -192,48 +150,42 @@ function unpackProfile(raw) {
 const RAW_PROFILES = [
     {
         id: "wejherowski", name: "KP PSP Wejherowo (Powiat Wejherowski)", radioCallsign: "Wejherowo 998",
-        desc: "Woj. pomorskie • JRG 1 Wejherowo, JRG 2 Rumia + 36 jednostek OSP",
+        desc: "Woj. pomorskie • JRG 1 Wejherowo, JRG 2 Rumia + OSP",
         voivodeship: "pomorskie", countyName: "pow. wejherowski", mapCenter: [54.6052, 18.2345], bbox: "17.65,54.38,18.50,54.85",
         jrgList: ["JRG 1 Wejherowo", "JRG 2 Rumia"], defaultTown: "Bolszewo",
         towns: [
-            ["Wejherowo", "m. Wejherowo", 54.6052, 18.2345, ["ul. Jana III Sobieskiego", "ul. 12 Marca", "ul. Gdańska", "ul. Tartaczna", "ul. 3 Maja"]],
-            ["Bolszewo", "gm. Wejherowo", 54.6155, 18.1772, ["ul. Zamostna", "ul. Strażacka", "ul. Główna", "ul. Wejherowska"]],
-            ["Rumia", "m. Rumia", 54.5798, 18.3973, ["ul. Grunwaldzka", "ul. Dąbrowskiego", "ul. Starowiejska"]],
-            ["Reda", "m. Reda", 54.6053, 18.3478, ["ul. Wejherowska", "ul. Gdańska", "ul. Pucka"]],
-            ["Gościcino", "gm. Wejherowo", 54.5975, 18.1458, ["ul. Drzewiarza", "ul. Wejherowska"]]
+            ["Wejherowo", "m. Wejherowo", 54.6052, 18.2345, ["ul. Jana III Sobieskiego", "ul. Gdańska"]],
+            ["Bolszewo", "gm. Wejherowo", 54.6155, 18.1772, ["ul. Zamostna", "ul. Główna"]],
+            ["Rumia", "m. Rumia", 54.5798, 18.3973, ["ul. Grunwaldzka", "ul. Starowiejska"]]
         ],
         psp: [
             ["JRG 1 Wejherowo", "Wejherowo", "ul. Tartaczna 5", 54.6075, 18.2195, true, [
-                ["551[G]21", "GBA 2,5/16 Volvo", 6], ["551[G]25", "GCBA 5,4/25 Man", 4], ["551[G]53", "SH-40 Volvo", 2], ["551[G]90", "SLRr Ford", 2]
+                ["551[G]21", "GBA Volvo", 6], ["551[G]25", "GCBA Man", 4]
             ]],
             ["JRG 2 Rumia", "Rumia", "ul. Świętego Floriana 1", 54.5798, 18.3973, true, [
-                ["552[G]21", "GBAPr 2,5/28 MB", 4], ["552[G]25", "GCBA 5/32 Scania", 4], ["552[G]72", "SRWys Mercedes (SGRWys)", 3]
-            ]],
-            ["KP PSP Wejherowo", "Wejherowo", "ul. Tartaczna 5", 54.6077, 18.2199, true, [["550[G]90", "SLOp Skoda", 1]]]
+                ["552[G]21", "GBAPr MB", 4], ["552[G]25", "GCBA Scania", 4]
+            ]]
         ],
         osp: [
-            [".OSP KSRG Bolszewo", "Bolszewo", "ul. Zamostna 4A", 54.6156, 18.1772, true, [["559[G]56", "GBA 2,5/16 Star", 6], ["559[G]Q01", "Quad CF MOTO", 1]]],
-            ["OSP Rumia", "Rumia", "ul. Św. Floriana 1", 54.5798, 18.3973, false, [["557[G]06", "GBA 3/16 Volvo FL 320", 6]]]
+            [".OSP KSRG Bolszewo", "Bolszewo", "ul. Zamostna 4A", 54.6156, 18.1772, true, [["559[G]56", "GBA Star", 6]]],
+            ["OSP Rumia", "Rumia", "ul. Św. Floriana 1", 54.5798, 18.3973, false, [["557[G]06", "GBA Volvo FL", 6]]]
         ]
     },
     {
         id: "raciborski", name: "KP PSP Racibórz (Powiat Raciborski)", radioCallsign: "Racibórz 998",
-        desc: "Woj. śląskie • JRG Racibórz + OSP KSRG",
+        desc: "Woj. śląskie • JRG Racibórz + OSP",
         voivodeship: "śląskie", countyName: "pow. raciborski", mapCenter: [50.0919, 18.2198], bbox: "17.95,49.90,18.55,50.25",
         jrgList: ["JRG Racibórz"], defaultTown: "Racibórz",
         towns: [
-            ["Racibórz", "m. Racibórz", 50.0919, 18.2198, ["ul. Władysława Reymonta", "ul. Opawska", "ul. Głubczycka"]],
-            ["Kuźnia Raciborska", "gm. Kuźnia Raciborska", 50.2014, 18.3094, ["ul. Słowackiego", "ul. Staszica"]]
+            ["Racibórz", "m. Racibórz", 50.0919, 18.2198, ["ul. Reymonta"]]
         ],
         psp: [
-            ["JRG Racibórz", "Racibórz", "ul. Władysława Reymonta 8", 50.0956, 18.2215, true, [
-                ["561[S]21", "GBA 2,5/24 Renault", 6], ["561[S]25", "GCBA 8/50 Renault", 4], ["561[S]90", "SLRr Ford", 2]
-            ]],
-            ["KP PSP Racibórz", "Racibórz", "ul. Władysława Reymonta 8", 50.0958, 18.2219, true, [["560[S]90", "SLOp Skoda", 1]]]
+            ["JRG Racibórz", "Racibórz", "ul. Reymonta 8", 50.0956, 18.2215, true, [
+                ["561[S]21", "GBA Renault", 6], ["561[S]25", "GCBA Renault", 4]
+            ]]
         ],
         osp: [
-            [".OSP KSRG Racibórz-Markowice", "Racibórz", "ul. Myśliwca 9", 50.1197, 18.2683, true, [["569[S]67", "GBA 3/16 Volvo", 6]]],
-            [".OSP KSRG Rudy", "Rudy", "ul. Rogera 2", 50.1942, 18.4481, false, [["569[S]28", "GBA Volvo", 6]]]
+            [".OSP KSRG Racibórz-Markowice", "Racibórz", "ul. Myśliwca 9", 50.1197, 18.2683, true, [["569[S]67", "GBA Volvo", 6]]]
         ]
     }
 ];
@@ -243,27 +195,22 @@ RAW_PROFILES.forEach(rp => { COUNTY_PROFILES[rp.id] = unpackProfile(rp); });
 
 const subtypesData = {
     "P": ["P - Inne pożary", "P - Obiekty mieszkalne", "P - Trawy i lasy"],
-    "MZ": ["Inne MZ", "MZ - Drogowe", "MZ - Chemiczne", "MZ - Wypadek", "MZ - Topienie się"],
-    "AF": ["AF - Alarm fałszywy"],
-    "CW": ["CW - Ćwiczenia"],
-    "WG": ["WG - Wyjazd gospodarczy"],
+    "MZ": ["Inne MZ", "MZ - Drogowe", "MZ - Chemiczne", "MZ - Wypadek"],
+    "AF": ["AF - Fałszywy z instalacji"],
+    "CW": ["CW - Zagrożenie chemiczne"],
+    "WG": ["WG - Wybuch gazu"],
     "BL": ["BL - Budynek zagrożony"],
     "ZPR": ["ZPR - Promeniotwórcze"],
-    "PZR": ["PZR - Przekazanie na zabezpieczenie rejonu]
+    "PZR": []
 };
 
-const callersMaleFirst = ["Jan", "Piotr", "Tomasz", "Michał", "Krzysztof", "Andrzej", "Paweł", "Marek", "Adam", "Łukasz"];
-const callersMaleLast = ["Kowalski", "Nowak", "Wiśniewski", "Wójcik", "Kowalczyk", "Kamiński", "Lewandowski", "Zieliński"];
-const callersFemaleFirst = ["Anna", "Katarzyna", "Magdalena", "Agnieszka", "Małgorzata", "Krystyna", "Barbara", "Ewa"];
-const callersFemaleLast = ["Kowalska", "Nowak", "Wiśniewska", "Wójcik", "Kowalczyk", "Kamińska", "Lewandowska"];
+const callersMaleFirst = ["Jan", "Piotr", "Tomasz", "Michał", "Krzysztof"];
+const callersMaleLast = ["Kowalski", "Nowak", "Wiśniewski", "Wójcik"];
+const callersFemaleFirst = ["Anna", "Katarzyna", "Magdalena", "Agnieszka"];
+const callersFemaleLast = ["Kowalska", "Nowak", "Wiśniewska", "Wójcik"];
 
-const fallbackPhrasesP = [
-    "Pali się sadza w kominie", "Czarny dym z budynku gospodarczego", "Pożar trawy w pobliżu lasu", "Pożar samochodu osobowego", "Pożar sadzy w kominie budynku mieszkalnego"
-];
-
-const fallbackPhrasesMZ = [
-    "Samochód uderzył w drzewo, zakleszczony kierowca", "Silny wiatr zerwał dach", "Wyciek substancji chemicznej na drodze", "Drzewo tarasuje jezdnię po silnym wietrze"
-];
+const fallbackPhrasesP = ["Pali się sadza w kominie", "Czarny dym z budynku gospodarczego", "Pożar trawy w pobliżu lasu", "Pożar samochodu osobowego"];
+const fallbackPhrasesMZ = ["Samochód uderzył w drzewo, zakleszczony kierowca", "Silny wiatr zerwał dach", "Wyciek substancji chemicznej na drodze"];
 
 function generateRandomPolishCaller() {
     const isFemale = Math.random() < 0.48;
