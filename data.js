@@ -1,5 +1,5 @@
 // =========================================================================
-// PLIK 1: data.js - BAZA DANYCH, PROFILE KOMEND, AUDIO I ZMIENNE GLOBALNE
+// PLIK 1: data.js - BAZA DANYCH, PROFILE KOMEND, AI, AUDIO I STAN GLOBALNY
 // =========================================================================
 
 const APP_VERSION = "SWDST 0.28";
@@ -27,6 +27,55 @@ function playOspAlarmRepeated(ospCount) {
         }
     }
     playNext();
+}
+
+// --- KLUCZE API I SILNIK AI ---
+const _k = {
+    g: "Z3NrX2dEQkRQMWhzenZtVjBQc010OWlXR2d5YjNGWUhzYW5FZ2twUEg2anNIWnY2WGFyY2o0QzM=",
+    m: "QVEuQWI4Uk42SlNrZnU5ODBDQnBJUUZ0cnAtTEUxYkJYdU94ZzI0NmZmZUJXTmFSZUZkZ1E=",
+    o: "c2stcHJvai1wRHZBV05wbDRnUzRzWlpFUkVSeWMtcGdqVGdXZEp1d3E5Y3pCMnhsc0JQZWd3Z3prbi16OEtidFVlQ2NxMHVlV2lnb0dhWDNpS1QzMmxia0ZKNk55MjJtWjMwTm41NnhjTlpZTYUzM3FUM3BtcUF6aGRfb3E4S2N1MTdCenRLVHQ="
+};
+function decodeKey(b64) { try { return atob(b64); } catch(e) { return ""; } }
+
+async function callUniversalAI(systemPrompt, userPrompt, jsonMode = false) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    try {
+        const response = await fetch('https://text.pollinations.ai/openai', {
+            method: 'POST',
+            signal: controller.signal,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'openai',
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                temperature: 0.8,
+                jsonMode: jsonMode
+            })
+        });
+        clearTimeout(timeoutId);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.choices && data.choices[0]?.message?.content) return data.choices[0].message.content.trim();
+        }
+    } catch (err) {}
+
+    try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${decodeKey(_k.g)}` },
+            body: JSON.stringify({
+                model: 'llama-3.1-8b-instant',
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+                temperature: 0.8,
+                max_tokens: 180,
+                ...(jsonMode ? { response_format: { type: "json_object" } } : {})
+            })
+        });
+        const data = await res.json();
+        if (data.choices && data.choices[0]?.message?.content) return data.choices[0].message.content.trim();
+    } catch (e) {}
+
+    throw new Error("AI Offline");
 }
 
 // --- DEKOMPRESOR PROFILI POWIATÓW I MIAST ---
