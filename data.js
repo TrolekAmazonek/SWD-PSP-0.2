@@ -1,8 +1,8 @@
 // =========================================================================
-// PLIK 1: data.js - BAZA DANYCH, 6 POWIATÓW, POGODA, SGR ORAZ ZAKTUALIZOWANE OSP
+// PLIK 1: data.js - BAZA DANYCH, 6 POWIATÓW, POGODA I WSZYSTKIE GRUPY SGR
 // =========================================================================
 
-const APP_VERSION = "SWDST 0.42";
+const APP_VERSION = "SWDST 0.43";
 
 // Całkowita blokada głosowego czytania komunikatów radiowych (TTS)
 if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -86,8 +86,8 @@ const EXTERNAL_SPECIAL_GROUPS = {
             vehicles: [
                 { id: "401[G]43", name: "SCRt Volvo (Ciężki Ratownictwa Technicznego)", status: "green", obsada: 3 },
                 { id: "401[G]49", name: "SCRt MEGA-CITY Volvo (Ciężki Techniczny)", status: "green", obsada: 3 },
-                { id: "401[G]71", name: "SCDz 70 Liebherr (Ciężki Dźwig Samochodowy)", status: "green", obsada: 2 },[cite: 1]
-                { id: "401[G]90", name: "SLOp Nissan Qashqai (Operacyjny Dowódcy)", status: "green", obsada: 2 }[cite: 1]
+                { id: "401[G]71", name: "SCDz 70 Liebherr (Ciężki Dźwig Samochodowy)", status: "green", obsada: 2 },
+                { id: "401[G]90", name: "SLOp Nissan Qashqai (Operacyjny Dowódcy)", status: "green", obsada: 2 }
             ]
         },
         {
@@ -104,7 +104,7 @@ const EXTERNAL_SPECIAL_GROUPS = {
             unitName: "JRG 2 Gdańsk (SGRWN)",
             town: "Gdańsk", address: "ul. Siennicka 29, Gdańsk", lat: 54.3522, lng: 18.6752,
             vehicles: [
-                { id: "302[G]71", name: "SRw Mercedes Atego 4x4 (Wodno-Nurkowy)", status: "green", obsada: 4 },[cite: 3]
+                { id: "302[G]71", name: "SRw Mercedes Atego 4x4 (Wodno-Nurkowy)", status: "green", obsada: 4 },
                 { id: "302[G]Ł1", name: "Łódź pontonowa z silnikiem śrubowym", status: "green", obsada: 0 }
             ]
         },
@@ -113,10 +113,10 @@ const EXTERNAL_SPECIAL_GROUPS = {
             unitName: "JRG Kościerzyna (SGRWN)",
             town: "Kościerzyna", address: "ul. Traugutta 6, Kościerzyna", lat: 54.1215, lng: 17.9812,
             vehicles: [
-                { id: "441[G]81", name: "SRW Iveco (Specjalistyczny Wodno-Nurkowy)", status: "green", obsada: 3 },[cite: 4]
-                { id: "441[G]90", name: "SLKw Nissan Navara (Lekki Kwatermistrzowski)", status: "green", obsada: 2 },[cite: 4]
-                { id: "441[G]Ł1", name: "Łódź 6-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 },[cite: 4]
-                { id: "441[G]Ł2", name: "Łódź 5-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 }[cite: 4]
+                { id: "441[G]81", name: "SRW Iveco (Specjalistyczny Wodno-Nurkowy)", status: "green", obsada: 3 },
+                { id: "441[G]90", name: "SLKw Nissan Navara (Lekki Kwatermistrzowski)", status: "green", obsada: 2 },
+                { id: "441[G]Ł1", name: "Łódź 6-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 },
+                { id: "441[G]Ł2", name: "Łódź 5-osobowa z silnikiem zaburtowym", status: "green", obsada: 0 }
             ]
         }
     ],
@@ -195,7 +195,7 @@ function unpackProfile(raw) {
 const RAW_PROFILES = [
     {
         id: "wejherowski", name: "KP PSP Wejherowo (Powiat Wejherowski)", radioCallsign: "Wejherowo 998",
-        desc: "Woj. pomorskie • JRG 1 Wejherowo, JRG 2 Rumia, OSP Rumia + 36 jednostek OSP",
+        desc: "Woj. pomorskie • JRG 1 Wejherowo, JRG 2 Rumia + 36 jednostek OSP",
         voivodeship: "pomorskie", countyName: "pow. wejherowski", mapCenter: [54.6052, 18.2345], bbox: "17.65,54.38,18.50,54.85",
         jrgList: ["JRG 1 Wejherowo", "JRG 2 Rumia"], defaultTown: "Bolszewo",
         towns: [
@@ -265,7 +265,7 @@ const RAW_PROFILES = [
             [".OSP KSRG Choczewo", "Choczewo", "ul. Świerkowa 8, 84-210 Choczewo", 54.7422, 17.8915, false, [["559[G]01", "GCBA 5/32 Man TGM/Mototruck", 6], ["559[G]02", "GBA 2,5/16 Star 244/JZS", 6], ["559[G]03", "SLRt Ford Transit/Bocar", 3]]],
             [".OSP KSRG Słajszewo", "Słajszewo", "ul. Bursztynowa 67, 84-210 Słajszewo", 54.7695, 17.8048, false, [["559[G]81", "GBA 4,5/30 Man TGM/Moto-Truck", 6]]],
             [".OSP KSRG Sasino", "Sasino", "ul. Brukowa 3, 84-210 Sasino", 54.7628, 17.7562, false, [["559[G]91", "GBA Volvo FL280/Bocar", 6], ["559[G]92", "SLRr Ford Ranger", 3]]],
-            [".OSP KSRG Gniewino", "Gniewino", "ul. Strażacka 2, 84-250 Gniewino", 54.7161, 18.0156, false, [["559[G]06", "GBA 2,5/25 Man TGM/Stolarczyk", 6], ["559[G]07", "SLKw Ford Transit/Stolarczyk", 3]]],
+            [".OSP KSRG Gniewino", "Gniewino", "ul. Strażacka 2, 84-250 Gniewino", 54.7161, 18.0156, false, [["559[G]06", "GBA 2,5/25 MAN TGM/Stolarczyk", 6], ["559[G]07", "SLKw Ford Transit/Stolarczyk", 3]]],
             [".OSP KSRG Nadole", "Nadole", "ul. Strażacka 20, 84-250 Nadole", 54.7495, 18.0365, false, [["559[G]11", "GCBA 5/32 Volvo FMX/Bocar", 6], ["559[G]12", "SLRt Renault Master", 3]]],
             [".OSP KSRG Kostkowo", "Kostkowo", "ul. Wejherowska 24A, 84-251 Kostkowo", 54.6755, 18.0385, false, [["559[G]71", "GBA 2/24 Renault Midlum/WISS", 6], ["559[G]72", "GCBA 7/42 Scania P450/Szczęśniak", 6]]],
             [".OSP KSRG Linia", "Linia", "ul. Turystyczna 3, 84-223 Linia", 54.4503, 17.9355, false, [["559[G]16", "GBA 2,5/16 Volvo FL280/Bocar", 6], ["559[G]17", "GCBA 5/35 Man TGM/Stolarczyk", 6], ["559[G]18", "SLRt Lublin III", 3]]],
@@ -478,7 +478,7 @@ const RAW_PROFILES = [
     },
     {
         id: "raciborski", name: "KP PSP Racibórz (Powiat Raciborski)", radioCallsign: "Racibórz 998",
-        desc: "Woj. śląskie • JRG Racibórz, KP PSP Racibórz + pełny wykaz OSP KSRG powiatu raciborskiego",
+        desc: "Woj. śląskie • JRG Racibórz, KP PSP Racibórz + 21 jednostek OSP KSRG",
         voivodeship: "śląskie", countyName: "pow. raciborski", mapCenter: [50.0919, 18.2198], bbox: "17.95,49.90,18.55,50.25",
         jrgList: ["JRG Racibórz"], defaultTown: "Racibórz",
         towns: [
